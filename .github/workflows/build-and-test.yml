@@ -1,0 +1,28 @@
+name: Build
+run-name: Build ${{ github.ref }} by ${{ github.actor }}
+on: 
+  push:
+    branches:
+      - '**'
+    tags-ignore: 
+      - 'v*'
+env:
+  IMAGE_REGISTRY: ghcr.io
+  TEST_IMAGE_NAME: ${{ github.repository }}-test
+jobs:
+  build-and-test-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - run: echo "Repo code checked out from branch ${{ github.ref }}"
+      # NOTE: for building an image managed by pantsbuild, this repo example will be the right reference to replace the placeholder code below:
+      # https://github.com/pantsbuild/example-docker/blob/main/.github/workflows/pants.yaml
+      - name: Build Image No Push
+        uses: docker/build-push-action@v6
+        with:
+          tags: ${{ env.TEST_IMAGE_NAME }}:${{ github.run_number }}-test
+          target: beetkeeper-test
+      - name: Static Checks and Tests
+        run: |
+          docker run -t --rm --entrypoint bash ${{ env.TEST_IMAGE_NAME }}:${{ github.run_number }}-test -c '/app/build_scripts/pants-validate.sh'

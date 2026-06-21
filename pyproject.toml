@@ -1,0 +1,191 @@
+# NOTE: the build-system and project-specific configuration for the beetkeeper distribution
+# is defined under `src/python/pyproject.toml`. This is to avoid weird undesired behaviors
+# in the pantsbuild `python_distribution` target's metadata injection. For more info, see the
+# comment at top of `src/python/pyproject.toml`. 
+[dependency-groups]
+app_image = ["beetkeeper @ file:///app/src/python/beetkeeper.whl"]
+dev = [
+  "bandit>=1.9",
+  "fastapi[standard]==0.138.0",
+  "ipython>=9.3.0",
+  "mypy>=2.1",
+  "pytest>=9.1",
+  "pytest-socket",
+  "pytest-xdist",
+  "ruff>=0.15.8",
+]
+
+# The distribution's `[project]` lives in `src/python/pyproject.toml`, not here, so it must be
+# registered as a uv workspace member — otherwise uv (which only reads this root file) can't see
+# the package or its runtime dependencies and `uv lock` fails with "No `project` table found".
+[tool.uv.workspace]
+members = ["src/python"]
+
+[tool.uv.sources]
+beetkeeper = { workspace = true }
+
+[tool.ruff]
+src = ["src/python"]
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".git-rewrite",
+  ".hg",
+  ".ipynb_checkpoints",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".pyenv",
+  ".pytest_cache",
+  ".pytype",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  ".vscode",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "site-packages",
+  "venv",
+]
+line-length = 120
+indent-width = 4
+
+
+[tool.ruff.lint]
+exclude = ["build_scripts/**/*.py", "src/python/tests/**/*.py"]
+select = [
+  "E",   # pycodestyle
+  "F",   # Pyflakes
+  "UP",  # pyupgrade
+  "B",   # flake8-bugbear
+  "SIM", # flake8-simplify
+  "I",   # isort
+]
+extend-select = [
+  # Async ruff rules: https://docs.astral.sh/ruff/rules/#flake8-async-async
+  "ASYNC",
+  "B006",
+  "B007",
+  "B012",
+  "B017",
+  "B019",
+  "B028",
+  "D101",
+  "D107",
+  "D417",
+  "D419",
+  "LOG",
+  "FAST",    # https://docs.astral.sh/ruff/rules/#fastapi-fast
+  "PLW0603",
+  "PT",
+  "PYI045",  # https://docs.astral.sh/ruff/rules/iter-method-return-iterable/
+  "PT024",   # https://docs.astral.sh/ruff/rules/pytest-unnecessary-asyncio-mark-on-fixture/
+  "PLE1142", # https://docs.astral.sh/ruff/rules/await-outside-async/
+  "PLE1700", # https://docs.astral.sh/ruff/rules/yield-from-in-async-function/
+  "RUF006",  # https://docs.astral.sh/ruff/rules/asyncio-dangling-task/
+  "RUF008",
+  "RUF009",
+  "RUF012",
+  "RUF015",
+  "RUF018",
+  "RUF022",
+  "RUF024",
+  "RUF032",
+  "RUF033",
+  "RUF049",
+  "RUF100",
+  "RUF101",
+  "RUF200",  # https://docs.astral.sh/ruff/rules/invalid-pyproject-toml/
+  "TC",      # https://docs.astral.sh/ruff/rules/#flake8-type-checking-tc
+  "TID25",   # flake8-tidy-imports rules
+  "TRY002",  # https://docs.astral.sh/ruff/rules/raise-vanilla-class/
+  "UP",      # Keep Python syntax modern with pyupgrade rules
+]
+# This is to get the line length auto-formatting mostly handled https://stackoverflow.com/a/77796620
+ignore = [
+  "COM812",
+  "COM819",
+  "D206",
+  "D300",
+  "E111",
+  "E114",
+  "E117",
+  "E203",
+  "E501",
+  "PT003",
+  "PT019",
+  "PT022",
+  "TC003",
+  "Q000",
+  "Q001",
+  "Q002",
+  "Q003",
+  "W191",
+]
+
+# https://docs.astral.sh/ruff/settings/#lintflake8-type-checking
+[tool.ruff.lint.flake8-type-checking]
+# https://docs.astral.sh/ruff/settings/#lint_flake8-type-checking_exempt-modules
+exempt-modules = ["typing", "typing_extensions"]
+# https://docs.astral.sh/ruff/settings/#lint_flake8-type-checking_runtime-evaluated-base-classes
+runtime-evaluated-base-classes = [
+  "pydantic.BaseModel",
+  "sqlalchemy.orm.DeclarativeBase",
+  "sqlmodel.SQLModel",
+]
+
+[tool.ruff.lint.isort]
+# https://docs.astral.sh/ruff/settings/#lint_isort_split-on-trailing-comma
+split-on-trailing-comma = false
+section-order = [
+  "future",
+  "standard-library",
+  "third-party",
+  "first-party",
+  "local-folder",
+]
+known-first-party = ["beetkeeper"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"requests".msg = "Use httpx instead."
+
+[tool.ruff.lint.pycodestyle]
+# https://docs.astral.sh/ruff/rules/line-too-long/#why-is-this-bad
+ignore-overlong-task-comments = true
+
+# RUFF formatter
+[tool.ruff.format]
+# https://docs.astral.sh/ruff/settings/#format_skip-magic-trailing-comma
+skip-magic-trailing-comma = true
+# https://docs.astral.sh/ruff/settings/#format_docstring-code-format
+docstring-code-format = true
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider --disable-socket --allow-hosts=testclient --durations=5"
+# addopts = "-p no:cacheprovider --durations=5"
+markers = [
+  "releasetest: mark test as a release-only test which should be skipped on non-release builds.",
+  "slow: mark test as a slow test which should be skipped by default in non-CI builds unless `--slowtests` is provided.",
+  "no_autouse_mock_lifespan_singleton_inst: mark a test to not use the auto-use fixture for the fastapi lifespan singleton.",
+  "override_global_httpx_mock: mark a test to override the configured httpx global fixture in favor of its own.",
+]
+filterwarnings = ["error:pytest.PytestWarning.*"]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+exclude = ["build_scripts/", "src/python/tests/", "docs/"]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src/python"
+
+[[tool.mypy.overrides]]
+module = ["diskcache.*"]
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = [".github", "build_scripts", "docs", "src/python/tests", ".venv"]

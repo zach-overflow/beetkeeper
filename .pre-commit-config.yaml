@@ -1,0 +1,36 @@
+# prek pre-commit configuration (https://prek.j178.dev/).
+# Install the git hook with `prek install`, or run on demand with `prek run --all-files`.
+repos:
+  - repo: local
+    hooks:
+      - id: uv-lockfile-check
+        name: uv lockfile check
+        entry: hooks/uv-lockfile-check.sh
+        files: '^(pyproject\.toml|uv\.lock)$'
+        language: script
+        pass_filenames: false
+      
+      - id: ruff
+        name: ruff
+        description: "Run 'ruff check --fix' + 'ruff format' (lint, auto-fix, and format)."
+        entry: hooks/ruff.sh
+        language: script
+        types: [python]
+        require_serial: true
+      
+      - id: bandit
+        name: bandit
+        entry: hooks/bandit.sh
+        language: script
+        files: '^src/python/beetkeeper/.*\.py$'
+        pass_filenames: true
+
+      - id: mypy
+        name: mypy
+        # Scoped to the package only: mypy's pyproject `exclude` skips `src/python/tests`, but mypy
+        # ignores `exclude` for files passed explicitly on the CLI (as prek does), so matching test
+        # files here would type-check them anyway -- contradicting the config. Keep this in sync with
+        # the mypy `exclude` setting.
+        entry: hooks/mypy.sh
+        language: script
+        files: '^src/python/beetkeeper/.*\.py$'

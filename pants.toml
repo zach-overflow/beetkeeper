@@ -1,0 +1,67 @@
+[GLOBAL]
+backend_packages = [
+  "pants.backend.python",
+  "pants.backend.build_files.fmt.ruff",
+  "pants.backend.docker",
+  "pants.backend.docker.lint.hadolint",
+  "pants.backend.experimental.adhoc",
+  "pants.backend.experimental.python.lint.ruff.check",
+  "pants.backend.experimental.python.lint.ruff.format",
+  "pants.backend.experimental.visibility",
+  "pants.backend.shell",
+  "pants.backend.shell.lint.shellcheck",
+  "pants.backend.shell.lint.shfmt",
+  "pants.backend.tools.taplo",
+]
+pants_version = "2.32.0"
+build_patterns = ["BUILD", "BUILD.*"]
+build_file_prelude_globs = ["build_scripts/pants_macros.py"]
+colors = true
+pants_ignore = [
+  ".*/",
+  "**/.venv/",
+  "/dist/",
+  "__pycache__",
+  "!.semgrep/",
+  "!.github/",
+]
+
+[source]
+root_patterns = ["src/python"]
+
+[docker]
+use_buildx = true
+
+[tailor]
+build_file_name = "BUILD"
+
+[taplo]
+glob_pattern = ["**/*.toml", "!.taplo.toml", "!taplo.toml"]
+
+[test]
+extra_env_vars = ["PANTS=true"]
+
+[cli.alias]
+--all-changed = "--changed-since=HEAD --changed-dependents=transitive"
+
+[python-bootstrap]
+search_path = ["<PYENV>", "<ASDF>", "<PATH>"]
+
+
+# NOTE: we deliberately do NOT set `[pytest].skip` here — it is not consulted by the `test` goal
+# (it's a bare SkipOption that no pytest rule reads), so it does nothing. Pants' own pytest is
+# disabled instead via `skip_tests=True` on the `python_tests` targets (see src/python/tests/BUILD).
+# We run pytest ourselves through the `//:pytest` `test_shell_command` so we can use pytest plugins
+# without managing a separate resolve: https://www.pantsbuild.org/stable/reference/subsystems/pytest#requirements
+
+[python]
+resolver = "uv"
+enable_resolves = false
+interpreter_constraints = [">=3.14,<3.15"]
+interpreter_versions_universe = ["3.14"]
+pip_version = "latest"
+separate_lockfile_metadata_file = true
+
+[update-build-files]
+fmt = true
+formatter = "ruff"
