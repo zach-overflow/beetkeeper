@@ -1,0 +1,15 @@
+<html lang="en">
+<!-- This template should be extended from by any HTMLResponse templates. -->
+<head>
+	<meta charset="UTF-8">
+	<!-- Any required javascript not covered by `htmx.min.js` should be written as <script> segments here.
+	     Asset URLs use `url_for('static', ...)`, which resolves from the app's static mount, so every
+	     template render must pass `request` into the TemplateResponse context (or `url_for` raises). -->
+	<script src="{{ url_for('static', path='/js/htmx.min.js') }}"></script>
+	<link rel="stylesheet" href="{{ url_for('static', path='/css/classless.css') }}">
+	<base target="_blank">
+</head>
+<body>
+	{% block content %}{% endblock %}
+</body>
+</html>

@@ -27,7 +27,7 @@ pants_ignore = [
 ]
 
 [source]
-root_patterns = ["src/python"]
+root_patterns = ["src/beetsplug", "src/python"]
 
 [docker]
 use_buildx = true

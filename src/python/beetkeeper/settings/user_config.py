@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Final, Literal
 
-from pydantic import Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, FilePath, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
 CONFIG_PATH_ENVVAR: Final[str] = "BEETKEEPER_CONFIG"
@@ -13,13 +13,27 @@ _LOGGER = logging.getLogger(__name__)
 class UserConfig(BaseSettings):
     """Wrapper pydantic model for the user configuration (read from yaml)."""
 
-    # model_config = ConfigDict(frozen=True)
     model_config = SettingsConfigDict(frozen=True)
+    beets_config_filepath: FilePath  # Must be an actual file that exists
     log_level: Literal["CRITICAL", "DEBUG", "ERROR", "INFO", "NOTSET", "WARNING"]
+    server: ServerConfSection
+
+    # TODO[Claude]: implement the ``UserConfig`` class definition (and subsequently, the yaml schema).
+    # TODO[Claude]: add fields the rest of the app already needs but cannot source today:
+    #   - a database connection URL / SQLite path (consumed by `beetkeeper.db` + alembic env.py).
+    #   - the beets config/library location (used to populate `app.state.beets_config`; see
+    #     `beetkeeper.api.fastapi_app.lifespan`) once the beets-integration model is decided.
+    #   - if authentication is in scope (see `config_router`'s placeholder `/login/access-token`),
+    #     any auth/secret settings; otherwise document that the app is unauthenticated single-user.
+
+
+class ServerConfSection(BaseModel):
+    """Model for the `server` section of the user config YAML file."""
+
+    model_config = ConfigDict(frozen=True)
     hostname: str
     port: int = Field(default=8080, gt=0)
     server_workers: int = Field(default=2, gt=0)
-    # TODO[Claude]: implement the ``UserConfig`` class definition (and subsequently, the yaml schema).
 
 
 class BeetKeeperConfigError(ValueError):

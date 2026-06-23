@@ -1,0 +1,7 @@
+---
+log_level: INFO
+beets_config_filepath: ~/appdata/beets/config.yaml
+server:
+  hostname: localhost
+  port: 6969
+  server_workers: 4

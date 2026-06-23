@@ -1,4 +1,4 @@
-# Build-only pyproject for the `python_distribution` at `src/python:beetkeeper-whl`.
+# Build-only pyproject for the `python_distribution` at `src/beetsplug:plugin-whl`.
 #
 # This file (not the repo-root pyproject.toml) is what setuptools' PEP 517 backend reads when
 # building the wheel, because `generate_setup=False` makes Pants run the backend from the source
@@ -13,36 +13,22 @@ requires = ["setuptools>=80.9"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "beetkeeper"
+name = "beetkeeper-plugin"
+version = "0.0.1"
 authors = [{ name = "Zach Gottesman" }]
 maintainers = [{ name = "zach-overflow" }]
 keywords = [
   "beets",
-  "beets server",
+  "beets plugin",
   "music tagging",
   "music-library",
   "music tags",
   "self-hosted",
 ]
 license = "AGPL-3.0-or-later"
-description = "FastAPI webserver for interactive Beets music library administration."
-dynamic = [
-  "version",
-] # Resolved from `beetkeeper._version.__version__` (see [tool.setuptools.dynamic]).
+description = "Beets plugin client to integrate with the beetkeeper server."
 requires-python = ">=3.14,<3.15"
-dependencies = [
-  "beets>=2.11.0",
-  "click==8.4.1",
-  "fastapi[all]==0.138.0",
-  "jinja2-fragments==1.12.0",
-  "pydantic==2.13.4",
-  "pydantic-settings==2.14.2",
-  "PyYAML==6.0.3",
-  "sqlalchemy",
-  "starlette",
-  "sqlmodel==0.0.38",
-  "uvicorn==0.49.0",
-]
+dependencies = ["beets>=2.11.0", "requests>=2.34"]
 
 [project.urls]
 Documentation = "https://github.com/zach-overflow/beetkeeper/README.md"
@@ -50,17 +36,11 @@ Repository = "https://github.com/zach-overflow/beetkeeper"
 "Bug Tracker" = "https://github.com/zach-overflow/beetkeeper/issues"
 Changelog = "https://github.com/zach-overflow/beetkeeper/releases"
 
-[project.scripts]
-beetkeeper = "beetkeeper.main:cli"
-
-[tool.setuptools.dynamic]
-version = { attr = "beetkeeper._version.__version__" }
-
 [tool.setuptools.packages.find]
-include = ["beetkeeper*"]
+include = ["beetkeeper_plugin*"]
 
 [tool.setuptools.package-data]
-beetkeeper = ["py.typed"]
+beetkeeper_plugin = ["py.typed"]
 
 [tool.uv]
 # https://docs.astral.sh/uv/reference/settings/#package

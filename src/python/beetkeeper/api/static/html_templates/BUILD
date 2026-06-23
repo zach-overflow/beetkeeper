@@ -1,3 +1,3 @@
-resource(name="base-html-template", source="base_template.html.tpl")
+resource(name="base-html-template", source="base_template.html")
 
-target(name="all-html-templates", dependencies=[":base-html-template", "./query_templates:query_templates"])
+target(name="all-html-templates", dependencies=[":base-html-template", "./example_templates:example_templates"])

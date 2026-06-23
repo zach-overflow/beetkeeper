@@ -19,13 +19,14 @@ dev = [
 # registered as a uv workspace member — otherwise uv (which only reads this root file) can't see
 # the package or its runtime dependencies and `uv lock` fails with "No `project` table found".
 [tool.uv.workspace]
-members = ["src/python"]
+members = ["src/python", "src/beetsplug"]
 
 [tool.uv.sources]
 beetkeeper = { workspace = true }
+beetkeeper_plugin = { workspace = true }
 
 [tool.ruff]
-src = ["src/python"]
+src = ["src/python", "src/beetsplug"]
 exclude = [
   ".bzr",
   ".direnv",
@@ -151,7 +152,7 @@ section-order = [
   "first-party",
   "local-folder",
 ]
-known-first-party = ["beetkeeper"]
+known-first-party = ["beetkeeper", "beetsplug.beetkeeper_plugin"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "requests".msg = "Use httpx instead."
