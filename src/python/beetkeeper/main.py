@@ -10,13 +10,17 @@ from beetkeeper._version import __version__ as beetkeeper_version
 from beetkeeper.settings import CONFIG_PATH_ENVVAR, load_config
 
 # Reusable config-path option shared by the server and db subcommands (sources the flag or BEETKEEPER_CONFIG).
+# Points at the BEETS config; beetkeeper reads its own settings from that file's optional `beetkeeper` section.
 config_path_option = click.option(
     "-c",
     "--config-path",
     envvar=[CONFIG_PATH_ENVVAR],
     type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
     required=True,
-    help=f"Path to the beetkeeper YAML config (or set the {CONFIG_PATH_ENVVAR} env var).",
+    help=(
+        "Path to the beets YAML config; beetkeeper reads its settings from that file's optional "
+        f"`beetkeeper` section (or set the {CONFIG_PATH_ENVVAR} env var)."
+    ),
 )
 
 

@@ -1,0 +1,16 @@
+---
+# Demo BEETS config, used as a fallback when BEETKEEPER_CONFIG is unset (e.g. importing the app in tests).
+# beetkeeper reads its own settings from the OPTIONAL top-level `beetkeeper` section below; the rest of the
+# file is an ordinary beets config (https://beets.readthedocs.io/en/stable/reference/config.html).
+directory: ~/appdata/beets/music
+library: ~/appdata/beets/library.db
+
+beetkeeper:
+  log_level: INFO
+  server:
+    hostname: localhost
+    port: 6969
+    server_workers: 4
+  database:
+    # beetkeeper's own SQLite db (separate from the beets library). Created on first migration.
+    sqlite_path: ~/appdata/beetkeeper/beetkeeper.db

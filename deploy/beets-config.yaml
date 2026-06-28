@@ -1,5 +1,18 @@
-# Placeholder beets configuration.
-#
-# beetkeeper currently only requires this file to EXIST (its `beets_config_filepath` is validated as a
-# pydantic FilePath); the contents are not read yet because beets integration is still TODO. Replace this
-# with your real beets config when that lands: https://beets.readthedocs.io/en/stable/reference/config.html
+---
+# Beets config for running beetkeeper in Docker (a contributor smoke-test setup; see deploy/README.md).
+# Every path is a CONTAINER path. beetkeeper reads its own settings from the OPTIONAL top-level `beetkeeper`
+# section; the rest is an ordinary beets config: https://beets.readthedocs.io/en/stable/reference/config.html
+directory: /data/music
+library: /data/library.db
+
+beetkeeper:
+  log_level: INFO
+  server:
+    # 0.0.0.0 (not localhost) so the server is reachable from the host via the published port.
+    hostname: 0.0.0.0
+    port: 8080
+    # Single worker keeps SQLite simple for a smoke test (raising it risks "database is locked" errors).
+    server_workers: 1
+  database:
+    # On the mounted /data volume so the DB survives container restarts.
+    sqlite_path: /data/beetkeeper.db

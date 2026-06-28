@@ -21,28 +21,27 @@ from beetkeeper.db.session import make_engine, make_sessionmaker
 from beetkeeper.settings import CONFIG_PATH_ENVVAR, load_config
 
 _LOGGER = logging.getLogger(__name__)
-# Package-anchored demo config (NOT cwd-relative): beetkeeper/api/ -> beetkeeper/settings/. Resolved at
-# import time so the async lifespan does no blocking pathlib I/O.
-_DEMO_CONFIG_PATH = Path(__file__).resolve().parent.parent / "settings" / "demo_user_config.yaml"
+# Package-anchored demo beets config (NOT cwd-relative): beetkeeper/api/ -> beetkeeper/settings/. Resolved
+# at import time so the async lifespan does no blocking pathlib I/O. It carries a `beetkeeper` section.
+_DEMO_CONFIG_PATH = Path(__file__).resolve().parent.parent / "settings" / "demo_beets_config.yaml"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Initializes app-lifetime state (DB engine + session-maker) from the configured `UserConfig`.
 
-    The config path is read from the `BEETKEEPER_CONFIG` env var (set by `beetkeeper run`). If it is
-    absent the DB engine is left uninitialized and a warning is logged, so the app still boots for cases
-    that do not touch the database (e.g. importing the app in tests). Endpoints using `get_session` will
-    fail until the server is started with a config.
+    The config path (the beets config, whose optional `beetkeeper` section holds beetkeeper's settings) is
+    read from the `BEETKEEPER_CONFIG` env var (set by `beetkeeper run`). If it is absent the demo beets
+    config is used and a warning is logged, so the app still boots for cases that do not touch the database
+    (e.g. importing the app in tests). Endpoints using `get_session` will fail until started with a config.
     """
     conf_env = os.environ.get(CONFIG_PATH_ENVVAR)
     if conf_env:
         conf_path = Path(conf_env)
     else:
         conf_path = _DEMO_CONFIG_PATH
-        _LOGGER.warning("`%s` is not set; using the demo user config at %s.", CONFIG_PATH_ENVVAR, conf_path)
+        _LOGGER.warning("`%s` is not set; using the demo beets config at %s.", CONFIG_PATH_ENVVAR, conf_path)
     user_config = load_config(conf_path)
-    app.state.beets_config = user_config
     app.state.user_config = user_config
     engine = make_engine(user_config.database.async_url)
     app.state.db_engine = engine
