@@ -1,74 +1,209 @@
 name: Release
-run-name: Release ${{ github.ref }}
-env:
-  IMAGE_REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-  TEST_IMAGE_NAME: ${{ github.repository }}-test
+run-name: Release ${{ github.ref_name }} by ${{ github.actor }}
 on:
   push:
     tags:
       - 'v*'
 
+# Per-job least privilege (see each job's `permissions`): the build/GHCR job needs `packages: write`
+# (push the image with the built-in GITHUB_TOKEN); the PyPI job needs `id-token: write` for OIDC
+# trusted publishing. No long-lived PyPI secret is used.
+permissions:
+  contents: read
+
+# Never let two releases of the same tag publish concurrently.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+# This workflow mirrors `.github/workflows/build-and-test.yml` through its validation + `pants package ::`
+# steps, then publishes the release artifacts. Every `v*` tag is built + validated; only an exact
+# `vMAJOR.MINOR.PATCH` tag is actually PUBLISHED (a pre-release like `v0.0.1-dev` builds but is not pushed).
+# The single semver of all three artifacts (the `beetkeeper` wheel, the `beetkeeper-plugin` wheel, and the
+# Docker image) is OWNED by the committed source (`beetkeeper._version` + the plugin's `[project].version`);
+# the "Validate release versions" step asserts those agree with each other and with the pushed tag.
+#
+# The wheels are published from a separate `publish-pypi` job so PyPI's OIDC trusted publishing is scoped to
+# the `pypi` GitHub environment (and `id-token: write` is granted only there). The build job hands the wheels
+# to that job as artifacts, one per PyPI project (a minted OIDC token is project-scoped).
 jobs:
-  build-and-test-image:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
   release:
+    name: Pants build, validate, and push image
     runs-on: ubuntu-latest
-    needs: build-and-test-image
     permissions:
       contents: read
       packages: write
-      attestations: write
-      id-token: write
+    outputs:
+      is_release: ${{ steps.gate.outputs.is_release }}
+      version: ${{ steps.gate.outputs.version }}
     steps:
+      # ---- Identical to build-and-test.yml, up to (but replacing) "Build artifacts (no push)". ----
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Build test image
-        uses: docker/build-push-action@v6
         with:
-          tags: ${{ env.TEST_IMAGE_NAME }}:${{ github.run_number }}
-          target: beetkeeper-test
-          build-args: |
-            RELEASE_TAG=${{ github.ref_name }}
-      - name: UV lockfile check
+          # Full history so Pants can diff against base branches (e.g. for `--changed-since`).
+          fetch-depth: 0
+
+      - name: Lint GitHub Actions workflows
+        # actionlint has no Pants backend, so the shared hook (also used by prek) runs it directly; it
+        # downloads a pinned actionlint since the runner has none on PATH. yamllint (via `pants lint ::`
+        # below) covers generic YAML; this adds the GitHub-Actions-specific checks.
         run: |
-          docker run -t --rm --entrypoint bash ${{ env.TEST_IMAGE_NAME }}:${{ github.run_number }} -c 'uv lock --check'
-      - name: Code format check
-        run: |
-          docker run -t --rm -e RUFF_CHECK_ONLY=1 -e GITHUB_ACTIONS=1 --entrypoint bash ${{ env.TEST_IMAGE_NAME }}:${{ github.run_number }} -c '/app/hooks/ruff.sh && /app/hooks/bandit.sh .'
-      - name: Run unit tests
-        run: |
-          docker run -t -e GITHUB_ACTIONS=1 -e RELEASE_TESTS=1 --rm --entrypoint /app/src/python/tests/tests_entrypoint.sh ${{ env.TEST_IMAGE_NAME }}:${{ github.run_number }} tests
-      # - name: Tag Release  # TODO: after initial main tag, use https://github.com/marketplace/actions/get-latest-tag for tag calculation
-      #   run: echo "TODO implement in followup PR"
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
+          bash hooks/actionlint.sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          images: |
-            ghcr.io/zach-overflow/beetkeeper
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-      - name: Login to container registry
+          python-version: '3.14'
+
+      - name: Set up uv
+        # The Pants lint/test goals delegate to `uv run` (hooks/*.sh and the `//:pytest` test_shell_command),
+        # so uv must be on PATH. Pinned to match uv.lock / the Dockerfile.
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.11.23'
+          enable-cache: true
+
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v8
+        with:
+          # Bump to invalidate every Pants cache; re-fetch named caches when dependencies change.
+          gha-cache-key: v0
+          named-caches-hash: ${{ hashFiles('uv.lock') }}
+          cache-lmdb-store: 'true'
+
+      - name: Check BUILD files are up to date
+        run: |
+          pants update-build-files --check ::
+
+      - name: Lint, test, type-check, and security scan
+        # `pants test ::` runs the `//:pytest` test command plus the mypy + bandit + uv-lockfile-check `test_cmd`s
+        # (see hooks/BUILD); `pants lint ::` runs ruff / shellcheck / shfmt / hadolint / taplo / visibility checks.
+        # Runs against the pristine source (before the release version is stamped in below).
+        run: |
+          pants lint test ::
+
+      # ---- Release-specific: decide eligibility, validate the version, build, then publish. ----
+      - name: Version tag gate
+        id: gate
+        # Publish ONLY for an exact `vMAJOR.MINOR.PATCH` tag. Pre-release / build-metadata tags (e.g.
+        # `v0.0.1-dev`) still build + validate, but every publish step below is skipped. GitHub `if:`
+        # expressions have no regex, so the decision is computed here and exposed as a step + job output.
+        run: |
+          ref="${GITHUB_REF_NAME}"
+          echo "version=${ref#v}" >> "$GITHUB_OUTPUT"
+          if [[ "${ref}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${ref} is a release tag - artifacts will be published to GHCR + PyPI."
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::${ref} is not a vMAJOR.MINOR.PATCH tag - build + validate only, no publish."
+          fi
+
+      - name: Validate release versions
+        # Drift guard (src/release_tests, opt-in via `-m release_tests`): asserts the committed
+        # `beetkeeper._version.__version__` and the plugin's static `[project].version` agree with each
+        # other and -- for a `vMAJOR.MINOR.PATCH` tag -- with the pushed tag. The committed source OWNS the
+        # version (there is no in-CI stamping), so a forgotten bump fails the release here, before any build
+        # or publish. The git-tag assertion reads GITHUB_REF_TYPE / GITHUB_REF_NAME, set for this tag push.
+        # `--all-groups` matches the `//:pytest` invocation (and pulls in tomlkit, used by the conftest).
+        run: |
+          uv run --all-groups pytest -m release_tests -vv src/release_tests
+
+      - name: Build artifacts
+        # Builds the wheels (-> dist/) and the Docker image (loaded into the local daemon as
+        # `beetkeeper-server:latest`). Same command the build-and-test workflow runs.
+        run: |
+          pants package ::
+
+      - name: Log in to GHCR
+        if: steps.gate.outputs.is_release == 'true'
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.IMAGE_REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push app image
-        id: push
-        uses: docker/build-push-action@v6
+
+      - name: Publish image to GHCR
+        if: steps.gate.outputs.is_release == 'true'
+        env:
+          # The `v`-stripped semver. `image_tags` in //:BUILD resolve `env("RELEASE_TAG", "dev")`, so this
+          # tags the image `:latest` + `:<version>`; non-release/local builds fall back to `:dev`.
+          RELEASE_TAG: ${{ steps.gate.outputs.version }}
+        # Pants owns build+tag+push: `pants publish` (re)builds the image (cache hit from `pants package ::`
+        # above) and pushes it to `ghcr.io/zach-overflow/beetkeeper` (the `@ghcr` registry + `repository` in
+        # //:BUILD), using the `docker login` above for auth.
+        run: |
+          pants publish //:beetkeeper-server-image
+
+      # Hand each wheel to the `publish-pypi` job as its own artifact. They are kept separate because OIDC
+      # trusted publishing mints a project-scoped token, so each PyPI project is uploaded on its own.
+      # `beetkeeper-*` and `beetkeeper_plugin-*` don't overlap (the dash vs. underscore disambiguates).
+      - name: Upload beetkeeper wheel
+        if: steps.gate.outputs.is_release == 'true'
+        uses: actions/upload-artifact@v4
         with:
-          context: .
-          push: true
-          build-args: |
-            RELEASE_TAG=${{ github.ref_name }}
-          target: beetkeeper
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          name: wheel-beetkeeper
+          path: dist/beetkeeper-*.whl
+          if-no-files-found: error
+
+      - name: Upload beetkeeper-plugin wheel
+        if: steps.gate.outputs.is_release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-beetkeeper-plugin
+          path: dist/beetkeeper_plugin-*.whl
+          if-no-files-found: error
+
+      - name: Upload Pants log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pants-log
+          path: .pants.d/workdir/pants.log
+
+  publish-pypi:
+    name: Publish wheels to PyPI (trusted publishing)
+    needs: release
+    if: needs.release.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    # Binds this job to the `pypi` GitHub environment that the PyPI trusted publishers are registered
+    # against (its protection rules, if any, gate publishing here only -- not the build/image push above).
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write # mint the OIDC token PyPI exchanges for a short-lived, project-scoped API token
+    steps:
+      - name: Download beetkeeper wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: wheel-beetkeeper
+          path: dist/beetkeeper
+
+      # TEMPORARY (first release only): the beetkeeper-plugin publish is disabled below, so there is no
+      # plugin wheel to download here yet. Re-enable this together with the publish step below.
+      # - name: Download beetkeeper-plugin wheel
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: wheel-beetkeeper-plugin
+      #     path: dist/beetkeeper-plugin
+
+      # One publish per PyPI project: the minted OIDC token is project-scoped, so a single upload of both
+      # wheels would be rejected. Each `packages-dir` holds exactly one project's wheel.
+      - name: Publish beetkeeper to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/beetkeeper
+          # Don't fail a re-run if one project already uploaded (e.g. the other project's step flaked).
+          skip-existing: true
+
+      # TEMPORARY (first release only): beetkeeper-plugin publishing is disabled. PyPI allows at most one
+      # *pending* (project-creating) Trusted Publisher per identity, so we publish `beetkeeper` first, verify
+      # it, then re-enable the plugin in a follow-up branch. To re-enable: uncomment this step AND the
+      # "Download beetkeeper-plugin wheel" step above (the plugin wheel is already built + uploaded as the
+      # `wheel-beetkeeper-plugin` artifact by the release job).
+      # - name: Publish beetkeeper-plugin to PyPI
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     packages-dir: dist/beetkeeper-plugin
+      #     skip-existing: true

@@ -34,3 +34,20 @@ repos:
         entry: hooks/mypy.sh
         language: script
         files: '^src/python/beetkeeper/.*\.py$'
+
+      - id: actionlint
+        name: actionlint
+        description: "Lint GitHub Actions workflow files (syntax, expressions, shellcheck on run blocks)."
+        entry: hooks/actionlint.sh
+        language: script
+        files: '^\.github/workflows/.*\.ya?ml$'
+        pass_filenames: true
+
+      - id: version-sync
+        name: version sync
+        description: "Verify the canonical VERSION is propagated into both distributions' version fields."
+        entry: hooks/version-sync.sh
+        args: ["--check"]
+        files: '^(VERSION|src/python/beetkeeper/_version\.py|src/beetsplug/pyproject\.toml)$'
+        language: script
+        pass_filenames: false

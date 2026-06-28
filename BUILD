@@ -4,6 +4,7 @@ __dependencies_rules__(("*", "*"))
 file(name="pyproject", source="pyproject.toml")
 file(name="uv-lockfile", source="uv.lock")
 file(name="license-file", source="LICENSE.txt")
+file(name="version-file", source="VERSION")
 uv_requirements(name="dev-requirements", source="pyproject.toml")
 python_requirement(name="pytest-socket", requirements=["pytest-socket"])
 
@@ -18,11 +19,15 @@ test_cmd(
 
 
 docker_image(
-    name="beetkeeper-app-image",
+    name="beetkeeper-server-image",
     source="Dockerfile",
     target_stage="app",
     context_root="",
-    image_tags=["app"],
+    registries=["@ghcr"],
+    repository="zach-overflow/beetkeeper",
+    # `latest` + the release semver. `env("RELEASE_TAG", "dev")` reads the env var the `pants` process runs
+    # with (the release workflow exports the v-stripped version); non-release / local builds fall back to `dev`.
+    image_tags=["latest", env("RELEASE_TAG", "dev")],
     dependencies=[
         "src/python:dist-pyproject",
         ":pyproject",
@@ -48,7 +53,7 @@ docker_image(
     target_stage="test",
     image_tags=["test"],
     dependencies=[
-        ":beetkeeper-app-image",
+        ":beetkeeper-server-image",
         "build_scripts:build_scripts",
         "hooks:hooks-scripts",
         "src/python:test-files",

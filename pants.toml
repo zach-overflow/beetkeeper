@@ -7,6 +7,7 @@ backend_packages = [
   "pants.backend.experimental.adhoc",
   "pants.backend.experimental.python.lint.ruff.check",
   "pants.backend.experimental.python.lint.ruff.format",
+  "pants.backend.experimental.tools.yamllint",
   "pants.backend.experimental.visibility",
   "pants.backend.shell",
   "pants.backend.shell.lint.shellcheck",
@@ -27,10 +28,18 @@ pants_ignore = [
 ]
 
 [source]
-root_patterns = ["src/beetsplug", "src/python"]
+# `src/python` + `src/beetsplug` are the two distribution roots. `src` is a broader root for non-distribution
+# Python under `src/` (e.g. `src/release_tests`); Pants uses the longest-matching prefix, so files under the
+# two distribution roots still resolve to those, leaving their wheel module layouts unchanged.
+root_patterns = ["src", "src/beetsplug", "src/python"]
 
 [docker]
 use_buildx = true
+
+[docker.registries.ghcr]
+# The app image (`//:beetkeeper-server-image`) is named `ghcr.io/zach-overflow/beetkeeper` everywhere:
+# `pants package` builds + loads it under that name locally, and `pants publish` pushes it here.
+address = "ghcr.io"
 
 [tailor]
 build_file_name = "BUILD"
@@ -65,3 +74,7 @@ separate_lockfile_metadata_file = true
 [update-build-files]
 fmt = true
 formatter = "ruff"
+
+# https://www.pantsbuild.org/stable/reference/subsystems/yamllint
+[yamllint]
+config_file_name = ".yamllint.yaml"

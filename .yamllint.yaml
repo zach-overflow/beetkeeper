@@ -1,0 +1,12 @@
+---
+# https://yamllint.readthedocs.io/en/stable/configuration.html#
+yaml-files:
+  - '*.yaml'
+  - '*.yml'
+  - '.yamllint'
+
+rules:
+  # 120 chars (same as other line length confs).
+  line-length:
+    max: 120
+    # level: warning

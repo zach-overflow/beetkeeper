@@ -1,0 +1,10 @@
+# Default flags for `act` (https://github.com/nektos/act) -- runs this repo's GitHub Actions locally.
+# Try in order: `act push --list` (list jobs) -> `act push --dryrun` (plan) -> `act push` (full run).
+# A full run executes the WHOLE workflow, including `pants package ::` which builds the Docker image
+# against your host daemon (act mounts the docker socket); expect it to be slow and heavyweight.
+
+# Match GitHub's amd64 runners. On Apple Silicon this runs the image under emulation (slower); delete this
+# line for faster native arm64 runs when you don't need amd64 fidelity.
+--container-architecture=linux/amd64
+# Pin the runner image used for `ubuntu-latest` (act's standard "medium" image, ~1 GB on first pull).
+-P ubuntu-latest=catthehacker/ubuntu:act-latest

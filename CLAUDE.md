@@ -34,7 +34,7 @@ pants test ::                         # uv-pytest (//:pytest) + mypy + bandit
 pants lint ::                         # ruff, shellcheck, shfmt, hadolint, taplo, visibility
 pants check ::                        # (mypy is run via hooks:mypy in the test goal, not check)
 pants package src/python:beetkeeper-whl   # build the wheel -> dist/
-pants package //:beetkeeper-app-image     # build app docker image
+pants package //:beetkeeper-server-image  # build app docker image
 pants package //:beetkeeper-test-image    # build test docker image (FROM the app image)
 pants package ::                      # Packages all pants targets which support the package command.
 uv lock                               # regenerate lockfile after dep changes
@@ -45,8 +45,8 @@ uv-lockfile-check). Install git hooks with `prek install`.
 
 ## Docker
 - Single `Dockerfile`, two stages → two `docker_image` targets in root `BUILD`.
-- `beetkeeper-test-image` does `FROM beetkeeper-app-image:app` (Pants substitutes the built tag);
-  it depends on `:beetkeeper-app-image` so the app layers are reused and the test build context
+- `beetkeeper-test-image` does `FROM ghcr.io/zach-overflow/beetkeeper:latest` (Pants substitutes the built tag);
+  it depends on `:beetkeeper-server-image` so the app layers are reused and the test build context
   doesn't re-`COPY` app sources. If you uncomment a `COPY` in a stage, add the matching source
   dependency to that `docker_image` target.
 
