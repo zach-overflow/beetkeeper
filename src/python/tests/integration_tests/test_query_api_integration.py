@@ -50,7 +50,9 @@ async def test_query_by_existing_artist_field(integration_client: AsyncClient) -
     assert matched, f"querying field=artist:{some_artist!r} should match the items it was taken from"
     assert any(item["artist"] == some_artist for item in matched)
     # An artist that cannot exist should match nothing.
-    none = (await integration_client.get("/api/query/list", params={"field": "artist:__definitely_no_such_artist__"})).json()
+    none = (
+        await integration_client.get("/api/query/list", params={"field": "artist:__definitely_no_such_artist__"})
+    ).json()
     assert none == []
 
 

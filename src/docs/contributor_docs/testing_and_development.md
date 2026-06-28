@@ -8,6 +8,7 @@ All commands in this doc are run from the repo root directory, unless explicitly
 2. Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
 3. Install pantsbuild either by running `./build_scripts/get-pants.sh` or through the other methods listed [here](https://www.pantsbuild.org/stable/docs/getting-started/installing-pants).
 4. Install [`prek`](https://prek.j178.dev/installation/)
+	1. run `prek install` from the repo root to set up the pre-commit  hooks.
 
 
 ## Local Testing
