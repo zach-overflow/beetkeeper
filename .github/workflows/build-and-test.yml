@@ -23,6 +23,13 @@ jobs:
           # Full history so Pants can diff against base branches (e.g. for `--changed-since`).
           fetch-depth: 0
 
+      - name: Lint GitHub Actions workflows
+        # actionlint has no Pants backend, so the shared hook (also used by prek) runs it directly; it
+        # downloads a pinned actionlint since the runner has none on PATH. yamllint (via `pants lint ::`
+        # below) covers generic YAML; this adds the GitHub-Actions-specific checks.
+        run: |
+          bash hooks/actionlint.sh
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -43,20 +50,21 @@ jobs:
           gha-cache-key: v0
           named-caches-hash: ${{ hashFiles('uv.lock') }}
           cache-lmdb-store: 'true'
-
+      
       - name: Check BUILD files are up to date
         run: |
           pants update-build-files --check ::
 
       - name: Lint, test, type-check, and security scan
-        # `pants test ::` runs the `//:pytest` test command plus the mypy + bandit `test_cmd`s (see
-        # hooks/BUILD); `pants lint ::` runs ruff / shellcheck / shfmt / hadolint / taplo / visibility.
+        # `pants test ::` runs the `//:pytest` test command plus the mypy + bandit + uv-lockfile-check `test_cmd`s (see
+        # hooks/BUILD); `pants lint ::` runs ruff / shellcheck / shfmt / hadolint / taplo / visibility checks.
         run: |
           pants lint test ::
-
-      - name: Build app image (no push)
+      
+      - name: Build artifacts (no push)
+        # `pants package ::` will attempt to build all Python wheels, Docker images, and any other artifacts.
         run: |
-          pants package //:beetkeeper-app-image
+          pants package ::
 
       - name: Upload Pants log
         if: always()

@@ -14,7 +14,16 @@ dev = [
   "pytest-xdist",
   "ruff>=0.15.8",
   "ruamel-yaml>=0.19.1",
+  "tomlkit",
 ]
+
+[tool.uv]
+# `beets` is the one runtime dependency shared by BOTH workspace members (`beetkeeper` and
+# `beetkeeper-plugin`). Each still declares its own `beets` requirement in its `[project].dependencies`
+# (that is what lands in the published wheel metadata — setuptools, not uv, builds the wheels). This
+# workspace-level constraint only governs how uv RESOLVES the shared lockfile/dev environment, keeping
+# the version both members resolve against in lockstep. https://docs.astral.sh/uv/reference/settings/#constraint-dependencies
+constraint-dependencies = ["beets>=2.11.0"]
 
 # The distribution's `[project]` lives in `src/python/pyproject.toml`, not here, so it must be
 # registered as a uv workspace member — otherwise uv (which only reads this root file) can't see
@@ -193,6 +202,7 @@ markers = [
   "no_autouse_mock_lifespan_singleton_inst: mark a test to not use the auto-use fixture for the fastapi lifespan singleton.",
   "override_global_httpx_mock: mark a test to override the configured httpx global fixture in favor of its own.",
   "requires_host_sources: Any integration tests which are opt-in and require a user-specified host directory for the raw and library dirpaths, with real audio files.",
+  "release_tests: Any tests specifically meant to run prior to cutting a release, only when static version numbers change and/or when a version tag is pushed. Gates the tests defined under `src/release_tests/`.",
 ]
 filterwarnings = ["error:pytest.PytestWarning.*"]
 

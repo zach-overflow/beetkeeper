@@ -1,3 +1,5 @@
+FROM python:3.14-slim-bookworm AS ffmpeg
+
 # --- Stage 1: fetch a pinned, checksum-verified static ffmpeg ---
 # Replaces Debian's `ffmpeg` package, whose hard deps (libavdevice/libavfilter -> SDL, mesa-GL, libllvm15,
 # flite TTS) added ~390 MB of video/GL code that beets' audio analysis (replaygain) never uses. These are
@@ -8,8 +10,6 @@
 # To bump: pick a newer immutable `autobuild-*` tag + stable `n*` version from
 # https://github.com/BtbN/FFmpeg-Builds/releases , then update the tag/version/build + BOTH SHA256s
 # (`sha256sum ffmpeg-<version>-<linux64|linuxarm64>-<build>.tar.xz`).
-FROM python:3.14-slim-bookworm AS ffmpeg
-
 ENV FFMPEG_TAG=autobuild-2026-06-27-13-21 \
 	FFMPEG_VERSION=n8.1.2 \
 	FFMPEG_BUILD=gpl-8.1 \
@@ -80,11 +80,14 @@ ENTRYPOINT ["beetkeeper"]
 CMD ["run"]
 
 # # Test image stage defined below
-# `beetkeeper-app-image:base` is matched and substituted by Pants with the actual built tag of
-# the `//:beetkeeper-app-image` target (added as a dependency of `//:beetkeeper-test-image`).
+# `ghcr.io/zach-overflow/beetkeeper:latest` is matched and substituted by Pants with the actual built tag
+# of the `//:beetkeeper-server-image` target (added as a dependency of `//:beetkeeper-test-image`).
 # Starting from the finished base image means its `COPY` layers are reused, so the test build
 # context doesn't need base's source files.
-FROM beetkeeper-app-image:app AS test
+# DL3007: `:latest` here is NOT a mutable upstream pull -- Pants substitutes it with the actual built tag
+# of the `//:beetkeeper-server-image` dependency, so the warning doesn't apply.
+# hadolint ignore=DL3007
+FROM ghcr.io/zach-overflow/beetkeeper:latest AS test
 
 # Install the dev toolchain (pytest/mypy/etc., defined in the workspace-root `dev` group). Skip installing
 # the `beetkeeper-plugin` member: its source isn't in this image and the server tests don't import it

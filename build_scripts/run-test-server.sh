@@ -35,7 +35,7 @@ fi
 
 # Build from the repo root regardless of where this script is invoked from.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-pants package //:beetkeeper-app-image
+pants package //:beetkeeper-server-image
 
 # Trap function to remove any temporary files / directories
 cleanup() {
@@ -84,7 +84,7 @@ docker_args=(
 	-v "${tmp_dirpath}/downloads:/downloads"
 	-v "${tmp_dirpath}/music:/music"
 )
-docker run "${docker_args[@]}" beetkeeper-app-image:app db upgrade
+docker run "${docker_args[@]}" ghcr.io/zach-overflow/beetkeeper:latest db upgrade
 
 set +x
 echo
@@ -109,4 +109,4 @@ if [ -f /beets/extra-reqs.txt ]; then
 	cp /beets/originquery.py /usr/local/lib/python3.14/site-packages/beetsplug/
 fi
 exec beetkeeper run'
-docker run -it "${docker_args[@]}" -p 8080:8080 --entrypoint /bin/sh beetkeeper-app-image:app -c "${startup_cmd}"
+docker run -it "${docker_args[@]}" -p 8080:8080 --entrypoint /bin/sh ghcr.io/zach-overflow/beetkeeper:latest -c "${startup_cmd}"

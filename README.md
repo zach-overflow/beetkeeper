@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License along w
 
 **Currently under development**
 
-A self-hosted web app for managing and monitoring [beets](https://beets.io/).
+A self-hosted web app for managing and monitoring [beets](https://beets.io/). Supports both automated and manual beet workflows.
 
 ## Features
 
@@ -25,6 +25,7 @@ Not to be confused with the [beets web plugin](https://beets.readthedocs.io/en/v
 | Feature                                                     | **`beetkeeper`** |    `beets[web]`  |
 | :---------------------------------------------------------- |      :---:       |      :---:       |
 | Explore current and past `beets` imports                    |  ✅              |  ❌               |
+| Supports automated REST API-based imports                   |  ✅              |  ❌               |
 | UI supports manually running imports                        |  ✅              |  ❌               |
 | Advanced search UI, supports all [query types](https://beets.readthedocs.io/en/v2.5.0/reference/query.html) |  ✅              |  ❌               |
 | All UI functionality available via REST API for automation  |  ✅              |  ❌               |
@@ -77,6 +78,10 @@ services:
 	  - /host/path/to/downloads:/data/raw
 	  - /host/path/to/music_library:/data/music
 ```
+
+## Contributing and Development Info
+
+Refer to the [contributor docs](./src/docs/contributor_docs).
 
 ## Releases
 

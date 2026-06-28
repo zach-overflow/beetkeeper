@@ -13,7 +13,7 @@ Files here:
 ## 0. Build the image
 
 ```bash
-pants package //:beetkeeper-app-image     # produces the image  beetkeeper-app-image:app
+pants package //:beetkeeper-server-image  # produces the image  ghcr.io/zach-overflow/beetkeeper:latest
 ```
 
 ## 1. Create the schema (one-time, and after any new migration)
@@ -29,7 +29,7 @@ docker run --rm \
   -v "$DEPLOY/beetkeeper.docker.yaml:/config/beetkeeper.docker.yaml:ro" \
   -v "$DEPLOY/beets-config.yaml:/config/beets-config.yaml:ro" \
   -v beetkeeper-data:/data \
-  beetkeeper-app-image:app db upgrade
+  ghcr.io/zach-overflow/beetkeeper:latest db upgrade
 ```
 
 ## 2. Run the server
@@ -43,7 +43,7 @@ docker run -d --name beetkeeper \
   -v "$DEPLOY/beets-config.yaml:/config/beets-config.yaml:ro" \
   -v beetkeeper-data:/data \
   -p 8080:8080 \
-  beetkeeper-app-image:app          # default CMD is `run`
+  ghcr.io/zach-overflow/beetkeeper:latest          # default CMD is `run`
 ```
 
 ## 3. Verify
