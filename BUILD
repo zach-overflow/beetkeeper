@@ -32,6 +32,16 @@ docker_image(
     ],
 )
 
+# TODO [later]: enable the packaging of beetkeeper as a standalone scie binary.
+# cli(
+#     name="beetkeeper-binary",
+#     entrypoint="beetkeeper.main:cli",
+#     dependencies=[
+#         "src/python:beetkeeper-whl",
+#         # "src/beetsplug:plugin-whl",
+#     ],
+# )
+
 docker_image(
     name="beetkeeper-test-image",
     source="Dockerfile",

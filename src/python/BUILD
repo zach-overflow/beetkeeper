@@ -7,12 +7,31 @@ python_requirements(name="app-requirements", source="pyproject.toml")
 files(
     name="lib-source-files",
     description="All files in `src/python/beetkeeper. Only use this in the app Docker image.",
-    sources=["./beetkeeper/**/*.py", "beetkeeper/**/py.typed", "!./tests/**/*.pyi"],
+    sources=[
+        "./beetkeeper/**/*.py",
+        "beetkeeper/**/py.typed",
+        "./beetkeeper/**/*.ini",
+        "./beetkeeper/**/*.mako",
+        # Frontend assets (templates, CSS, vendored HTMX) served by the UI routes / StaticFiles mount.
+        "./beetkeeper/**/*.html",
+        "./beetkeeper/**/*.css",
+        "./beetkeeper/**/*.js",
+        "!./tests/**/*.pyi",
+    ],
 )
 
 python_distribution(
     name="beetkeeper-whl",
-    dependencies=[":dist-pyproject", "./beetkeeper:beetkeeper"],
+    # The alembic env + version scripts are loaded dynamically (not imported), so dependency inference
+    # cannot see them — list them (and the packaged ini/mako resources) explicitly so they land in the wheel.
+    dependencies=[
+        ":dist-pyproject",
+        "./beetkeeper:beetkeeper",
+        "./beetkeeper/db:alembic-ini",
+        "./beetkeeper/db/alembic",
+        "./beetkeeper/db/alembic:script-mako",
+        "./beetkeeper/db/alembic/versions",
+    ],
     provides=python_artifact(name="beetkeeper"),
     sdist=False,
     wheel=True,

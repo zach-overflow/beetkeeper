@@ -1,0 +1,5 @@
+# Placeholder beets configuration.
+#
+# beetkeeper currently only requires this file to EXIST (its `beets_config_filepath` is validated as a
+# pydantic FilePath); the contents are not read yet because beets integration is still TODO. Replace this
+# with your real beets config when that lands: https://beets.readthedocs.io/en/stable/reference/config.html

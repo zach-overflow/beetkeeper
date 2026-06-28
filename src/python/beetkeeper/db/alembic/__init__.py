@@ -1,5 +1,10 @@
 """
-Placeholder submodule for maintaining any alembic migration information within the app itself.
-See example below:
-    https://github.com/fastapi/full-stack-fastapi-template/tree/master/backend/app/alembic
+Alembic migration environment for beetkeeper's database.
+
+    - `env.py`     — resolves the connection URL and runs migrations offline (`--sql`) or async-online.
+    - `versions/`  — the migration scripts (initial schema + future revisions).
+
+`target_metadata` is `SQLModel.metadata`. At runtime the `beetkeeper db ...` CLI builds the alembic
+`Config` programmatically (see `beetkeeper.db.migrations`); the sibling `db/alembic.ini` is for manual
+`alembic` CLI use / authoring new revisions with `--autogenerate`.
 """

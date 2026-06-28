@@ -13,19 +13,22 @@ dev = [
   "pytest-socket",
   "pytest-xdist",
   "ruff>=0.15.8",
+  "ruamel-yaml>=0.19.1",
 ]
 
 # The distribution's `[project]` lives in `src/python/pyproject.toml`, not here, so it must be
 # registered as a uv workspace member — otherwise uv (which only reads this root file) can't see
 # the package or its runtime dependencies and `uv lock` fails with "No `project` table found".
 [tool.uv.workspace]
-members = ["src/python"]
+members = ["src/python", "src/beetsplug"]
 
 [tool.uv.sources]
 beetkeeper = { workspace = true }
+beetkeeper_plugin = { workspace = true }
 
 [tool.ruff]
-src = ["src/python"]
+target-version = "py314"
+src = ["src/python", "src/beetsplug"]
 exclude = [
   ".bzr",
   ".direnv",
@@ -130,6 +133,15 @@ ignore = [
   "W191",
 ]
 
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore type_checking optimized imports in fastapi files because of type-hint tricks like `fastapi.Depends`.
+"src/python/beetkeeper/api/**/*.py" = ["TC", "D101"]
+# Ignore type_checking optimized imports in db since those are all pydantic models
+"src/python/beetkeeper/db/**/*.py" = ["TC"]
+# Not fully in our control what libraries are used or not in the `beetsplug` space.
+"src/beetsplug/**/*.py" = ["TID25"]
+
 # https://docs.astral.sh/ruff/settings/#lintflake8-type-checking
 [tool.ruff.lint.flake8-type-checking]
 # https://docs.astral.sh/ruff/settings/#lint_flake8-type-checking_exempt-modules
@@ -151,7 +163,7 @@ section-order = [
   "first-party",
   "local-folder",
 ]
-known-first-party = ["beetkeeper"]
+known-first-party = ["beetkeeper", "beetsplug.beetkeeper_plugin"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "requests".msg = "Use httpx instead."
@@ -160,6 +172,10 @@ known-first-party = ["beetkeeper"]
 # https://docs.astral.sh/ruff/rules/line-too-long/#why-is-this-bad
 ignore-overlong-task-comments = true
 
+# https://docs.astral.sh/ruff/settings/#lint_pydocstyle_convention
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
 # RUFF formatter
 [tool.ruff.format]
 # https://docs.astral.sh/ruff/settings/#format_skip-magic-trailing-comma
@@ -167,14 +183,16 @@ skip-magic-trailing-comma = true
 # https://docs.astral.sh/ruff/settings/#format_docstring-code-format
 docstring-code-format = true
 
+
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider --disable-socket --allow-hosts=testclient --durations=5"
-# addopts = "-p no:cacheprovider --durations=5"
+strict_markers = true
 markers = [
   "releasetest: mark test as a release-only test which should be skipped on non-release builds.",
   "slow: mark test as a slow test which should be skipped by default in non-CI builds unless `--slowtests` is provided.",
   "no_autouse_mock_lifespan_singleton_inst: mark a test to not use the auto-use fixture for the fastapi lifespan singleton.",
   "override_global_httpx_mock: mark a test to override the configured httpx global fixture in favor of its own.",
+  "requires_host_sources: Any integration tests which are opt-in and require a user-specified host directory for the raw and library dirpaths, with real audio files.",
 ]
 filterwarnings = ["error:pytest.PytestWarning.*"]
 
@@ -185,6 +203,11 @@ mypy_path = "$MYPY_CONFIG_FILE_DIR/src/python"
 
 [[tool.mypy.overrides]]
 module = ["diskcache.*"]
+ignore_missing_imports = true
+
+# beets ships no py.typed marker; `beetkeeper.core` is the only package allowed to import it.
+[[tool.mypy.overrides]]
+module = ["beets.*"]
 ignore_missing_imports = true
 
 [tool.bandit]

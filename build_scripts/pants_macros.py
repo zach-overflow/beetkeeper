@@ -21,6 +21,8 @@ def test_cmd(name: str, command: str, execution_dependencies: list[str] | None =
     builtin_exec_deps = [
         "//:dev-requirements",
         "//:pyproject",
+        "//src/beetsplug:plugin-whl",
+        "//src/beetsplug:plugin-pyproject",
         "//src/python:app-requirements",
         "//src/python:dist-pyproject",
         "//src/python:lib-source-files",
@@ -35,4 +37,39 @@ def test_cmd(name: str, command: str, execution_dependencies: list[str] | None =
         tools=["bash", "uv"],
         execution_dependencies=sorted(set(builtin_exec_deps + extra_execution_dependencies)),
         tags=tags,
+    )
+
+
+def cli(name:str, entrypoint: str, **kwargs) -> None:
+    """Macro for creating a CLI binary of beetkeeper, packaged as a PEX scie."""
+    pex_tgt_name = f"{name}.pex-binary"
+    tags = kwargs.pop("tags", []) + ["cli"]
+    dependencies = kwargs.pop("dependencies", [])
+    pex_binary(
+        name=pex_tgt_name,
+        scie_name_style="platform-file-suffix",
+        entry_point=entrypoint,
+        venv_site_packages_copies=True,
+        execution_mode="venv",
+        output_path=name,
+        strip_pex_env=False,
+        extra_build_args=[
+            "--build-properties",
+            '{"build data": "here"}',  # TODO [later]: add any build metadata needed here, if any.
+        ],
+        include_requirements=True,
+        include_sources=True,
+        include_tools=True,
+        # complete_plaforms=[],  # TODO: see if this is needed?
+        scie="eager",
+        tags=tags,
+        dependencies=dependencies,
+    )
+    archive(
+        name=f"{name}.archive",
+        format="tar.gz",
+        packages=[f":{pex_tgt_name}"],
+        output_path=f"cli/{name}.tar.gz",
+        tags=tags,
+        **kwargs,
     )

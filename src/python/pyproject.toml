@@ -31,8 +31,16 @@ dynamic = [
 ] # Resolved from `beetkeeper._version.__version__` (see [tool.setuptools.dynamic]).
 requires-python = ">=3.14,<3.15"
 dependencies = [
+  "aiosqlite>=0.21",
+  "alembic>=1.16",
+  "beets>=2.11.0",
   "click==8.4.1",
-  "fastapi[all]==0.138.0",
+  # Plain fastapi (not `[all]`) + the one extra we actually use (form parsing). The `[all]` extra dragged in
+  # fastapi-cli/fastapi-cloud-cli (sentry-sdk, typer, rich), uvicorn[standard], httpx, orjson/ujson, etc. —
+  # none of which the self-hosted server needs (jinja2 for templates comes via jinja2-fragments).
+  "fastapi==0.138.0",
+  "python-multipart>=0.0.20",
+  "greenlet>=3.1",
   "jinja2-fragments==1.12.0",
   "pydantic==2.13.4",
   "pydantic-settings==2.14.2",
@@ -60,6 +68,9 @@ include = ["beetkeeper*"]
 
 [tool.setuptools.package-data]
 beetkeeper = ["py.typed"]
+# Non-`.py` alembic files (the `.py` env/versions modules are included automatically as package modules).
+"beetkeeper.db" = ["alembic.ini"]
+"beetkeeper.db.alembic" = ["script.py.mako"]
 
 [tool.uv]
 # https://docs.astral.sh/uv/reference/settings/#package

@@ -1,0 +1,51 @@
+<html lang="en">
+<!-- This template should be extended from by any HTMLResponse templates. -->
+<head>
+	<meta charset="UTF-8">
+	<!-- Any required javascript not covered by `htmx.min.js` should be written as <script> segments here.
+	     Asset URLs use `url_for('static', ...)`, which resolves from the app's static mount, so every
+	     template render must pass `request` into the TemplateResponse context (or `url_for` raises). -->
+	<script src="{{ url_for('static', path='/js/htmx.min.js') }}"></script>
+	<link rel="stylesheet" href="{{ url_for('static', path='/css/classless.css') }}">
+	<!-- No base-target override here, so links open in the current tab (the browser default). -->
+</head>
+<body>
+	<!-- Shared nav bar, rendered on every page via this base template (no need to repeat it per page). -->
+	<div id="nav-links">
+		<p>
+			<a href="/home" role="button">Main Page</a>
+			<a href="/events" role="button">Beets Events</a>
+			<a href="/import" role="button">Import</a>
+			<a href="/search" role="button">Search</a>
+		</p>
+	</div>
+	{% block content %}{% endblock %}
+
+	<!-- Persist the open/closed state of `<details data-persist-key="...">` accordions across HTMX swaps.
+	     The import-job fragment re-renders on each poll, which would otherwise snap an opened accordion
+	     (e.g. "Import output") shut. State is kept in memory, keyed by `data-persist-key`. -->
+	<script>
+		(function () {
+			var openState = {};
+			// The `toggle` event does not bubble, so delegate via the capture phase to catch it on any <details>.
+			document.addEventListener("toggle", function (event) {
+				var el = event.target;
+				if (el.tagName === "DETAILS" && el.dataset.persistKey) {
+					openState[el.dataset.persistKey] = el.open;
+				}
+			}, true);
+			function restoreDetailsState() {
+				document.querySelectorAll("details[data-persist-key]").forEach(function (el) {
+					var key = el.dataset.persistKey;
+					if (key in openState) {
+						el.open = openState[key];
+					}
+				});
+			}
+			// HTMX swaps replace fragment DOM; re-apply the remembered state to any restored accordions.
+			document.body.addEventListener("htmx:afterSwap", restoreDetailsState);
+			restoreDetailsState();
+		})();
+	</script>
+</body>
+</html>

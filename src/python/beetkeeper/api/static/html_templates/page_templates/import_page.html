@@ -1,0 +1,30 @@
+{% extends "base_template.html" %}
+{% block content %}
+<h1>Import</h1>
+<p>Start a beets import. The importer runs interactively — when it needs a decision, candidate matches
+   appear below for you to apply, import as-is, or skip.</p>
+
+<form hx-post="{{ url_for('import_submit') }}" hx-target="#active-imports" hx-swap="afterbegin">
+    <label for="path">Path to import (must be under <code>/downloads</code>):</label>
+    <br>
+    <!-- Pinned to /downloads: the value is prefilled, the pattern blocks submitting anything outside it,
+         and the datalist only suggests real subfolders under /downloads as you type. (HTMX validates the
+         form POST against the pattern but not the GET autocomplete, so suggestions still work mid-type.) -->
+    <input type="text" id="path" name="path" size="60" list="path-options" autocomplete="off"
+           value="/downloads/" required pattern="/downloads/.+"
+           title="The import path must be a folder under /downloads/"
+           placeholder="/downloads/some-album"
+           hx-get="{{ url_for('path_suggestions') }}"
+           hx-trigger="keyup changed delay:200ms, focus"
+           hx-target="#path-options" hx-swap="innerHTML">
+    <datalist id="path-options"></datalist>
+    <br>
+    <button type="submit">Start import</button>
+</form>
+
+<h2>Active imports</h2>
+<p><small>Each import is shown as a card below. Click an import's title to expand or collapse its output log.</small></p>
+<!-- Loaded on page load (and after each submit), so ongoing / awaiting-decision jobs persist across
+     navigating away and back to this page. Each job fragment then self-polls for its own updates. -->
+<div id="active-imports" hx-get="{{ url_for('import_active_list') }}" hx-trigger="load"></div>
+{% endblock %}

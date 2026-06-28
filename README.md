@@ -37,6 +37,47 @@ Not to be confused with the [beets web plugin](https://beets.readthedocs.io/en/v
 You can install `beetkeeper` either as a Python library, or as a Docker image.
 TBD when we will have our first release generally available.
 
+### Docker Installation
+
+The docker container is fairly straightforward. 
+You just need to map your host directories to the following container volume paths:
+
+|  Container Volume Path     |  Function                                  |
+| :------------------------- |--------------------------------------------|
+| `/beets`                   | Persistent beets config file and app data  |
+| `/music`                   | Music library (beets-tagged and imported)  |
+| `/downloads`               | Raw downloaded music, unprocessed by beets |
+
+Example docker usage is shown below:
+
+Via docker run:
+
+```shell
+docker run \
+	-v /host/path/to/beets_app_directory:/beets \
+	-v /host/path/to/downloads:/data/raw \
+	-v /host/path/to/music_library:/data/music \
+	-e BEETKEEPER_CONFIG=/beets/config.yaml \
+	ghcr.io/zach-overflow/beetkeeper
+```
+
+Or via docker-compose:
+
+```yaml
+services:
+  beetkeeper:
+    image: ghcr.io/zach-overflow/beetkeeper
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+	environment:
+	  BEETKEEPER_CONFIG=/beets/config.yaml
+    volumes:
+      - /host/path/to/beets_app_directory:/beets
+	  - /host/path/to/downloads:/data/raw
+	  - /host/path/to/music_library:/data/music
+```
+
 ## Releases
 
 Check out the [releases page](https://github.com/zach-overflow/beetkeeper/releases) for more details.

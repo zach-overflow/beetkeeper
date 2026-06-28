@@ -1,0 +1,23 @@
+---
+# beetkeeper server config for running inside Docker.
+#
+# Every path below is a CONTAINER path — see the `-v` mounts in deploy/README.md. Point the
+# BEETKEEPER_CONFIG env var at this file's in-container location (/config/beetkeeper.docker.yaml).
+log_level: INFO
+
+# Must be a file that EXISTS in the container (validated as a pydantic FilePath). Mount your beets
+# config here; the contents are not parsed yet (beets integration is still TODO), so the placeholder
+# deploy/beets-config.yaml is sufficient for now.
+beets_config_filepath: /config/beets-config.yaml
+
+server:
+  # 0.0.0.0 (not localhost) so the server is reachable from the host via the published port.
+  hostname: 0.0.0.0
+  port: 8080
+  # Multiple web workers: import state is shared via the DB and serialized by the import leader lock, so
+  # this is safe (only the leader writes the beets library). Reads/decisions are served by any worker.
+  server_workers: 2
+
+database:
+  # On the mounted /data volume so the DB survives container restarts.
+  sqlite_path: /data/beetkeeper.db

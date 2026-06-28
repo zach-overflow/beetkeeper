@@ -1,0 +1,61 @@
+{# Renders one import job as a compact summary line that expands (click it) to reveal the output `<pre>`.
+   Interactive controls — the candidate chooser, abort, or the decision spinner — appear beneath the summary
+   when applicable. Dispatches on job.status: polls while running (or while a submitted decision is being
+   consumed). Swapped via hx-swap="outerHTML". #}
+{% set awaiting_answer = job.status == 'awaiting_decision' and not job.decision_submitted %}
+{% set polling = job.status in ('pending', 'running') or (job.status == 'awaiting_decision' and job.decision_submitted) %}
+<div id="import-job-{{ job.id }}"
+     {% if polling %}hx-get="{{ url_for('import_job_status', job_id=job.id) }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+
+    <details data-persist-key="import-output-{{ job.id }}">
+        <summary><strong>{{ job.source_label }}</strong> — status: {{ job.status }} <small>· job {{ job.id[:8] }}</small></summary>
+        <pre style="max-height: 20rem; overflow: auto; white-space: pre-wrap;">{{ job.output or '(no output yet.)' }}</pre>
+    </details>
+
+    {% if job.status in ('pending', 'running') %}
+        <button hx-post="{{ url_for('import_job_abort', job_id=job.id) }}"
+                hx-target="#import-job-{{ job.id }}" hx-swap="outerHTML">Abort</button>
+
+    {% elif awaiting_answer and job.pending_decision %}
+        {% set decision = job.pending_decision %}
+        <p>{{ decision.prompt }}</p>
+        {% if candidate_table %}
+            <div style="overflow-x: auto;">{# keep a wide candidate table from overflowing the layout #}
+            <table>
+                <thead>
+                    <tr>
+                        {% for header in candidate_table.headers %}<th>{{ header }}</th>{% endfor %}
+                        <th></th>{# Apply column #}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in candidate_table.rows %}
+                        <tr>
+                            {% for cell in row.cells %}
+                                <td>{% if cell.url %}<a href="{{ cell.url }}" target="_blank" rel="noopener">{{ cell.text }}</a>{% else %}{{ cell.text }}{% endif %}</td>
+                            {% endfor %}
+                            <td>
+                                <button hx-post="{{ url_for('import_job_decision', job_id=job.id) }}"
+                                        hx-vals='{"action": "apply", "candidate_index": {{ row.index }}}'
+                                        hx-target="#import-job-{{ job.id }}" hx-swap="outerHTML">Apply</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        {% else %}
+            <p>No candidate matches were found.</p>
+        {% endif %}
+        <button hx-post="{{ url_for('import_job_decision', job_id=job.id) }}" hx-vals='{"action": "asis"}'
+                hx-target="#import-job-{{ job.id }}" hx-swap="outerHTML">Import as-is</button>
+        <button hx-post="{{ url_for('import_job_decision', job_id=job.id) }}" hx-vals='{"action": "skip"}'
+                hx-target="#import-job-{{ job.id }}" hx-swap="outerHTML">Skip</button>
+
+    {% elif job.status == 'awaiting_decision' %}
+        <p aria-busy="true"><em>Applying your decision …</em></p>
+
+    {% elif job.error %}
+        <p>Error: {{ job.error }}</p>
+    {% endif %}
+</div>

@@ -3,23 +3,59 @@ import logging
 from pathlib import Path
 from typing import Final, Literal
 
-from pydantic import Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, FilePath, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
 CONFIG_PATH_ENVVAR: Final[str] = "BEETKEEPER_CONFIG"
 _LOGGER = logging.getLogger(__name__)
 
 
-class UserConfig(BaseSettings):
-    """Wrapper pydantic model for the user configuration (read from yaml)."""
+class ServerConfSection(BaseModel):
+    """Model for the `server` section of the user config YAML file."""
 
-    # model_config = ConfigDict(frozen=True)
-    model_config = SettingsConfigDict(frozen=True)
-    log_level: Literal["CRITICAL", "DEBUG", "ERROR", "INFO", "NOTSET", "WARNING"]
+    model_config = ConfigDict(frozen=True)
     hostname: str
     port: int = Field(default=8080, gt=0)
     server_workers: int = Field(default=2, gt=0)
-    # TODO[Claude]: implement the ``UserConfig`` class definition (and subsequently, the yaml schema).
+
+
+class DatabaseConfSection(BaseModel):
+    """
+    Model for the `database` section of the user config YAML file.
+
+    Holds the location of beetkeeper's own SQLite database (distinct from the beets library db). The file
+    need not exist yet — it is created when alembic migrations are first applied (see `beetkeeper.db`).
+    """
+
+    model_config = ConfigDict(frozen=True)
+    sqlite_path: Path = Field(
+        description="Filesystem path to beetkeeper's SQLite db file (created on first migration)."
+    )
+
+    @property
+    def resolved_sqlite_path(self) -> Path:
+        """The configured path with `~` expanded and made absolute (parent dirs are NOT created here)."""
+        return self.sqlite_path.expanduser().resolve()
+
+    @property
+    def async_url(self) -> str:
+        """SQLAlchemy async URL (aiosqlite driver) used by the running application."""
+        return f"sqlite+aiosqlite:///{self.resolved_sqlite_path}"
+
+    @property
+    def sync_url(self) -> str:
+        """Plain SQLAlchemy SQLite URL — used by alembic offline (`--sql`) migration generation."""
+        return f"sqlite:///{self.resolved_sqlite_path}"
+
+
+class UserConfig(BaseSettings):
+    """Wrapper pydantic model for the user configuration (read from yaml)."""
+
+    model_config = SettingsConfigDict(frozen=True)
+    beets_config_filepath: FilePath  # Must be an actual file that exists
+    log_level: Literal["CRITICAL", "DEBUG", "ERROR", "INFO", "NOTSET", "WARNING"]
+    server: ServerConfSection
+    database: DatabaseConfSection
 
 
 class BeetKeeperConfigError(ValueError):

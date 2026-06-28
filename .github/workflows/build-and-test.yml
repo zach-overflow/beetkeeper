@@ -1,28 +1,66 @@
 name: Build
 run-name: Build ${{ github.ref }} by ${{ github.actor }}
-on: 
+on:
   push:
     branches:
       - '**'
-    tags-ignore: 
+    tags-ignore:
       - 'v*'
-env:
-  IMAGE_REGISTRY: ghcr.io
-  TEST_IMAGE_NAME: ${{ github.repository }}-test
+
+# Runs the project's validation natively via Pants (instead of building a throwaway test image and running
+# it inside), following https://www.pantsbuild.org/stable/docs/using-pants/using-pants-in-ci :
+#   * `pantsbuild/actions/init-pants` bootstraps + caches Pants.
+#   * uv is installed because the lint/test goals shell out to `uv run` (see hooks/*.sh and `//:pytest`).
+#   * the app image is built with `pants package` (no push), per https://github.com/pantsbuild/example-docker .
 jobs:
-  build-and-test-image:
+  build-and-test:
+    name: Pants lint, test, and build image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - run: echo "Repo code checked out from branch ${{ github.ref }}"
-      # NOTE: for building an image managed by pantsbuild, this repo example will be the right reference to replace the placeholder code below:
-      # https://github.com/pantsbuild/example-docker/blob/main/.github/workflows/pants.yaml
-      - name: Build Image No Push
-        uses: docker/build-push-action@v6
         with:
-          tags: ${{ env.TEST_IMAGE_NAME }}:${{ github.run_number }}-test
-          target: beetkeeper-test
-      - name: Static Checks and Tests
+          # Full history so Pants can diff against base branches (e.g. for `--changed-since`).
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Set up uv
+        # The Pants lint/test goals delegate to `uv run` (hooks/*.sh and the `//:pytest` test_shell_command),
+        # so uv must be on PATH. Pinned to match uv.lock / the Dockerfile.
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.11.23'
+          enable-cache: true
+
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v8
+        with:
+          # Bump to invalidate every Pants cache; re-fetch named caches when dependencies change.
+          gha-cache-key: v0
+          named-caches-hash: ${{ hashFiles('uv.lock') }}
+          cache-lmdb-store: 'true'
+
+      - name: Check BUILD files are up to date
         run: |
-          docker run -t --rm --entrypoint bash ${{ env.TEST_IMAGE_NAME }}:${{ github.run_number }}-test -c '/app/build_scripts/pants-validate.sh'
+          pants update-build-files --check ::
+
+      - name: Lint, test, type-check, and security scan
+        # `pants test ::` runs the `//:pytest` test command plus the mypy + bandit `test_cmd`s (see
+        # hooks/BUILD); `pants lint ::` runs ruff / shellcheck / shfmt / hadolint / taplo / visibility.
+        run: |
+          pants lint test ::
+
+      - name: Build app image (no push)
+        run: |
+          pants package //:beetkeeper-app-image
+
+      - name: Upload Pants log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pants-log
+          path: .pants.d/workdir/pants.log

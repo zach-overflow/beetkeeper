@@ -1,0 +1,26 @@
+{# Renders /api/query/list-style results (or a query error) for the search page. #}
+{% if error %}
+<p><strong>Query error:</strong> {{ error }}</p>
+{% elif results %}
+<p>{{ results | length }} {{ "albums" if albums else "tracks" }} found.</p>
+<table>
+    <thead>
+        {% if albums %}
+        <tr><th>Album artist</th><th>Album</th><th>Year</th></tr>
+        {% else %}
+        <tr><th>Artist</th><th>Album</th><th>Title</th><th>Track</th><th>Year</th></tr>
+        {% endif %}
+    </thead>
+    <tbody>
+        {% for row in results %}
+        {% if albums %}
+        <tr><td>{{ row['albumartist'] }}</td><td>{{ row['album'] }}</td><td>{{ row['year'] or "" }}</td></tr>
+        {% else %}
+        <tr><td>{{ row['artist'] }}</td><td>{{ row['album'] }}</td><td>{{ row['title'] }}</td><td>{{ row['track'] or "" }}</td><td>{{ row['year'] or "" }}</td></tr>
+        {% endif %}
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No matches.</p>
+{% endif %}

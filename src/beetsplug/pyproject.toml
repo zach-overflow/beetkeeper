@@ -1,0 +1,47 @@
+# Build-only pyproject for the `python_distribution` at `src/beetsplug:plugin-whl`.
+#
+# This file (not the repo-root pyproject.toml) is what setuptools' PEP 517 backend reads when
+# building the wheel, because `generate_setup=False` makes Pants run the backend from the source
+# root (`src/python`), where this file lands after source-root stripping. Keeping it here is what
+# lets `[tool.setuptools.dynamic]` resolve the version from `beetkeeper/_version.py`.
+#
+# NOTE: because `generate_setup=False` disables Pants' dependency inference for the distribution,
+# the build-relevant `[project]` metadata below is maintained here by hand and must be kept in
+# sync with the repo-root pyproject.toml.
+[build-system]
+requires = ["setuptools>=80.9"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "beetkeeper-plugin"
+version = "0.0.1"
+authors = [{ name = "Zach Gottesman" }]
+maintainers = [{ name = "zach-overflow" }]
+keywords = [
+  "beets",
+  "beets plugin",
+  "music tagging",
+  "music-library",
+  "music tags",
+  "self-hosted",
+]
+license = "AGPL-3.0-or-later"
+description = "Beets plugin client to integrate with the beetkeeper server."
+requires-python = ">=3.14,<3.15"
+dependencies = ["beets>=2.11.0", "requests>=2.34"]
+
+[project.urls]
+Documentation = "https://github.com/zach-overflow/beetkeeper/README.md"
+Repository = "https://github.com/zach-overflow/beetkeeper"
+"Bug Tracker" = "https://github.com/zach-overflow/beetkeeper/issues"
+Changelog = "https://github.com/zach-overflow/beetkeeper/releases"
+
+[tool.setuptools.packages.find]
+include = ["beetkeeper_plugin*"]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
+[tool.uv]
+# https://docs.astral.sh/uv/reference/settings/#package
+package = true
