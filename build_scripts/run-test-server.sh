@@ -62,24 +62,24 @@ sed -i.bak \
 	"${tmp_dirpath}/beets/config.yaml"
 rm -f "${tmp_dirpath}/beets/config.yaml.bak"
 
-# Write the beetkeeper app config alongside the beets config under the /beets mount (every path is a
-# CONTAINER path). Named `beetkeeper.yaml` so it doesn't collide with the beets `config.yaml`.
-cat >"${tmp_dirpath}/beets/beetkeeper.yaml" <<'EOF'
----
-log_level: INFO
-beets_config_filepath: /beets/config.yaml
-server:
-  hostname: 0.0.0.0
-  port: 8080
-  server_workers: 1
-database:
-  sqlite_path: /beets/beetkeeper.db
+# Append beetkeeper's settings as the OPTIONAL top-level `beetkeeper` section of the (copied) beets config;
+# beetkeeper reads its settings from there. Every path below is a CONTAINER path.
+cat >>"${tmp_dirpath}/beets/config.yaml" <<'EOF'
+
+beetkeeper:
+  log_level: INFO
+  server:
+    hostname: 0.0.0.0
+    port: 8080
+    server_workers: 1
+  database:
+    sqlite_path: /beets/beetkeeper.db
 EOF
 
 # Mount each subdir separately; one-off DB migration, then run the server.
 docker_args=(
 	--rm
-	-e BEETKEEPER_CONFIG=/beets/beetkeeper.yaml
+	-e BEETKEEPER_CONFIG=/beets/config.yaml
 	-v "${tmp_dirpath}/beets:/beets"
 	-v "${tmp_dirpath}/downloads:/downloads"
 	-v "${tmp_dirpath}/music:/music"

@@ -55,10 +55,7 @@ be committed (and tagged) by a human; the guards below ensure nothing drifts.
    pants lint test ::              # full validation (incl. version-sync-check + uv-lockfile-check)
    ```
 3. **Commit and merge** `VERSION`, `_version.py`, `src/beetsplug/pyproject.toml`, and `uv.lock` to `main`.
-4. **Tag and push** an exact `vMAJOR.MINOR.PATCH` tag on the merged commit:
-   ```shell
-   git tag v0.1.0 && git push origin v0.1.0
-   ```
+4. **Tag and release on GitHub** Use the "draft new release" button from the [beetkeeper releases page on GitHub](https://github.com/zach-overflow/beetkeeper/releases), and use the `.github/release_notes_template.md` for the release notes.
 5. The **Release** workflow (`.github/workflows/release.yml`) runs automatically (see below). On success
    the image is on GHCR and both wheels are on PyPI at `0.1.0`.
 

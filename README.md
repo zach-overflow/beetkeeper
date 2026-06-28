@@ -14,8 +14,6 @@ You should have received a copy of the GNU Affero General Public License along w
 [![python](https://img.shields.io/badge/python-3.14-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
 ![license](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue?style=flat)
 
-**Currently under development**
-
 A self-hosted web app for managing and monitoring [beets](https://beets.io/). Supports both automated and manual beet workflows.
 
 ## Features
@@ -31,12 +29,11 @@ Not to be confused with the [beets web plugin](https://beets.readthedocs.io/en/v
 | All UI functionality available via REST API for automation  |  ✅              |  ❌               |
 | Async API support                                           |  ✅              |  ❌               |
 | Play library audio files in browser                         |  ❌              |  ✅               |
-| 
+
 
 ## Installation
 
-You can install `beetkeeper` either as a Python library, or as a Docker image.
-TBD when we will have our first release generally available.
+You can install `beetkeeper` either as a pip package, or as a Docker image.
 
 ### Docker Installation
 
@@ -77,6 +74,36 @@ services:
       - /host/path/to/beets_app_directory:/beets
 	  - /host/path/to/downloads:/data/raw
 	  - /host/path/to/music_library:/data/music
+```
+
+### PyPI Installation
+
+If you want to run without Docker, you will need to install the server package AND the beets plugin package in the virtualenv where you've installed `beets`:
+
+```shell
+pip install beetkeeper beetkeeper-plugin
+```
+
+Then, within the same virtualenv, run `beetkeeper --config-path <path to beets config>`
+
+### Configuration
+
+Both methods point beetkeeper at your **beets** config (`BEETKEEPER_CONFIG` / `--config-path`). beetkeeper
+reads its own settings from an **optional** top-level `beetkeeper` section in that beets config — a plain
+beets config without it is still valid for beets. For example:
+
+```yaml
+# ... your usual beets config (directory, library, plugins, ...) ...
+
+beetkeeper:
+  log_level: INFO
+  server:
+    hostname: 0.0.0.0
+    port: 8080
+    server_workers: 2
+  database:
+    # beetkeeper's own SQLite db (separate from the beets library); created on first `beetkeeper db upgrade`.
+    sqlite_path: /beets/beetkeeper.db
 ```
 
 ## Contributing and Development Info

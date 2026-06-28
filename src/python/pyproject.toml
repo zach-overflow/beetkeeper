@@ -25,7 +25,7 @@ keywords = [
   "self-hosted",
 ]
 license = "AGPL-3.0-or-later"
-description = "FastAPI webserver for interactive Beets music library administration."
+description = "Self-hosted webserver for interactive Beets music library administration."
 dynamic = [
   "version",
 ] # Resolved from `beetkeeper._version.__version__` (see [tool.setuptools.dynamic]).

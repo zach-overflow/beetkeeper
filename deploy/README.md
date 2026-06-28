@@ -2,13 +2,8 @@
 
 Files here:
 
-- `beetkeeper.docker.yaml` — the server config (container paths; see mounts below).
-- `beets-config.yaml` — placeholder beets config (only needs to exist for now).
-
-> **Prerequisite:** the app image must build first. As of now `pants package ::` fails at the
-> in-image `uv lock --check` gate due to a uv/lockfile version skew — see the
-> `TODO: upgrade uv to 0.11.x` in the repo `Dockerfile`. Once uv is on 0.11.x and `uv.lock` is
-> regenerated, the steps below work as written.
+- `beets-config.yaml` — the beets config (container paths). beetkeeper reads its settings from this file's
+  optional top-level `beetkeeper` section; the rest is an ordinary beets config.
 
 ## 0. Build the image
 
@@ -25,8 +20,7 @@ volume (`beetkeeper-data`). The entrypoint is `beetkeeper`, so the trailing args
 DEPLOY="$(pwd)/deploy"
 
 docker run --rm \
-  -e BEETKEEPER_CONFIG=/config/beetkeeper.docker.yaml \
-  -v "$DEPLOY/beetkeeper.docker.yaml:/config/beetkeeper.docker.yaml:ro" \
+  -e BEETKEEPER_CONFIG=/config/beets-config.yaml \
   -v "$DEPLOY/beets-config.yaml:/config/beets-config.yaml:ro" \
   -v beetkeeper-data:/data \
   ghcr.io/zach-overflow/beetkeeper:latest db upgrade
@@ -38,8 +32,7 @@ docker run --rm \
 DEPLOY="$(pwd)/deploy"
 
 docker run -d --name beetkeeper \
-  -e BEETKEEPER_CONFIG=/config/beetkeeper.docker.yaml \
-  -v "$DEPLOY/beetkeeper.docker.yaml:/config/beetkeeper.docker.yaml:ro" \
+  -e BEETKEEPER_CONFIG=/config/beets-config.yaml \
   -v "$DEPLOY/beets-config.yaml:/config/beets-config.yaml:ro" \
   -v beetkeeper-data:/data \
   -p 8080:8080 \
@@ -65,12 +58,12 @@ docker volume rm beetkeeper-data    # only if you want to discard the DB
 
 ## Notes
 
-- **Volumes:** config files are mounted read-only (`:ro`); the DB lives on the read-write
-  `beetkeeper-data` volume so it persists across restarts. Both the migrate step and the server must
-  use the same volume (they do above).
+- **Config:** beetkeeper's settings live under the `beetkeeper` section of `beets-config.yaml`; the same
+  file is the beets config (`directory`, `library`, …). `BEETKEEPER_CONFIG` points at it.
+- **Volumes:** the config file is mounted read-only (`:ro`); the DB (and, in this smoke-test config, the
+  beets library/music) lives on the read-write `beetkeeper-data` volume so it persists across restarts.
+  Both the migrate step and the server must use the same volume (they do above).
 - **Host paths:** the `$DEPLOY/...:/config/...` mounts assume you run these from the repo root. Adjust
   the left-hand (host) side to wherever your real config lives.
 - **Workers/SQLite:** `server_workers` is 1 in the config — raising it risks SQLite "database is
   locked" errors under concurrent writes.
-- **Beets config:** `beets-config.yaml` only needs to exist today. Point `beets_config_filepath` at your
-  real beets config (and mount it) once beets integration is implemented.
