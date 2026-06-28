@@ -180,13 +180,11 @@ jobs:
           name: wheel-beetkeeper
           path: dist/beetkeeper
 
-      # TEMPORARY (first release only): the beetkeeper-plugin publish is disabled below, so there is no
-      # plugin wheel to download here yet. Re-enable this together with the publish step below.
-      # - name: Download beetkeeper-plugin wheel
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: wheel-beetkeeper-plugin
-      #     path: dist/beetkeeper-plugin
+      - name: Download beetkeeper-plugin wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: wheel-beetkeeper-plugin
+          path: dist/beetkeeper-plugin
 
       # One publish per PyPI project: the minted OIDC token is project-scoped, so a single upload of both
       # wheels would be rejected. Each `packages-dir` holds exactly one project's wheel.
@@ -197,13 +195,8 @@ jobs:
           # Don't fail a re-run if one project already uploaded (e.g. the other project's step flaked).
           skip-existing: true
 
-      # TEMPORARY (first release only): beetkeeper-plugin publishing is disabled. PyPI allows at most one
-      # *pending* (project-creating) Trusted Publisher per identity, so we publish `beetkeeper` first, verify
-      # it, then re-enable the plugin in a follow-up branch. To re-enable: uncomment this step AND the
-      # "Download beetkeeper-plugin wheel" step above (the plugin wheel is already built + uploaded as the
-      # `wheel-beetkeeper-plugin` artifact by the release job).
-      # - name: Publish beetkeeper-plugin to PyPI
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   with:
-      #     packages-dir: dist/beetkeeper-plugin
-      #     skip-existing: true
+      - name: Publish beetkeeper-plugin to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/beetkeeper-plugin
+          skip-existing: true

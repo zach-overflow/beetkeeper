@@ -88,11 +88,6 @@ artifacts and runs `pypa/gh-action-pypi-publish` once per project (a minted OIDC
 so each project is uploaded on its own). No PyPI API token is stored. Because the `pypi` environment
 requires a reviewer, this job **pauses for manual approval** after the build + image push complete.
 
-> **First release only:** the `beetkeeper-plugin` publish step is commented out in `release.yml`. PyPI
-> allows at most one *pending* (project-creating) Trusted Publisher per identity, so `beetkeeper` is
-> published first; the plugin's wheel is still built and uploaded as the `wheel-beetkeeper-plugin`
-> artifact, and its publish step is re-enabled in a follow-up branch once `beetkeeper` is verified.
-
 Every `v*` tag is built and validated; **only an exact `vMAJOR.MINOR.PATCH` tag is published.** A
 pre-release tag (e.g. `v0.1.0-dev`) builds and validates but skips all publish steps — use it as a dry run.
 
