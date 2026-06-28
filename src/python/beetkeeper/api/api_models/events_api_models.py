@@ -1,5 +1,5 @@
 """Define any custom FastAPI request or response pydantic models for the `/api/events` subrouter here."""
-from datetime import datetime, timezone
+
 from enum import StrEnum, unique
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
@@ -12,6 +12,7 @@ class APIEventType(StrEnum):
     See also:
         https://beets.readthedocs.io/en/stable/dev/plugins/events.html
     """
+
     ALBUM_IMPORTED = "album_imported"
     ALBUM_REMOVED = "album_removed"
     IMPORT_TASK_FILES = "import_task_files"
@@ -25,7 +26,9 @@ class _BaseEventResponse(BaseModel):
 
 
 class EventIngestResponse(_BaseEventResponse):
-    ingested_id: int | None = Field(default=None, description="The beets db ID of the processed album / item, if successful.")
+    ingested_id: int | None = Field(
+        default=None, description="The beets db ID of the processed album / item, if successful."
+    )
     error_msg: str | None = Field(None, description="Error message to return to the client, if any.")
 
 
@@ -44,6 +47,7 @@ class AlbumEventBody(_BaseEventBody):
     A post request payload expected from the plugin's listener for the `beetsplug.beetkeeper_plugin.event_listener`
     client's `album_imported` event pushes.
     """
+
     album_fields: APIAlbum
 
 
@@ -52,11 +56,13 @@ class TrackEventBody(AlbumEventBody):
     A post request payload expected from the plugin's listener for the `beetsplug.beetkeeper_plugin.event_listener`
     client's `item_imported` (track imported) event pushes.
     """
+
     track_fields: APITrack
 
 
 # TODO[later]: add submodels corresponding to relevant parts of the following beets event models:
 #  `beets.importer.ImportSession`, `beets.importer.ImportTask`, `beets.autotag.AlbumMatch`
+
 
 class ImportTaskFilesEventBody(_BaseEventBody):
     choice_flag: str | None
@@ -71,48 +77,49 @@ class APIAlbum(BaseModel):
 
     NOTE: This was generated from `build_scripts/code_gen/pydantic_field_info_from_beets_model.py`.
     """
+
     id: int
     added: float | None = Field(default=None)
-    album: str = Field(default='')
-    albumartist: str = Field(default='')
-    albumartist_credit: str = Field(default='')
-    albumartist_sort: str = Field(default='')
+    album: str = Field(default="")
+    albumartist: str = Field(default="")
+    albumartist_credit: str = Field(default="")
+    albumartist_sort: str = Field(default="")
     albumartists: list | None = Field(default=None)
     albumartists_credit: list | None = Field(default=None)
     albumartists_sort: list | None = Field(default=None)
-    albumdisambig: str = Field(default='')
-    albumstatus: str = Field(default='')
-    albumtype: str = Field(default='')
+    albumdisambig: str = Field(default="")
+    albumstatus: str = Field(default="")
+    albumtype: str = Field(default="")
     albumtypes: list | None = Field(default=None)
-    artpath: bytes = Field(default=b'')
-    asin: str = Field(default='')
-    barcode: str = Field(default='')
-    catalognum: str = Field(default='')
+    artpath: bytes = Field(default=b"")
+    asin: str = Field(default="")
+    barcode: str = Field(default="")
+    catalognum: str = Field(default="")
     comp: bool = Field(default=False)
-    country: str = Field(default='')
+    country: str = Field(default="")
     day: int | None = Field(default=None)
     discogs_albumid: int | None = Field(default=None)
     discogs_artistid: int | None = Field(default=None)
     discogs_labelid: int | None = Field(default=None)
     disctotal: int | None = Field(default=None)
     genres: list | None = Field(default=None)
-    label: str = Field(default='')
-    language: str = Field(default='')
-    mb_albumartistid: str = Field(default='')
+    label: str = Field(default="")
+    language: str = Field(default="")
+    mb_albumartistid: str = Field(default="")
     mb_albumartistids: list | None = Field(default=None)
-    mb_albumid: str = Field(default='')
-    mb_releasegroupid: str = Field(default='')
+    mb_albumid: str = Field(default="")
+    mb_releasegroupid: str = Field(default="")
     month: int | None = Field(default=None)
     original_day: int | None = Field(default=None)
     original_month: int | None = Field(default=None)
     original_year: int | None = Field(default=None)
     r128_album_gain: float | None = Field(default=None)
-    release_group_title: str = Field(default='')
-    releasegroupdisambig: str = Field(default='')
+    release_group_title: str = Field(default="")
+    releasegroupdisambig: str = Field(default="")
     rg_album_gain: float | None = Field(default=None)
     rg_album_peak: float | None = Field(default=None)
-    script: str = Field(default='')
-    style: str = Field(default='')
+    script: str = Field(default="")
+    style: str = Field(default="")
     year: int | None = Field(default=None)
 
 
@@ -124,6 +131,7 @@ class APITrack(BaseModel):
 
     NOTE: This was generated from `build_scripts/code_gen/pydantic_field_info_from_beets_model.py`.
     """
+
     id: int
     acoustid_fingerprint: str = Field(default="")
     acoustid_id: str = Field(default="")

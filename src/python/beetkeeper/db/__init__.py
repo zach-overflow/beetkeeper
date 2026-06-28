@@ -1,14 +1,16 @@
 """
-This module contains the database layer: ORM models and (TODO) engine/session wiring.
+beetkeeper's own database layer.
 
-TODO[Claude]: The persistence layer is unspecified and needs design before any db-backed endpoint:
-    - Engine + session: no `create_engine`/async engine, sessionmaker, or `get_session` FastAPI
-      dependency exists yet. Decide sync vs. async (anyio-compatible) sessions per CLAUDE.md.
-    - Connection URL source: where does the DB live (e.g. SQLite path)? `UserConfig` currently has no
-      DB-path/DSN field — add one in `beetkeeper/settings/user_config.py` and read it here.
-    - Schema creation/migrations: see `db/alembic/` — alembic is scaffolded but empty (no env.py/ini).
+    - `models.py`     — SQLModel ORM tables for the beets-event history.
+    - `session.py`    — async engine + `async_sessionmaker` + the `get_session` FastAPI dependency.
+    - `migrations.py` — programmatic alembic integration (online + offline `--sql`).
+    - `alembic/`      — the alembic environment (`env.py` + `versions/`); migrations OWN the schema, so
+                        `SQLModel.metadata.create_all` is intentionally not used at runtime.
+
+The connection URL comes from `UserConfig.database` (see `beetkeeper.settings`).
 """
 
-from beetkeeper.db.models import Job, JobStatus, JobType
+from beetkeeper.db.models import AlbumEvent, ListenerEvent, TrackEvent
+from beetkeeper.db.session import get_session, make_engine, make_sessionmaker
 
-__all__ = ["Job", "JobStatus", "JobType"]
+__all__ = ["AlbumEvent", "ListenerEvent", "TrackEvent", "get_session", "make_engine", "make_sessionmaker"]

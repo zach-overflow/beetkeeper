@@ -1,0 +1,19 @@
+{# Stats summary for the matching items (beets stats-style). #}
+{% if error %}
+<p><strong>Query error:</strong> {{ error }}</p>
+{% elif stats %}
+<p>
+    <strong>{{ stats.tracks }}</strong> tracks,
+    <strong>{{ stats.albums }}</strong> albums,
+    <strong>{{ stats.artists }}</strong> artists,
+    <strong>{{ stats.album_artists }}</strong> album artists
+    — total time {{ stats.total_time_minutes | round(0, "floor") | int }} s,
+    {# Render the approximate size as GB when >= 1 GB, otherwise MB (1024-based units). #}
+    {% set gigabyte = 1024 * 1024 * 1024 %}
+    {% if stats.approximate_total_size_bytes >= gigabyte %}
+    ~{{ (stats.approximate_total_size_bytes / gigabyte) | round(2) }} GB.
+    {% else %}
+    ~{{ (stats.approximate_total_size_bytes / (1024 * 1024)) | round(2) }} MB.
+    {% endif %}
+</p>
+{% endif %}

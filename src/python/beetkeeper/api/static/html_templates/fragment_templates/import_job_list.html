@@ -1,0 +1,8 @@
+{# The currently-active import jobs (newest first), each rendered as a full import_job fragment so it keeps
+   self-polling. Loaded into the /import page on load so ongoing / awaiting-decision jobs survive navigating
+   away and back. Each entry carries its own pre-computed `candidate_table`. #}
+{% for entry in entries %}
+    {% set job = entry.job %}
+    {% set candidate_table = entry.candidate_table %}
+    {% include "fragment_templates/import_job.html" %}
+{% endfor %}

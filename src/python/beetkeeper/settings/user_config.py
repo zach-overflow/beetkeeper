@@ -10,23 +10,6 @@ CONFIG_PATH_ENVVAR: Final[str] = "BEETKEEPER_CONFIG"
 _LOGGER = logging.getLogger(__name__)
 
 
-class UserConfig(BaseSettings):
-    """Wrapper pydantic model for the user configuration (read from yaml)."""
-
-    model_config = SettingsConfigDict(frozen=True)
-    beets_config_filepath: FilePath  # Must be an actual file that exists
-    log_level: Literal["CRITICAL", "DEBUG", "ERROR", "INFO", "NOTSET", "WARNING"]
-    server: ServerConfSection
-
-    # TODO[Claude]: implement the ``UserConfig`` class definition (and subsequently, the yaml schema).
-    # TODO[Claude]: add fields the rest of the app already needs but cannot source today:
-    #   - a database connection URL / SQLite path (consumed by `beetkeeper.db` + alembic env.py).
-    #   - the beets config/library location (used to populate `app.state.beets_config`; see
-    #     `beetkeeper.api.fastapi_app.lifespan`) once the beets-integration model is decided.
-    #   - if authentication is in scope (see `config_router`'s placeholder `/login/access-token`),
-    #     any auth/secret settings; otherwise document that the app is unauthenticated single-user.
-
-
 class ServerConfSection(BaseModel):
     """Model for the `server` section of the user config YAML file."""
 
@@ -34,6 +17,45 @@ class ServerConfSection(BaseModel):
     hostname: str
     port: int = Field(default=8080, gt=0)
     server_workers: int = Field(default=2, gt=0)
+
+
+class DatabaseConfSection(BaseModel):
+    """
+    Model for the `database` section of the user config YAML file.
+
+    Holds the location of beetkeeper's own SQLite database (distinct from the beets library db). The file
+    need not exist yet — it is created when alembic migrations are first applied (see `beetkeeper.db`).
+    """
+
+    model_config = ConfigDict(frozen=True)
+    sqlite_path: Path = Field(
+        description="Filesystem path to beetkeeper's SQLite db file (created on first migration)."
+    )
+
+    @property
+    def resolved_sqlite_path(self) -> Path:
+        """The configured path with `~` expanded and made absolute (parent dirs are NOT created here)."""
+        return self.sqlite_path.expanduser().resolve()
+
+    @property
+    def async_url(self) -> str:
+        """SQLAlchemy async URL (aiosqlite driver) used by the running application."""
+        return f"sqlite+aiosqlite:///{self.resolved_sqlite_path}"
+
+    @property
+    def sync_url(self) -> str:
+        """Plain SQLAlchemy SQLite URL — used by alembic offline (`--sql`) migration generation."""
+        return f"sqlite:///{self.resolved_sqlite_path}"
+
+
+class UserConfig(BaseSettings):
+    """Wrapper pydantic model for the user configuration (read from yaml)."""
+
+    model_config = SettingsConfigDict(frozen=True)
+    beets_config_filepath: FilePath  # Must be an actual file that exists
+    log_level: Literal["CRITICAL", "DEBUG", "ERROR", "INFO", "NOTSET", "WARNING"]
+    server: ServerConfSection
+    database: DatabaseConfSection
 
 
 class BeetKeeperConfigError(ValueError):

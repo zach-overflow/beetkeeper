@@ -1,0 +1,10 @@
+{# Available query fields reference (from /api/query/fields), to help build queries. #}
+<p><strong>Item fields:</strong></p>
+<p><code>{{ fields.item_fields | join(", ") }}</code></p>
+<p><strong>Album fields:</strong></p>
+<p><code>{{ fields.album_fields | join(", ") }}</code></p>
+{% set flexible = (fields.item_flexible_attributes + fields.album_flexible_attributes) | unique | list %}
+{% if flexible %}
+<p><strong>Flexible attributes:</strong></p>
+<p><code>{{ flexible | join(", ") }}</code></p>
+{% endif %}

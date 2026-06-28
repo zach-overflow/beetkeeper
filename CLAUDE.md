@@ -64,27 +64,35 @@ uv-lockfile-check). Install git hooks with `prek install`.
 ## Open `TODO[Claude]` items
 Inline `TODO[Claude]:` comments now mark each open question in the relevant file. Highest-impact first:
 
-- **beets integration model (blocking).** Subprocess `beet` CLI vs. beets Python API is undecided and
-  `beets` is not a declared dependency. See `core/beet_commands.py`, `core/__init__.py`.
-- **persistence layer.** No engine/session/`get_session`, no DB URL in `UserConfig`, `Job` lacks
-  `table=True`, alembic is an empty placeholder. See `db/__init__.py`, `db/models.py`,
-  `db/alembic/__init__.py`, `settings/user_config.py`.
-- **request/response schema location** is unset. See `core/beet_commands.py`.
-- **UI wiring + bugs.** `ui_router` is never mounted; `ui_routes/__init__.py` has a broken import
-  (`python.beetkeeper...`); `example_ui_router` has a wrong template `name` prefix, a misleading `/config`
-  prefix, and a missing return type hint; `search_page.py` is an empty leftover. See `api/ui_routes/*`,
-  `api/fastapi_app.py`.
-- **router prefix collision.** `files_router` and `import_router` both use `prefix="/import"`. See
-  `api/api_routes/files_router.py`. Placeholder `foo`/`/login/access-token` endpoints remain across routers.
+- **beets integration model — DECIDED + scaffolded.** Drive beets **in-process via its Python API** (not
+  the `beet` CLI); beetkeeper and beets are co-located. `core/` is the only package that imports beets:
+  `library.py` (async one-shot ops, write-serialized via a shared `CapacityLimiter(1)`), `import_jobs.py`
+  (job state + decision DTOs), `import_worker.py` (dedicated single-consumer worker; an `ImportSession`
+  subclass whose interactive hooks bridge from beets' pipeline threads to the event loop via an anyio
+  `BlockingPortal`; cooperative abort). **Wired into the app:** lifespan background worker, JSON
+  `api/api_routes/import_router.py`, HTMX `api/ui_routes/import_ui_fragments_router.py` + `/import` page,
+  injected via `api/dependencies.py`. **Multi-worker + persistent:** job state lives in the DB
+  (`core/import_store.py`, tables `import_job`/`import_lock`); imports are serialized node-wide by a leased
+  lock (leader election) and decisions are delivered through the DB, so it's correct across
+  `server_workers > 1` and survives restarts (orphan recovery on takeover). beets internals are
+  version-pinned; mypy `beets.*` override in root pyproject.
+- **persistence layer — DONE.** Async SQLAlchemy/SQLModel engine + `get_session`/`SessionDep`
+  (`db/session.py`), a `database` section in `UserConfig`, and a programmatic alembic setup
+  (`db/migrations.py`, `db/alembic/`) with an initial migration. DB is constructible via `beetkeeper db
+  upgrade` (online) or `--sql` (offline). The three `/api/events` endpoints now persist `ListenerEvent` +
+  `AlbumEvent`/`TrackEvent` rows via `SessionDep`. Verified by `tests/db_tests/` + `tests/api_tests/`.
+- **request/response schema location — DONE.** Event API models live in `api/api_models/` (now with a
+  `BUILD` file, so Pants infers it and it ships in the wheel).
 - **templating engine.** `jinja2-fragments` is a dep but `constants.TEMPLATES` is plain `Jinja2Templates`;
   full-page vs. HTMX-fragment rendering is undecided. See `api/constants.py`.
-- **auth scope** is unspecified (placeholder `/login/access-token`). See `api/api_routes/config_router.py`.
+- **auth scope** is unspecified — beetkeeper has no auth/users yet. Decide whether it's in scope
+  (single-user self-hosted vs. multi-user) and document the choice.
 - **`beetkeeper run` / uvicorn.** `reload=True` + `workers>1` conflict, nonexistent/CWD-relative
   `reload_dirs`, wrong `--config-path` help, `None` config-path crash. See `main.py`.
 - **`UserConfig`** still needs its real schema. See `settings/user_config.py`.
-- **test scaffolding.** `src/python/tests` (BUILD, `conftest.py`, an `anyio_backend` fixture, a TestClient
-  fixture) does not exist yet, though CLAUDE.md's test rules assume it. `@pytest.mark.anyio` needs a
-  backend chosen (asyncio vs. trio).
+- **test scaffolding — partially done.** `src/python/tests/conftest.py` now provides the `anyio_backend`
+  fixture (asyncio); `tests/db_tests/` has real fixtures + tests. A shared FastAPI `TestClient`/async-client
+  fixture for route tests is still TODO.
 
 
 ## Coding style and conventions

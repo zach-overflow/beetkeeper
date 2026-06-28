@@ -1,0 +1,29 @@
+<!-- Recently ingested beets listener events. Rendered by `event_fragment` and swapped into the events page. -->
+{% if events %}
+<table>
+	<thead>
+		<tr>
+			<th>When</th>
+			<th>Event</th>
+			<th>Beets album id(s)</th>
+			<th>Beets track id(s)</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for event in events %}
+		<tr>
+			<td>
+				{% if event.pushed_at %}
+				<time datetime="{{ event.pushed_at.isoformat() }}">{{ event.pushed_at.strftime("%Y-%m-%d %H:%M:%S") }}</time>
+				{% else %}—{% endif %}
+			</td>
+			<td>{{ event.event_type }}</td>
+			<td>{{ event.album_ids | join(", ") if event.album_ids else "—" }}</td>
+			<td>{{ event.track_ids | join(", ") if event.track_ids else "—" }}</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+</table>
+{% else %}
+<p>No beets events have been ingested yet.</p>
+{% endif %}

@@ -40,7 +40,7 @@ Changelog = "https://github.com/zach-overflow/beetkeeper/releases"
 include = ["beetkeeper_plugin*"]
 
 [tool.setuptools.package-data]
-beetkeeper_plugin = ["py.typed"]
+"*" = ["py.typed"]
 
 [tool.uv]
 # https://docs.astral.sh/uv/reference/settings/#package

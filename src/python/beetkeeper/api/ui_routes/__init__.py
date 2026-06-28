@@ -6,8 +6,8 @@ HTML Should be generated from HTML Jinja template(s) under
 `src/python/beetkeeper/api/static/html_templates` (surfaced to our routers by `beetkeeper.api.constants.TEMPLATES`).
 Templates may be added under that directory as needed, and all should extend from teh same common `src/python/beetkeeper/api/static/html_templates/base_template.html`.
 
-See `src/python/beetkeeper/api/static/html_templates/example_templates/example_full_page.html` for an example of
-how HTML templates are expected to consistently render the HTML body inside a content block.
+Full pages live under `html_templates/page_templates/` and are served by `pages_ui_router`; HTMX
+fragments live under `html_templates/fragment_templates/` and are served by `events_ui_fragments_router`.
 
 Relevant documentation:
 1. FastAPI HTML Templates: https://fastapi.tiangolo.com/advanced/templates/
@@ -18,21 +18,21 @@ No Javascript should be used, other than HTMX (which is already vendored under `
 Convention: every `TEMPLATES.TemplateResponse(...)` call MUST pass `request=request`. The shared
 `base_template.html` resolves static asset URLs (CSS, vendored HTMX) via `url_for('static', ...)`, which
 needs the request in the template context — omitting it raises at render time.
-
-TODO[Claude]: the docstring example reference was stale (pointed at the deleted
-    `query_templates/search_form.html`); confirm `example_templates/example_full_page.html` is the
-    intended canonical example, and either implement or delete the now-empty `search_page.py` sibling.
-TODO[Claude]: this `ui_router` is defined but never mounted — `beetkeeper.api.fastapi_app` only includes
-    `api_router`. Include `ui_router` there (it is intentionally NOT under the `/api` prefix).
 """
 
 from fastapi import APIRouter
 
-# TODO[Claude]: broken import — the source root is `src/python`, so the package path is
-#     `beetkeeper.api.ui_routes...`, NOT `python.beetkeeper...`. This import will raise ModuleNotFoundError.
-from python.beetkeeper.api.ui_routes.example_ui_router import example_ui_router
+from beetkeeper.api.ui_routes.events_ui_fragments_router import events_ui_fragments_router
+from beetkeeper.api.ui_routes.import_ui_fragments_router import import_ui_fragments_router
+from beetkeeper.api.ui_routes.pages_ui_router import pages_ui_router
+from beetkeeper.api.ui_routes.search_ui_fragments_router import search_ui_fragments_router
 
-ui_router = APIRouter(prefix="/ui")
-ui_router.include_router(example_ui_router)
+# No prefix: pages are served at the site root (`/home`, `/events`, `/import`, `/search`) and fragments
+# under `/fragment`. (`prefix="/"` is invalid — an APIRouter prefix must not end with `/`.)
+ui_router = APIRouter()
+ui_router.include_router(pages_ui_router)
+ui_router.include_router(events_ui_fragments_router)
+ui_router.include_router(import_ui_fragments_router)
+ui_router.include_router(search_ui_fragments_router)
 
 __all__ = ["ui_router"]
