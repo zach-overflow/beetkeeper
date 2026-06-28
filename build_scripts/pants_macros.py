@@ -1,5 +1,6 @@
 # https://www.pantsbuild.org/stable/docs/writing-plugins/macros
 
+
 def test_cmd(name: str, command: str, execution_dependencies: list[str] | None = None, **kwargs):
     """
     Wrapper for test targets invoked via `test_shell_command` targets, instead of their pantsbuild 'tool' alternative.
@@ -10,7 +11,7 @@ def test_cmd(name: str, command: str, execution_dependencies: list[str] | None =
     Args:
         name: the name to set for the generated `run_shell_command` target.
         command: the command the target should run (as `bash -c '<command>'`: see https://www.pantsbuild.org/stable/reference/targets/shell_command#command)
-        execution_dependencies: Any extra targets required for execution. These will be added with a number of 
+        execution_dependencies: Any extra targets required for execution. These will be added with a number of
             builtin values provided from the macro.
     """
     protected_kwargs = set(["workdir", "log_output", "tools"])
@@ -40,7 +41,7 @@ def test_cmd(name: str, command: str, execution_dependencies: list[str] | None =
     )
 
 
-def cli(name:str, entrypoint: str, **kwargs) -> None:
+def cli(name: str, entrypoint: str, **kwargs) -> None:
     """Macro for creating a CLI binary of beetkeeper, packaged as a PEX scie."""
     pex_tgt_name = f"{name}.pex-binary"
     tags = kwargs.pop("tags", []) + ["cli"]

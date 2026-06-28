@@ -8,14 +8,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from beetkeeper.core import (
-    ImportAction,
-    ImportDecision,
-    ImportedAlbum,
-    ImportedEntities,
-    ImportJobStatus,
-    ImportStore,
-)
+from beetkeeper.core import ImportAction, ImportDecision, ImportedAlbum, ImportedEntities, ImportJobStatus, ImportStore
 from beetkeeper.core.import_jobs import DecisionRequest
 from beetkeeper.db.models import AlbumEvent, ListenerEvent, TrackEvent
 
@@ -136,14 +129,9 @@ async def test_abort_flag(session_factory: async_sessionmaker[AsyncSession]) -> 
 
 
 @pytest.mark.anyio
-async def test_record_import_events_writes_listener_rows(
-    session_factory: async_sessionmaker[AsyncSession],
-) -> None:
+async def test_record_import_events_writes_listener_rows(session_factory: async_sessionmaker[AsyncSession]) -> None:
     store = _store(session_factory)
-    imported = ImportedEntities(
-        albums=[ImportedAlbum(album_id=7, item_ids=[11, 12])],
-        singleton_item_ids=[99],
-    )
+    imported = ImportedEntities(albums=[ImportedAlbum(album_id=7, item_ids=[11, 12])], singleton_item_ids=[99])
     await store.record_import_events(imported)
 
     async with session_factory() as session:
@@ -152,7 +140,12 @@ async def test_record_import_events_writes_listener_rows(
         tracks = (await session.execute(select(TrackEvent))).scalars().all()
 
     # 1 album_imported + 2 item_imported (in-album) + 1 item_imported (singleton).
-    assert sorted(le.event_type for le in listeners) == ["album_imported", "item_imported", "item_imported", "item_imported"]
+    assert sorted(le.event_type for le in listeners) == [
+        "album_imported",
+        "item_imported",
+        "item_imported",
+        "item_imported",
+    ]
     assert len(albums) == 1 and albums[0].beets_album_id == 7
     assert {(t.beets_item_id, t.beets_album_id) for t in tracks} == {(11, 7), (12, 7), (99, None)}
     # Every child row is linked to a real parent listener event.
@@ -170,9 +163,7 @@ async def test_record_import_events_noop_when_empty(session_factory: async_sessi
 
 
 @pytest.mark.anyio
-async def test_recover_orphans_fails_only_other_workers_jobs(
-    session_factory: async_sessionmaker[AsyncSession],
-) -> None:
+async def test_recover_orphans_fails_only_other_workers_jobs(session_factory: async_sessionmaker[AsyncSession]) -> None:
     store = _store(session_factory)
     # A job left RUNNING by a now-dead leader, and a job legitimately owned by the new leader.
     orphan = await store.create(["/music/orphan"])

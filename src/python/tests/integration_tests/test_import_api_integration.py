@@ -127,9 +127,7 @@ async def test_import_album_with_interactive_decision_lands_in_library(import_en
     # Submit the import; the background worker claims it and parks on a choose-match decision.
     job_id = (await client.post("/api/import", json={"paths": [album_path]})).json()["id"]
     job = await _wait_for(
-        client,
-        job_id,
-        predicate=lambda j: j["status"] in {"awaiting_decision", "completed", "failed", "aborted"},
+        client, job_id, predicate=lambda j: j["status"] in {"awaiting_decision", "completed", "failed", "aborted"}
     )
     assert job["status"] == "awaiting_decision", f"expected a decision request; job={job}"
     assert job["pending_decision"] is not None
