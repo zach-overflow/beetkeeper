@@ -78,24 +78,3 @@ ARG RELEASE_TAG=""
 ENV RELEASE_TAG=${RELEASE_TAG}
 ENTRYPOINT ["beetkeeper"]
 CMD ["run"]
-
-# # Test image stage defined below
-# `ghcr.io/zach-overflow/beetkeeper:latest` is matched and substituted by Pants with the actual built tag
-# of the `//:beetkeeper-server-image` target (added as a dependency of `//:beetkeeper-test-image`).
-# Starting from the finished base image means its `COPY` layers are reused, so the test build
-# context doesn't need base's source files.
-# DL3007: `:latest` here is NOT a mutable upstream pull -- Pants substitutes it with the actual built tag
-# of the `//:beetkeeper-server-image` dependency, so the warning doesn't apply.
-# hadolint ignore=DL3007
-FROM ghcr.io/zach-overflow/beetkeeper:latest AS test
-
-# Install the dev toolchain (pytest/mypy/etc., defined in the workspace-root `dev` group). Skip installing
-# the `beetkeeper-plugin` member: its source isn't in this image and the server tests don't import it
-# (without this, uv would build a degenerate empty plugin from the lone pyproject).
-RUN uv lock --check && uv sync --locked --all-groups --no-cache --no-install-package beetkeeper-plugin
-COPY src/python/tests/ /app/src/python/tests
-COPY build_scripts/ /app/build_scripts
-COPY hooks/ /app/hooks
-
-ENTRYPOINT ["uv"]
-CMD ["run", "--all-groups", "pytest", "-vv", "/app/src/python/tests"]

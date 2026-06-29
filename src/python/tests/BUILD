@@ -8,4 +8,3 @@ python_test_utils(
 # this per-target field is. Applies recursively to `python_tests` in subdirectories.
 __defaults__({python_tests: dict(dependencies=["//src/python/tests:base-pytest-utils"], skip_tests=True)})
 python_tests()
-shell_source(name="tests-entrypoint", source="tests_entrypoint.sh")
