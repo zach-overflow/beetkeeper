@@ -35,7 +35,6 @@ pants lint ::                         # ruff, shellcheck, shfmt, hadolint, taplo
 pants check ::                        # (mypy is run via hooks:mypy in the test goal, not check)
 pants package src/python:beetkeeper-whl   # build the wheel -> dist/
 pants package //:beetkeeper-server-image  # build app docker image
-pants package //:beetkeeper-test-image    # build test docker image (FROM the app image)
 pants package ::                      # Packages all pants targets which support the package command.
 uv lock                               # regenerate lockfile after dep changes
 uv lock --check                       # verify lockfile is current (also gated in Dockerfile)
@@ -44,11 +43,10 @@ Lint/type/security logic is shared with prek + CI via `hooks/*.sh` (ruff, mypy, 
 uv-lockfile-check). Install git hooks with `prek install`.
 
 ## Docker
-- Single `Dockerfile`, two stages → two `docker_image` targets in root `BUILD`.
-- `beetkeeper-test-image` does `FROM ghcr.io/zach-overflow/beetkeeper:latest` (Pants substitutes the built tag);
-  it depends on `:beetkeeper-server-image` so the app layers are reused and the test build context
-  doesn't re-`COPY` app sources. If you uncomment a `COPY` in a stage, add the matching source
-  dependency to that `docker_image` target.
+- The `Dockerfile` has an `ffmpeg` fetch stage + the final `app` stage; only `app` is packaged, as the
+  single `//:beetkeeper-server-image` `docker_image` target in root `BUILD`. The image is named/pushed via
+  the `@ghcr` registry (`ghcr.io/zach-overflow/beetkeeper`); see `pants.toml` `[docker.registries.ghcr]` and
+  the `env("RELEASE_TAG", "dev")` tag in `BUILD`.
 
 ## Relevant public docs
 - Pants: https://www.pantsbuild.org/stable/docs/introduction/welcome-to-pants

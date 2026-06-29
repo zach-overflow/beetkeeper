@@ -46,16 +46,3 @@ docker_image(
 #         # "src/beetsplug:plugin-whl",
 #     ],
 # )
-
-docker_image(
-    name="beetkeeper-test-image",
-    source="Dockerfile",
-    target_stage="test",
-    image_tags=["test"],
-    dependencies=[
-        ":beetkeeper-server-image",
-        "build_scripts:build_scripts",
-        "hooks:hooks-scripts",
-        "src/python:test-files",
-    ],
-)
