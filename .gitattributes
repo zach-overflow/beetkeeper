@@ -1,0 +1,4 @@
+# Ensure diffs and language attribution of Pantsbuild files is Python instead of Starlark
+*BUILD text diff=python linguist-language=python
+BUILD text diff=python linguist-language=python
+

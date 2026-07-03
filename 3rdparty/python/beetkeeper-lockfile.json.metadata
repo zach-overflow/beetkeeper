@@ -20,7 +20,6 @@
     "pytest-xdist>=3.8.0",
     "pytest>=9.1",
     "python-multipart>=0.0.20",
-    "requests>=2.34",
     "ruamel.yaml>=0.19.1",
     "sqlalchemy",
     "sqlmodel==0.0.38",
