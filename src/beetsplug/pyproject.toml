@@ -14,7 +14,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "beetkeeper-plugin"
-version = "0.0.2"
+version = "0.0.3"
 authors = [{ name = "Zach Gottesman" }]
 maintainers = [{ name = "zach-overflow" }]
 keywords = [

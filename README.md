@@ -30,6 +30,19 @@ Not to be confused with the [beets web plugin](https://beets.readthedocs.io/en/v
 | Async API support                                           |  ✅              |  ❌               |
 | Play library audio files in browser                         |  ❌              |  ✅               |
 
+### Web Interface
+
+<table>
+	<tr>
+	<td><p style="font-size: 1.1rem;">Run multiple imports</p></td><td><img src="src/docs/img/base_import_screenshot_0-0-3rc1.png" width="40%"><br>... and monitor them simultaneously, whether they were initiated manually, or via the backing REST API.</td>
+	</tr>
+	<tr>
+	<td><p style="font-size: 1.1rem;">Automated event tracking</p></td><td><img src="src/docs/img/events_example_0-0-3rc1.png" width="40%"><br>... like album / song import completion, file modifications, etc. Maintains the full beets event history whether it was trigger via the UI or the API.</td>
+	</tr>
+	<tr>
+	<td><p style="font-size: 1.1rem;">Search your Beets library</p></td><td><img src="src/docs/img/base_search_example_0-0-3rc1.png" width="40%"><br>... similar to <code>beets[web]</code>, but different</td>
+	</tr>
+</table>
 
 ## Installation
 
