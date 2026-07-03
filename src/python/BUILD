@@ -37,10 +37,3 @@ python_distribution(
     wheel=True,
     generate_setup=False,
 )
-
-# We have to use this `files` hack until this is fixed in Pantsbuild: https://github.com/pantsbuild/pants/issues/18379
-files(
-    name="test-files",
-    description="All test files in `src/python/tests. Only use this in the test Docker image.",
-    sources=["./tests/**/*.py", "!./tests/**/*.pyi"],
-)

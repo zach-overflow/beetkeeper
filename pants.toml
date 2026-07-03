@@ -1,6 +1,5 @@
 [GLOBAL]
 backend_packages = [
-  "pants.backend.python",
   "pants.backend.build_files.fmt.ruff",
   "pants.backend.docker",
   "pants.backend.docker.lint.hadolint",
@@ -9,6 +8,9 @@ backend_packages = [
   "pants.backend.experimental.python.lint.ruff.format",
   "pants.backend.experimental.tools.yamllint",
   "pants.backend.experimental.visibility",
+  "pants.backend.python",
+  "pants.backend.python.lint.bandit",
+  "pants.backend.python.typecheck.mypy",
   "pants.backend.shell",
   "pants.backend.shell.lint.shellcheck",
   "pants.backend.shell.lint.shfmt",
@@ -26,6 +28,9 @@ pants_ignore = [
   "!.semgrep/",
   "!.github/",
 ]
+
+[changed]
+dependents = "transitive"
 
 [source]
 # `src/python` + `src/beetsplug` are the two distribution roots. `src` is a broader root for non-distribution
@@ -56,20 +61,82 @@ extra_env_vars = ["PANTS=true"]
 [python-bootstrap]
 search_path = ["<PYENV>", "<ASDF>", "<PATH>"]
 
-
 # NOTE: we deliberately do NOT set `[pytest].skip` here — it is not consulted by the `test` goal
 # (it's a bare SkipOption that no pytest rule reads), so it does nothing. Pants' own pytest is
 # disabled instead via `skip_tests=True` on the `python_tests` targets (see src/python/tests/BUILD).
 # We run pytest ourselves through the `//:pytest` `test_shell_command` so we can use pytest plugins
 # without managing a separate resolve: https://www.pantsbuild.org/stable/reference/subsystems/pytest#requirements
-
+# https://www.pantsbuild.org/stable/reference/subsystems/python
 [python]
-resolver = "uv"
-enable_resolves = false
+resolver = "uv"                            # TBD on when we can use pantsbuild + uv resolver for building pex_binary targets
+enable_resolves = true
+default_resolve = "beetkeeper-resolve"
 interpreter_constraints = [">=3.14,<3.15"]
 interpreter_versions_universe = ["3.14"]
 pip_version = "latest"
 separate_lockfile_metadata_file = true
+
+# https://www.pantsbuild.org/stable/reference/subsystems/python#resolves
+[python.resolves]
+"beetkeeper-resolve" = "3rdparty/python/beetkeeper-lockfile.json"
+# The `beetkeeper-plugin` distribution (`src/beetsplug`) has its own resolve so its `beets` requirement is a
+# SEPARATE owner from the app's `src/python:app-requirements#beets`. With one `beets` owner per resolve,
+# Pants' import inference is unambiguous in both — no manual `#beets` dependency workarounds needed.
+"beetsplug-resolve" = "3rdparty/python/beetsplug-lockfile.json"
+"tools-resolve" = "3rdparty/tools/tools-lockfile.json"
+
+[bandit]
+# https://bandit.readthedocs.io/en/latest/man/bandit.html#options
+args = [
+  "--quiet",                   # Only show output on errors.
+  "--severity-level=medium",   # report only issues of 'medium' severity level or higher
+  "--confidence-level=medium", # report only issues of 'medium' confidence level or higher
+]
+config = "pyproject.toml"
+install_from_resolve = "tools-resolve"
+requirements = ["bandit"]
+
+[mypy]
+config = "pyproject.toml"
+install_from_resolve = "tools-resolve"
+# mypy is using only a subset of the shared `tools-resolve` requiremnts
+# https://www.pantsbuild.org/stable/reference/subsystems/mypy#requirements
+requirements = [
+  "mypy",
+  "mypy-extensions",
+  # Required for `pydantic.mypy` plugin. See comment in `3rdparty/tools/tools-resolve-requirements.txt`
+  "pydantic",
+  # Need pytest so type checking can proceed on test files.
+  "pytest",
+]
+
+[pytest]
+# args = [
+# 	# "-v",
+#   "-p",
+#   "no:cacheprovider",
+#   "--disable-socket",
+#   "--allow-hosts=testclient",
+#   "--durations=5",
+# ]
+config = "pyproject.toml"
+install_from_resolve = "tools-resolve"
+# pytest installs a SUBSET of the shared `tools-resolve` lockfile. The subset MUST include `pytest` itself
+# AND every plugin whose options we pass in `args`/`addopts` — notably `pytest-socket` (`--disable-socket`,
+# `--allow-hosts`); otherwise pytest never registers those options and pex's argparse rejects them.
+# https://www.pantsbuild.org/stable/reference/subsystems/pytest#requirements
+requirements = [
+  # `[standard]` adds the test/tool extras (uvicorn, httpx, ...); the bare version is kept equal to the
+  # app's `fastapi` pin by `src/python/tests/meta_tests/test_resolve_version_consistency.py`.
+  "fastapi[standard]",
+  "pytest",
+  "pytest-socket",
+  "pytest-xdist",
+  "ruamel-yaml",
+  "tomlkit",
+]
+# # https://www.pantsbuild.org/stable/reference/subsystems/pytest#xdist_enabled
+xdist_enabled = false
 
 [update-build-files]
 fmt = true

@@ -91,9 +91,9 @@ def test_choose_match_apply_writes_diff_to_output() -> None:
     session._output = _OutputBuffer()
     session._quiet = False
     # portal.call is invoked twice: the abort check (False), then the decision request (APPLY candidate 0).
-    session._portal = _FakePortal([False, ImportDecision(action=ImportAction.APPLY, candidate_index=0)])
-    session._bridge = _Attrs(request=lambda _request: None)  # only referenced as a portal.call argument
-    session._store = _Attrs(is_abort_requested=lambda _job_id: None)
+    session._portal = _FakePortal([False, ImportDecision(action=ImportAction.APPLY, candidate_index=0)])  # type: ignore[assignment]
+    session._bridge = _Attrs(request=lambda _request: None)  # type: ignore[assignment]
+    session._store = _Attrs(is_abort_requested=lambda _job_id: None)  # type: ignore[assignment]
 
     item = _Attrs(title="old title", track=1)
     candidate = _Attrs(
@@ -187,8 +187,8 @@ def _quiet_session() -> WebImportSession:
     session._job_id = "job-q"
     session._output = _OutputBuffer()
     session._quiet = True
-    session._portal = _FakePortal([False])  # only the abort check calls the portal in quiet mode
-    session._store = _Attrs(is_abort_requested=lambda _job_id: None)
+    session._portal = _FakePortal([False])  # type: ignore[assignment]
+    session._store = _Attrs(is_abort_requested=lambda _job_id: None)  # type: ignore[assignment]
     return session
 
 

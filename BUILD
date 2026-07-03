@@ -5,19 +5,6 @@ file(name="pyproject", source="pyproject.toml")
 file(name="uv-lockfile", source="uv.lock")
 file(name="license-file", source="LICENSE.txt")
 file(name="version-file", source="VERSION")
-uv_requirements(name="dev-requirements", source="pyproject.toml")
-python_requirement(name="pytest-socket", requirements=["pytest-socket"])
-
-# We use this instead of the standard pants pytest subsystem, so we can use
-# pytest plugins without having to manage an entire separate pytest resolve.
-# https://www.pantsbuild.org/stable/reference/subsystems/pytest#requirements
-test_cmd(
-    name="pytest",
-    command="uv run --all-groups pytest -vv ./src/python/tests",
-    execution_dependencies=["//:pytest-socket"],
-)
-
-
 docker_image(
     name="beetkeeper-server-image",
     source="Dockerfile",

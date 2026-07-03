@@ -3,38 +3,27 @@
 repos:
   - repo: local
     hooks:
-      - id: uv-lockfile-check
-        name: uv lockfile check
-        entry: hooks/uv-lockfile-check.sh
-        files: '^(pyproject\.toml|uv\.lock)$'
-        language: script
+      - id: lint
+        name: lint
+        entry: pants --changed-since=HEAD lint fmt
+        language: system
         pass_filenames: false
       
-      - id: ruff
-        name: ruff
-        description: "Run 'ruff check --fix' + 'ruff format' (lint, auto-fix, and format)."
-        entry: hooks/ruff.sh
-        language: script
-        types: [python]
-        require_serial: true
-      
-      - id: bandit
-        name: bandit
-        entry: hooks/bandit.sh
-        language: script
-        files: '^src/python/beetkeeper/.*\.py$'
-        pass_filenames: true
-
       - id: mypy
         name: mypy
-        # Scoped to the package only: mypy's pyproject `exclude` skips `src/python/tests`, but mypy
-        # ignores `exclude` for files passed explicitly on the CLI (as prek does), so matching test
-        # files here would type-check them anyway -- contradicting the config. Keep this in sync with
-        # the mypy `exclude` setting.
-        entry: hooks/mypy.sh
-        language: script
-        files: '^src/python/beetkeeper/.*\.py$'
-
+        entry: pants --changed-since=HEAD check
+        language: system
+        files: '^.*\.py$'
+        pass_filenames: false
+        verbose: true
+        
+      - id: uv-lockfile-check
+        name: uv lockfile check
+        entry: "pants test hooks:uv-lockfile-check"
+        language: system
+        files: '^(pyproject\.toml|uv\.lock)$'
+        pass_filenames: false
+      
       - id: actionlint
         name: actionlint
         description: "Lint GitHub Actions workflow files (syntax, expressions, shellcheck on run blocks)."
@@ -43,11 +32,10 @@ repos:
         files: '^\.github/workflows/.*\.ya?ml$'
         pass_filenames: true
 
-      - id: version-sync
-        name: version sync
+      - id: version-sync-check
+        name: version sync check
         description: "Verify the canonical VERSION is propagated into both distributions' version fields."
-        entry: hooks/version-sync.sh
-        args: ["--check"]
+        entry: "pants test hooks:version-sync-check"
         files: '^(VERSION|src/python/beetkeeper/_version\.py|src/beetsplug/pyproject\.toml)$'
-        language: script
+        language: system
         pass_filenames: false

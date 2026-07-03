@@ -173,10 +173,11 @@ class BeetsLibrary:
             from beets.library import Album, Item
 
             with lib.transaction() as tx:
-                # nosec B608: table names are trusted beets class constants (not user input), and SQL
+                # inline bandit ignores: table names are trusted beets class constants (not user input), and SQL
                 # identifiers can't be parameter-bound. No injection vector.
-                item_flex = [r["key"] for r in tx.query(f"SELECT DISTINCT key FROM {Item._flex_table}")]  # nosec B608
-                album_flex = [r["key"] for r in tx.query(f"SELECT DISTINCT key FROM {Album._flex_table}")]  # nosec B608
+                # NOTE: Cannot use individual bandit error codes here because it will give erroneous, unsuppressable warnings  (see https://github.com/PyCQA/bandit/issues/942)
+                item_flex = [row["key"] for row in tx.query(f"SELECT DISTINCT key FROM {Item._flex_table}")]  # nosec
+                album_flex = [row["key"] for row in tx.query(f"SELECT DISTINCT key FROM {Album._flex_table}")]  # nosec
             return {
                 "item_fields": sorted(Item.all_keys()),
                 "album_fields": sorted(Album.all_keys()),

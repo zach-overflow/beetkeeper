@@ -8,7 +8,7 @@ dev = [
   "bandit>=1.9",
   "fastapi[standard]==0.138.0",
   "ipython>=9.3.0",
-  "mypy>=2.1",
+  "mypy>=2.1.0",
   "pytest>=9.1",
   "pytest-socket",
   "pytest-xdist",
@@ -193,8 +193,17 @@ skip-magic-trailing-comma = true
 docstring-code-format = true
 
 
-[tool.pytest.ini_options]
-addopts = "-p no:cacheprovider --disable-socket --allow-hosts=testclient --durations=5"
+# [tool.pytest.ini_options] # TODO: see if this can be `tool.pytest` now with pytest 9.x: https://docs.pytest.org/en/latest/reference/customize.html#pyproject-toml
+[tool.pytest]
+minversion = "9.1"
+addopts = [
+  "--force-short-summary",
+  "--tb=line",
+  "-p",
+  "no:cacheprovider",
+  "--disable-socket",
+  "--allow-hosts=testclient",
+]
 strict_markers = true
 markers = [
   "releasetest: mark test as a release-only test which should be skipped on non-release builds.",
@@ -208,8 +217,9 @@ filterwarnings = ["error:pytest.PytestWarning.*"]
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
-exclude = ["build_scripts/", "src/python/tests/", "docs/"]
-mypy_path = "$MYPY_CONFIG_FILE_DIR/src/python"
+exclude = ["build_scripts/", "docs/"]
+explicit_package_bases = true
+namespace_packages = true
 
 [[tool.mypy.overrides]]
 module = ["diskcache.*"]
@@ -221,4 +231,12 @@ module = ["beets.*"]
 ignore_missing_imports = true
 
 [tool.bandit]
-exclude_dirs = [".github", "build_scripts", "docs", "src/python/tests", ".venv"]
+exclude_dirs = [
+  ".github",
+  "build_scripts",
+  "docs",
+  "src/beetsplug/plugin_tests",
+  "src/python/tests",
+  "src/release_tests",
+  ".venv",
+]
