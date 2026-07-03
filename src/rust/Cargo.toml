@@ -2,7 +2,7 @@
 name = "beetkeeper"
 description = "Stub for eventual rust components to the beetkeeper Python library."
 version = "0.0.1-alpha"
-readme = ""
+readme = "README.md"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/zach-overflow/beetkeeper"
