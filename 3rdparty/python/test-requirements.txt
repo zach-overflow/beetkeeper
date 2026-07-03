@@ -1,0 +1,19 @@
+# Test-only third-party deps, declared into the `beetkeeper-resolve` (the resolve the test code lives in).
+#
+# WHY THIS FILE EXISTS: `pants check` runs mypy per-resolve, building the type-check env from each target's
+# transitive deps resolved against THAT target's resolve lockfile. Test code under `src/python/tests`,
+# `src/beetsplug/plugin_tests`, and `src/release_tests` imports these packages directly, so they must be
+# resolvable in `beetkeeper-resolve` or mypy reports `import-not-found` (e.g. for `pytest`). Dependency
+# inference then auto-wires each import to its single owner here — no per-target annotation needed.
+#
+# These are NOT in the distributions' `[project].dependencies`, so they never ship in the wheels (wheel
+# metadata comes from `src/python/pyproject.toml` / `src/beetsplug/pyproject.toml`, not from this resolve).
+# Bounds mirror the `[dependency-groups] dev` group in the repo-root pyproject.toml (the uv-managed env).
+# Pytest itself also lives in `tools-resolve` (for the `pants test` runner + mypy tool) — a different
+# resolve serving a different goal; that is expected, not duplication to remove. See `pants.toml` `[mypy]`.
+httpx
+pytest>=9.1
+pytest-socket>=0.8.0
+pytest-xdist>=3.8.0
+ruamel.yaml>=0.19.1
+tomlkit

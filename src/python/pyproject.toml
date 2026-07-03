@@ -31,6 +31,7 @@ dynamic = [
 ] # Resolved from `beetkeeper._version.__version__` (see [tool.setuptools.dynamic]).
 requires-python = ">=3.14,<3.15"
 dependencies = [
+  "anyio==4.14",
   "aiosqlite>=0.21",
   "alembic>=1.16",
   "beets>=2.11.0",
@@ -69,8 +70,12 @@ include = ["beetkeeper*"]
 [tool.setuptools.package-data]
 beetkeeper = ["py.typed"]
 # Non-`.py` alembic files (the `.py` env/versions modules are included automatically as package modules).
+# `script.py.mako` intentionally omitted since it is only required for development of new revision scripts. `db upgrade` works without it.
 "beetkeeper.db" = ["alembic.ini"]
-"beetkeeper.db.alembic" = ["script.py.mako"]
+
+# NOTE: no `[tool.mypy]` here. Pants runs a single mypy with `--config-file=<repo-root>/pyproject.toml`
+# (see `pants.toml` `[mypy] config`), so any `[tool.mypy]` in this file would be silently ignored. The
+# repo-root pyproject.toml is the only mypy config; Pants supplies source roots via `MYPYPATH` itself.
 
 [tool.uv]
 # https://docs.astral.sh/uv/reference/settings/#package

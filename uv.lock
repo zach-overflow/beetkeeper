@@ -15,7 +15,7 @@ dev = [
     { name = "bandit", specifier = ">=1.9" },
     { name = "fastapi", extras = ["standard"], specifier = "==0.138.0" },
     { name = "ipython", specifier = ">=9.3.0" },
-    { name = "mypy", specifier = ">=2.1" },
+    { name = "mypy", specifier = ">=2.1.0" },
     { name = "pytest", specifier = ">=9.1" },
     { name = "pytest-socket" },
     { name = "pytest-xdist" },
@@ -147,6 +147,7 @@ source = { editable = "src/python" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
+    { name = "anyio" },
     { name = "beets" },
     { name = "click" },
     { name = "fastapi" },
@@ -166,6 +167,7 @@ dependencies = [
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21" },
     { name = "alembic", specifier = ">=1.16" },
+    { name = "anyio", specifier = "==4.14" },
     { name = "beets", specifier = ">=2.11.0" },
     { name = "click", specifier = "==8.4.1" },
     { name = "fastapi", specifier = "==0.138.0" },

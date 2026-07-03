@@ -20,14 +20,12 @@ def test_cmd(name: str, command: str, execution_dependencies: list[str] | None =
     tags = kwargs.pop("tags", []) + ["test_cmd"]
     extra_execution_dependencies = execution_dependencies or []
     builtin_exec_deps = [
-        "//:dev-requirements",
         "//:pyproject",
         "//src/beetsplug:plugin-whl",
         "//src/beetsplug:plugin-pyproject",
         "//src/python:app-requirements",
         "//src/python:dist-pyproject",
         "//src/python:lib-source-files",
-        "//src/python:test-files",
         "//:uv-lockfile",
     ]
     test_shell_command(

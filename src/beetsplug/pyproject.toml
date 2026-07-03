@@ -37,10 +37,17 @@ Repository = "https://github.com/zach-overflow/beetkeeper"
 Changelog = "https://github.com/zach-overflow/beetkeeper/releases"
 
 [tool.setuptools.packages.find]
+# Only the plugin package ships in the wheel. `plugin_tests*` is named explicitly (and `include` already
+# whitelists just `beetkeeper_plugin*`) so the renamed test tree can never leak into the distribution.
 include = ["beetkeeper_plugin*"]
+exclude = ["plugin_tests*"]
 
 [tool.setuptools.package-data]
 "*" = ["py.typed"]
+
+# NOTE: no `[tool.mypy]` here. Pants runs a single mypy with `--config-file=<repo-root>/pyproject.toml`
+# (see `pants.toml` `[mypy] config`), so any `[tool.mypy]` in this file would be silently ignored. The
+# repo-root pyproject.toml is the only mypy config; Pants supplies source roots via `MYPYPATH` itself.
 
 [tool.uv]
 # https://docs.astral.sh/uv/reference/settings/#package
