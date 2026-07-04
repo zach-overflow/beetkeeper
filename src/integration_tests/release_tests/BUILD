@@ -11,6 +11,7 @@ python_test_utils(
 # `[pytest].skip` subsystem option does NOT do this — it is not consulted by the test goal; only
 # this per-target field is. Applies recursively to `python_tests` in subdirectories.
 __defaults__(
-    {python_tests: dict(dependencies=["//src/release_tests:release-test-utils"], skip_tests=True)}, extend=True
+    {python_tests: dict(dependencies=["//src/integration_tests/release_tests:release-test-utils"], skip_tests=True)},
+    extend=True,
 )
 python_tests()

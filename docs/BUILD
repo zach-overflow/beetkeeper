@@ -1,6 +1,4 @@
-# The `mkdocs` console script (Material theme + mkdocstrings + neoteroi OAD plugins) built from the shared
-# `tools-resolve` lockfile. mkdocstrings uses griffe STATIC analysis over `src/python`/`src/beetsplug`
-# (configured in mkdocs.yml `paths`), so this binary needs only the mkdocs tools — not the app installed.
+# The `mkdocs` console script (with the Material theme) built from the shared `tools-resolve` lockfile.
 #
 # `pants run` executes this in the repo workspace (repo root as cwd), so mkdocs sees mkdocs.yml, docs/, and
 # the src/ trees at their real paths, and writes ./site. Usage:
@@ -12,15 +10,5 @@ pex_binary(
     name="mkdocs-pex",
     script="mkdocs",
     resolve="tools-resolve",
-    dependencies=[
-        "//3rdparty/tools:tools-requirements#mkdocs",
-        "//3rdparty/tools:tools-requirements#mkdocs-material",
-        "//3rdparty/tools:tools-requirements#mkdocstrings",
-        "//3rdparty/tools:tools-requirements#neoteroi-mkdocs",
-    ],
+    dependencies=["//3rdparty/tools:tools-requirements#mkdocs", "//3rdparty/tools:tools-requirements#mkdocs-material"],
 )
-
-# `pants run docs:openapi` — regenerate docs/openapi.json from the app's OpenAPI schema (embedded on the
-# REST API page via the Neoteroi OAD plugin). This imports beetkeeper, so it shells out to `uv run` (the
-# app's env), unlike the mkdocs binary above which only needs `tools-resolve`.
-run_shell_command(name="openapi", command="uv run python build_scripts/dump_openapi.py", workdir="/")

@@ -9,7 +9,7 @@ bandit==1.9.4
 mypy>=2.1.0
 mypy-extensions>=1.1.0
 # Exact pins, kept in sync with `src/python/pyproject.toml` by
-# `src/python/tests/meta_tests/test_resolve_version_consistency.py` — the `pydantic.mypy` plugin should
+# `src/integration_tests/meta_tests/test_resolve_version_consistency.py` — the `pydantic.mypy` plugin should
 # match the pydantic the app runs with, and the test suite's FastAPI must match the app's. Pants can't
 # single-source these across resolves (parametrize is unsupported on `python_requirements` overrides), so
 # the test enforces the pins stay equal. `fastapi[standard]` here (vs. plain `fastapi` in the app deps)
@@ -31,7 +31,3 @@ tomlkit
 ################################################################
 mkdocs>=1.6.1
 mkdocs-material>=9.7.6
-mkdocstrings[python]>=1.0.4
-# Renders the app's OpenAPI spec inline on the REST API docs page (the `[OAD(...)]` directive). See
-# docs/usage/rest-api.md; the spec is generated to docs/openapi.json by the `docs:openapi` target.
-neoteroi-mkdocs>=1.1.0

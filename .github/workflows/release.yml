@@ -101,14 +101,14 @@ jobs:
           fi
 
       - name: Validate release versions
-        # Drift guard (src/release_tests, opt-in via `-m release_tests`): asserts the committed
+        # Drift guard (src/integration_tests/release_tests, opt-in via `-m release_tests`): asserts the committed
         # `beetkeeper._version.__version__` and the plugin's static `[project].version` agree with each
         # other and -- for a `vMAJOR.MINOR.PATCH` tag -- with the pushed tag. The committed source OWNS the
         # version (there is no in-CI stamping), so a forgotten bump fails the release here, before any build
         # or publish. The git-tag assertion reads GITHUB_REF_TYPE / GITHUB_REF_NAME, set for this tag push.
         # `--all-groups` matches the `//:pytest` invocation (and pulls in tomlkit, used by the conftest).
         run: |
-          uv run --all-groups pytest -m release_tests -vv src/release_tests
+          uv run --all-groups pytest -m release_tests -vv src/integration_tests/release_tests
 
       - name: Build artifacts
         # Builds the wheels (-> dist/) and the Docker image (loaded into the local daemon as

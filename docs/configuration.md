@@ -35,9 +35,10 @@ beetkeeper:
 | `server.server_workers`   | int     | `2`     | Number of server worker processes (must be `> 0`).             |
 | `database.sqlite_path`    | path    | —       | Path to beetkeeper's own SQLite db (created on first migration). |
 
-!!! tip "Generated reference"
-    The table above is a friendly summary. For the authoritative, always-in-sync definition of every field,
-    its validation, and defaults, see the generated **[Configuration schema](reference/configuration.md)**.
+!!! tip "Authoritative source"
+    The table above is a friendly summary. For the exact field definitions, validation, and defaults, see the
+    [`beetkeeper.settings.user_config`](https://github.com/zach-overflow/beetkeeper/blob/main/src/python/beetkeeper/settings/user_config.py)
+    models in the source.
 
 !!! warning "Separate database"
     `database.sqlite_path` is beetkeeper's own bookkeeping database — **not** your beets library database.

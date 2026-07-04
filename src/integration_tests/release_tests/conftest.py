@@ -8,8 +8,8 @@ import tomlkit
 
 _RELEASE_TEST_MARKER: Final[str] = "release_tests"
 
-# Path to `src/` directory
-_SRC_PATH: Final[Path] = Path(__file__).resolve().parent.parent
+# Path to `src/` directory (conftest lives at `src/integration_tests/release_tests/conftest.py`).
+_SRC_PATH: Final[Path] = Path(__file__).resolve().parent.parent.parent
 # Path to `src/beetsplug/pyproject.toml` file
 _PLUGIN_PYPROJ_PATH: Final[Path] = _SRC_PATH / "beetsplug" / "pyproject.toml"
 # Path to `src/python/beetkeeper/_version.py` file

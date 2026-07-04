@@ -2,7 +2,7 @@
 #
 # WHY THIS FILE EXISTS: `pants check` runs mypy per-resolve, building the type-check env from each target's
 # transitive deps resolved against THAT target's resolve lockfile. Test code under `src/python/tests`,
-# `src/beetsplug/plugin_tests`, and `src/release_tests` imports these packages directly, so they must be
+# `src/beetsplug/plugin_tests`, and `src/integration_tests/release_tests` imports these packages directly, so they must be
 # resolvable in `beetkeeper-resolve` or mypy reports `import-not-found` (e.g. for `pytest`). Dependency
 # inference then auto-wires each import to its single owner here — no per-target annotation needed.
 #

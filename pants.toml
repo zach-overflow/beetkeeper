@@ -35,7 +35,7 @@ dependents = "transitive"
 
 [source]
 # `src/python` + `src/beetsplug` are the two distribution roots. `src` is a broader root for non-distribution
-# Python under `src/` (e.g. `src/release_tests`); Pants uses the longest-matching prefix, so files under the
+# Python under `src/` (e.g. `src/integration_tests/release_tests`); Pants uses the longest-matching prefix, so files under the
 # two distribution roots still resolve to those, leaving their wheel module layouts unchanged.
 root_patterns = ["src", "src/beetsplug", "src/python"]
 
@@ -128,7 +128,7 @@ install_from_resolve = "tools-resolve"
 # https://www.pantsbuild.org/stable/reference/subsystems/pytest#requirements
 requirements = [
   # `[standard]` adds the test/tool extras (uvicorn, httpx, ...); the bare version is kept equal to the
-  # app's `fastapi` pin by `src/python/tests/meta_tests/test_resolve_version_consistency.py`.
+  # app's `fastapi` pin by `src/integration_tests/meta_tests/test_resolve_version_consistency.py`.
   "fastapi[standard]",
   "pytest",
   "pytest-socket",

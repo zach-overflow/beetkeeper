@@ -210,8 +210,7 @@ markers = [
   "slow: mark test as a slow test which should be skipped by default in non-CI builds unless `--slowtests` is provided.",
   "no_autouse_mock_lifespan_singleton_inst: mark a test to not use the auto-use fixture for the fastapi lifespan singleton.",
   "override_global_httpx_mock: mark a test to override the configured httpx global fixture in favor of its own.",
-  "requires_host_sources: Any integration tests which are opt-in and require a user-specified host directory for the raw and library dirpaths, with real audio files.",
-  "release_tests: Any tests specifically meant to run prior to cutting a release, only when static version numbers change and/or when a version tag is pushed. Gates the tests defined under `src/release_tests/`.",
+  "release_tests: Any tests specifically meant to run prior to cutting a release, only when static version numbers change and/or when a version tag is pushed. Gates the tests defined under `src/integration_tests/release_tests/`.",
 ]
 filterwarnings = ["error:pytest.PytestWarning.*"]
 
@@ -237,6 +236,6 @@ exclude_dirs = [
   "docs",
   "src/beetsplug/plugin_tests",
   "src/python/tests",
-  "src/release_tests",
+  "src/integration_tests",
   ".venv",
 ]

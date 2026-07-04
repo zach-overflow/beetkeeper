@@ -1,5 +1,5 @@
 # The raw requirements file as a materializable `file` (so the resolve-consistency test under
-# `src/python/tests/meta_tests` can read it inside the Pants pytest sandbox; it's a dep of that test target).
+# `src/integration_tests/meta_tests` can read it inside the Pants pytest sandbox; it's a dep of that test target).
 file(name="tools-resolve-requirements-file", source="tools-resolve-requirements.txt")
 python_requirements(
     name="tools-requirements",
