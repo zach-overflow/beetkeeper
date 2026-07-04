@@ -7,6 +7,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "beetkeeper-plugin"
 version = "0.0.3"
+requires-python = ">=3.14,<3.15"
+dependencies = ["beets>=2.11.0", "requests>=2.34"]
 authors = [{ name = "Zach Gottesman" }]
 maintainers = [{ name = "zach-overflow" }]
 keywords = [
@@ -18,9 +20,8 @@ keywords = [
   "self-hosted",
 ]
 license = "AGPL-3.0-or-later"
-description = "Beets plugin client to integrate with the beetkeeper server."
-requires-python = ">=3.14,<3.15"
-dependencies = ["beets>=2.11.0", "requests>=2.34"]
+description = "A peripheral beets plugin component for event tracking in the beetkeeper application."
+readme = "README.md"
 
 [project.urls]
 Documentation = "https://github.com/zach-overflow/beetkeeper/README.md"
