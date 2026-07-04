@@ -38,7 +38,6 @@ async def test_list_empty_library_items_and_albums(client: AsyncClient) -> None:
 
 @pytest.mark.anyio
 async def test_list_accepts_repeatable_and_field_query_params(client: AsyncClient) -> None:
-    # Empty library, but the keyword/field/sort params must parse into a valid beets query without error.
     response = await client.get(
         "/api/query/list", params={"keyword": ["foo", "bar"], "field": "artist:nobody", "sort_by": "year+"}
     )

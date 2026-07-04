@@ -1,16 +1,11 @@
 #!/usr/bin/env bash
-# Single source of truth: `VERSION` (repo root) holds the one semver every published artifact carries.
-# Propagate it into the two committed sites that must agree with it:
-#   * src/python/beetkeeper/_version.py -> `__version__`        (the beetkeeper wheel AND the Docker image)
-#   * src/beetsplug/pyproject.toml      -> `[project].version` (the beetkeeper-plugin wheel)
+# Propagate `VERSION` (repo root, single source of truth) into the two sites that must agree with it:
+#   * src/python/beetkeeper/_version.py -> `__version__`        (beetkeeper wheel + Docker image)
+#   * src/beetsplug/pyproject.toml      -> `[project].version` (beetkeeper-plugin wheel)
+# No args writes both sites then `uv lock`; `--check` verifies and exits non-zero on drift.
 #
-# No args -> WRITE both sites from VERSION, then `uv lock` (the plugin's static version is pinned in
-#            uv.lock; `beetkeeper`'s is dynamic, so bumping it never touches the lock).
-# --check -> verify both already equal VERSION; exit non-zero on drift, writing nothing.
-#
-# NOTE: `--check` runs inside Pants' minimal `test_cmd` sandbox, which provides ONLY bash + uv (no
-# coreutils like sed/dirname/tr). So everything reached on the --check path is pure bash; the WRITE
-# path (developer-run, full shell) may use sed/mktemp/mv.
+# `--check` runs in Pants' `test_cmd` sandbox with only bash + uv (no coreutils), so its code path is pure
+# bash; the WRITE path is developer-run with a full shell (sed/mktemp/mv).
 set -euo pipefail
 
 script_dir="${BASH_SOURCE[0]%/*}"

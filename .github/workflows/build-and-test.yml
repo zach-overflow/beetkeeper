@@ -7,14 +7,15 @@ on:
     tags-ignore:
       - 'v*'
 
-# Runs the project's validation natively via Pants (instead of building a throwaway test image and running
-# it inside), following https://www.pantsbuild.org/stable/docs/using-pants/using-pants-in-ci :
-#   * `pantsbuild/actions/init-pants` bootstraps + caches Pants.
-#   * uv is installed because the lint/test goals shell out to `uv run` (see hooks/*.sh and `//:pytest`).
-#   * the app image is built with `pants package` (no push), per https://github.com/pantsbuild/example-docker .
+# Layer CI-only overrides on top of pants.toml for every Pants invocation below (see pants.ci.toml).
+env:
+  PANTS_CONFIG_FILES: pants.ci.toml
+
+# Validation runs natively via Pants (not a throwaway test image); see
+# https://www.pantsbuild.org/stable/docs/using-pants/using-pants-in-ci
 jobs:
   build-and-test:
-    name: Pants lint, test, and build image
+    name: Build and Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -24,9 +25,7 @@ jobs:
           fetch-depth: 0
 
       - name: Lint GitHub Actions workflows
-        # actionlint has no Pants backend, so the shared hook (also used by prek) runs it directly; it
-        # downloads a pinned actionlint since the runner has none on PATH. yamllint (via `pants lint ::`
-        # below) covers generic YAML; this adds the GitHub-Actions-specific checks.
+        # No Pants backend for actionlint, so the shared hook runs it directly (downloads a pinned binary).
         run: |
           bash hooks/actionlint.sh
 
@@ -36,8 +35,7 @@ jobs:
           python-version: '3.14'
 
       - name: Set up uv
-        # The Pants lint/test goals delegate to `uv run` (hooks/*.sh and the `//:pytest` test_shell_command),
-        # so uv must be on PATH. Pinned to match uv.lock / the Dockerfile.
+        # Pants lint/test goals shell out to `uv run`, so uv must be on PATH. Pinned to match uv.lock.
         uses: astral-sh/setup-uv@v5
         with:
           version: '0.11.23'
@@ -55,16 +53,17 @@ jobs:
         run: |
           pants update-build-files --check ::
 
-      - name: Lint, test, type-check, and security scan
-        # `pants test ::` runs the `//:pytest` test command plus the mypy + bandit + uv-lockfile-check `test_cmd`s (see
-        # hooks/BUILD); `pants lint ::` runs ruff / shellcheck / shfmt / hadolint / taplo / visibility checks.
+      - name: Static checks and tests
         run: |
-          pants lint test ::
-      
+          pants lint check test ::
+
       - name: Build artifacts (no push)
-        # `pants package ::` will attempt to build all Python wheels, Docker images, and any other artifacts.
         run: |
           pants package ::
+
+      - name: Build docs site
+        run: |
+          pants run docs:mkdocs-pex -- build --strict
 
       - name: Upload Pants log
         if: always()

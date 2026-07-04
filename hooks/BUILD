@@ -1,16 +1,13 @@
 shell_sources(name="hooks-scripts")
 
-# Wraps the `uv lock --check` command as a testable target. The `test_cmd` builtins don't materialize the
-# hook script itself, so (like mypy/bandit below) depend on its per-file `hooks-scripts` target.
+# `test_cmd` doesn't materialize the hook script itself, so depend on its `hooks-scripts` target.
 test_cmd(
     name="uv-lockfile-check",
     command="./hooks/uv-lockfile-check.sh",
     execution_dependencies=["//hooks/uv-lockfile-check.sh:hooks-scripts"],
 )
 
-# Verify the canonical `VERSION` has been propagated into both distributions' committed version fields.
-# Builtin test_cmd deps already materialize `_version.py` (lib-source-files) and the plugin pyproject;
-# add the VERSION file + the hook script itself.
+# Builtin deps already materialize `_version.py` + plugin pyproject; add the VERSION file + hook script.
 test_cmd(
     name="version-sync-check",
     command="./hooks/version-sync.sh --check",

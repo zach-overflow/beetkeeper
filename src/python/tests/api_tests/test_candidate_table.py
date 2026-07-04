@@ -37,14 +37,12 @@ def test_columns_are_only_the_differing_attributes() -> None:
 
     table = build_candidate_table(candidates)
     assert table is not None
-    # label (same), data_source (same), country/label/disambig/tracks (all None) are excluded.
-    # similarity, year, media, catalognum differ; album_id differs -> "Link" via release_url.
     assert table["headers"] == ["Match", "Year", "Media", "Catalog #", "Link"]
     assert [row["index"] for row in table["rows"]] == [0, 1, 2]
 
     first = table["rows"][0]
     assert [cell["text"] for cell in first["cells"]] == ["99%", "2026", "Digital Media", "W1", "view"]
-    assert first["cells"][-1]["url"] == "https://musicbrainz.org/release/id0"  # the Link cell
+    assert first["cells"][-1]["url"] == "https://musicbrainz.org/release/id0"
 
 
 def test_attribute_shared_by_all_candidates_is_hidden() -> None:
@@ -54,24 +52,23 @@ def test_attribute_shared_by_all_candidates_is_hidden() -> None:
     ]
     table = build_candidate_table(candidates)
     assert table is not None
-    assert "Year" not in table["headers"]  # both 2007 -> not differentiating
+    assert "Year" not in table["headers"]
     assert table["headers"] == ["Match", "Media"]
 
 
 def test_single_candidate_shows_all_populated_attributes() -> None:
     table = build_candidate_table([_candidate(0, similarity=0.97, year=2026, media="Digital Media")])
     assert table is not None
-    # Nothing to differentiate against, so each populated attribute is shown.
     assert table["headers"] == ["Match", "Album", "Year", "Media"]
     assert len(table["rows"]) == 1
 
 
 def test_link_column_hidden_when_no_release_urls() -> None:
-    # Differing album_ids but a non-MusicBrainz source yields no release_url, so the Link column is dropped.
+    # A non-MusicBrainz source yields no release_url, so no Link column even though album_id differs.
     candidates = [
         _candidate(0, similarity=0.9, data_source="Discogs", album_id="d0"),
         _candidate(1, similarity=0.8, data_source="Discogs", album_id="d1"),
     ]
     table = build_candidate_table(candidates)
     assert table is not None
-    assert table["headers"] == ["Match"]  # album_id differs but release_url is None for both
+    assert table["headers"] == ["Match"]

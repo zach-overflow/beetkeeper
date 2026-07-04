@@ -23,7 +23,7 @@ async def test_create_get_list(session_factory: async_sessionmaker[AsyncSession]
     job = await store.create(["/music/a", "/music/b"])
     assert job.status is ImportJobStatus.PENDING
     assert job.paths == ["/music/a", "/music/b"]
-    assert job.quiet is False  # interactive by default
+    assert job.quiet is False
 
     fetched = await store.get(job.id)
     assert fetched is not None and fetched.id == job.id
@@ -59,8 +59,8 @@ async def test_lease_is_mutually_exclusive(session_factory: async_sessionmaker[A
     await store.ensure_lock_row()
     assert await store.acquire_lock("worker-1", lease_seconds=30) is True
     assert await store.lock_holder() == "worker-1"
-    assert await store.acquire_lock("worker-2", lease_seconds=30) is False  # held by worker-1
-    assert await store.acquire_lock("worker-1", lease_seconds=30) is True  # holder may renew
+    assert await store.acquire_lock("worker-2", lease_seconds=30) is False
+    assert await store.acquire_lock("worker-1", lease_seconds=30) is True
 
 
 @pytest.mark.anyio
@@ -68,7 +68,7 @@ async def test_expired_lease_allows_takeover(session_factory: async_sessionmaker
     store = _store(session_factory)
     await store.ensure_lock_row()
     assert await store.acquire_lock("worker-1", lease_seconds=-1) is True  # already-expired lease
-    assert await store.acquire_lock("worker-2", lease_seconds=30) is True  # worker-2 takes over
+    assert await store.acquire_lock("worker-2", lease_seconds=30) is True
 
 
 @pytest.mark.anyio
@@ -78,24 +78,24 @@ async def test_claim_and_decision_roundtrip(session_factory: async_sessionmaker[
 
     claimed = await store.claim_next("worker-1")
     assert claimed is not None and claimed.id == job.id and claimed.status is ImportJobStatus.RUNNING
-    assert await store.claim_next("worker-1") is None  # nothing left to claim
+    assert await store.claim_next("worker-1") is None
 
     await store.set_awaiting(DecisionRequest(job_id=job.id, task_id="t1", prompt="pick one"))
     awaiting = await store.get(job.id)
     assert awaiting is not None and awaiting.status is ImportJobStatus.AWAITING_DECISION
     assert awaiting.pending_decision is not None and awaiting.pending_decision.prompt == "pick one"
 
-    assert awaiting.decision_submitted is False  # nothing answered yet
+    assert awaiting.decision_submitted is False
 
     # A decision posted by *any* process is consumed by the leader exactly once.
     assert await store.submit_decision(job.id, ImportDecision(action=ImportAction.SKIP)) is True
     submitted = await store.get(job.id)
     # The UI uses this flag to keep polling while the worker consumes the answer (still AWAITING_DECISION).
     assert submitted is not None and submitted.decision_submitted is True
-    assert await store.submit_decision(job.id, ImportDecision(action=ImportAction.SKIP)) is False  # already answered
+    assert await store.submit_decision(job.id, ImportDecision(action=ImportAction.SKIP)) is False
     taken = await store.take_decision(job.id)
     assert taken is not None and taken.action is ImportAction.SKIP
-    assert await store.take_decision(job.id) is None  # consumed
+    assert await store.take_decision(job.id) is None
     resumed = await store.get(job.id)
     assert resumed is not None and resumed.status is ImportJobStatus.RUNNING and resumed.pending_decision is None
 
@@ -105,7 +105,7 @@ async def test_set_output_persists_and_is_exposed(session_factory: async_session
     store = _store(session_factory)
     job = await store.create(["/music/a"])
     created = await store.get(job.id)
-    assert created is not None and created.output is None  # no output until the worker writes some
+    assert created is not None and created.output is None
 
     await store.set_output(job.id, "Starting import of: /music/a\nImporting 'X - Y' as-is.")
     updated = await store.get(job.id)
@@ -148,7 +148,6 @@ async def test_record_import_events_writes_listener_rows(session_factory: async_
     ]
     assert len(albums) == 1 and albums[0].beets_album_id == 7
     assert {(t.beets_item_id, t.beets_album_id) for t in tracks} == {(11, 7), (12, 7), (99, None)}
-    # Every child row is linked to a real parent listener event.
     listener_ids = {le.event_id for le in listeners}
     assert all(a.listener_event_id in listener_ids for a in albums)
     assert all(t.listener_event_id in listener_ids for t in tracks)
@@ -169,7 +168,7 @@ async def test_recover_orphans_fails_only_other_workers_jobs(session_factory: as
     orphan = await store.create(["/music/orphan"])
     await store.claim_next("dead-worker")  # claims `orphan` (oldest PENDING) under the dead worker
     mine = await store.create(["/music/mine"])
-    await store.claim_next("new-leader")  # claims `mine`
+    await store.claim_next("new-leader")
 
     recovered = await store.recover_orphans("new-leader")
     assert recovered == 1

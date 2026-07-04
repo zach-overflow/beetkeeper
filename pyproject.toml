@@ -1,7 +1,5 @@
-# NOTE: the build-system and project-specific configuration for the beetkeeper distribution
-# is defined under `src/python/pyproject.toml`. This is to avoid weird undesired behaviors
-# in the pantsbuild `python_distribution` target's metadata injection. For more info, see the
-# comment at top of `src/python/pyproject.toml`. 
+# The distribution's build-system/`[project]` config lives in `src/python/pyproject.toml` to avoid Pants'
+# `python_distribution` metadata injection; see the comment there.
 [dependency-groups]
 app_image = ["beetkeeper @ file:///app/src/python/beetkeeper.whl"]
 dev = [
@@ -18,16 +16,11 @@ dev = [
 ]
 
 [tool.uv]
-# `beets` is the one runtime dependency shared by BOTH workspace members (`beetkeeper` and
-# `beetkeeper-plugin`). Each still declares its own `beets` requirement in its `[project].dependencies`
-# (that is what lands in the published wheel metadata — setuptools, not uv, builds the wheels). This
-# workspace-level constraint only governs how uv RESOLVES the shared lockfile/dev environment, keeping
-# the version both members resolve against in lockstep. https://docs.astral.sh/uv/reference/settings/#constraint-dependencies
+# Constrains only how uv resolves the shared lockfile, keeping both workspace members' `beets` in lockstep;
+# the wheels' actual `beets` deps come from each member's `[project]`.
 constraint-dependencies = ["beets>=2.11.0"]
 
-# The distribution's `[project]` lives in `src/python/pyproject.toml`, not here, so it must be
-# registered as a uv workspace member — otherwise uv (which only reads this root file) can't see
-# the package or its runtime dependencies and `uv lock` fails with "No `project` table found".
+# Members must be registered here or uv (which only reads this root file) can't see them and `uv lock` fails.
 [tool.uv.workspace]
 members = ["src/python", "src/beetsplug"]
 
@@ -72,16 +65,8 @@ indent-width = 4
 
 [tool.ruff.lint]
 exclude = ["build_scripts/**/*.py", "src/python/tests/**/*.py"]
-select = [
-  "E",   # pycodestyle
-  "F",   # Pyflakes
-  "UP",  # pyupgrade
-  "B",   # flake8-bugbear
-  "SIM", # flake8-simplify
-  "I",   # isort
-]
+select = ["E", "F", "UP", "B", "SIM", "I"]
 extend-select = [
-  # Async ruff rules: https://docs.astral.sh/ruff/rules/#flake8-async-async
   "ASYNC",
   "B006",
   "B007",
@@ -94,14 +79,14 @@ extend-select = [
   "D417",
   "D419",
   "LOG",
-  "FAST",    # https://docs.astral.sh/ruff/rules/#fastapi-fast
+  "FAST",
   "PLW0603",
   "PT",
-  "PYI045",  # https://docs.astral.sh/ruff/rules/iter-method-return-iterable/
-  "PT024",   # https://docs.astral.sh/ruff/rules/pytest-unnecessary-asyncio-mark-on-fixture/
-  "PLE1142", # https://docs.astral.sh/ruff/rules/await-outside-async/
-  "PLE1700", # https://docs.astral.sh/ruff/rules/yield-from-in-async-function/
-  "RUF006",  # https://docs.astral.sh/ruff/rules/asyncio-dangling-task/
+  "PYI045",
+  "PT024",
+  "PLE1142",
+  "PLE1700",
+  "RUF006",
   "RUF008",
   "RUF009",
   "RUF012",
@@ -114,13 +99,13 @@ extend-select = [
   "RUF049",
   "RUF100",
   "RUF101",
-  "RUF200",  # https://docs.astral.sh/ruff/rules/invalid-pyproject-toml/
-  "TC",      # https://docs.astral.sh/ruff/rules/#flake8-type-checking-tc
-  "TID25",   # flake8-tidy-imports rules
-  "TRY002",  # https://docs.astral.sh/ruff/rules/raise-vanilla-class/
-  "UP",      # Keep Python syntax modern with pyupgrade rules
+  "RUF200",
+  "TC",
+  "TID25",
+  "TRY002",
+  "UP",
 ]
-# This is to get the line length auto-formatting mostly handled https://stackoverflow.com/a/77796620
+# Ignore rules that conflict with the ruff formatter (https://stackoverflow.com/a/77796620).
 ignore = [
   "COM812",
   "COM819",
@@ -144,18 +129,14 @@ ignore = [
 
 
 [tool.ruff.lint.per-file-ignores]
-# Ignore type_checking optimized imports in fastapi files because of type-hint tricks like `fastapi.Depends`.
+# TC off: runtime-needed type hints like `fastapi.Depends` must not move under TYPE_CHECKING.
 "src/python/beetkeeper/api/**/*.py" = ["TC", "D101"]
-# Ignore type_checking optimized imports in db since those are all pydantic models
+# TC off: these are all runtime pydantic models.
 "src/python/beetkeeper/db/**/*.py" = ["TC"]
-# Not fully in our control what libraries are used or not in the `beetsplug` space.
 "src/beetsplug/**/*.py" = ["TID25"]
 
-# https://docs.astral.sh/ruff/settings/#lintflake8-type-checking
 [tool.ruff.lint.flake8-type-checking]
-# https://docs.astral.sh/ruff/settings/#lint_flake8-type-checking_exempt-modules
 exempt-modules = ["typing", "typing_extensions"]
-# https://docs.astral.sh/ruff/settings/#lint_flake8-type-checking_runtime-evaluated-base-classes
 runtime-evaluated-base-classes = [
   "pydantic.BaseModel",
   "sqlalchemy.orm.DeclarativeBase",
@@ -163,7 +144,6 @@ runtime-evaluated-base-classes = [
 ]
 
 [tool.ruff.lint.isort]
-# https://docs.astral.sh/ruff/settings/#lint_isort_split-on-trailing-comma
 split-on-trailing-comma = false
 section-order = [
   "future",
@@ -178,22 +158,18 @@ known-first-party = ["beetkeeper", "beetsplug.beetkeeper_plugin"]
 "requests".msg = "Use httpx instead."
 
 [tool.ruff.lint.pycodestyle]
-# https://docs.astral.sh/ruff/rules/line-too-long/#why-is-this-bad
 ignore-overlong-task-comments = true
 
-# https://docs.astral.sh/ruff/settings/#lint_pydocstyle_convention
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-# RUFF formatter
 [tool.ruff.format]
-# https://docs.astral.sh/ruff/settings/#format_skip-magic-trailing-comma
 skip-magic-trailing-comma = true
-# https://docs.astral.sh/ruff/settings/#format_docstring-code-format
 docstring-code-format = true
 
 
-# [tool.pytest.ini_options] # TODO: see if this can be `tool.pytest` now with pytest 9.x: https://docs.pytest.org/en/latest/reference/customize.html#pyproject-toml
+# TODO: confirm `[tool.pytest]` (vs `[tool.pytest.ini_options]`) is valid on pytest 9.x:
+# https://docs.pytest.org/en/latest/reference/customize.html#pyproject-toml
 [tool.pytest]
 minversion = "9.1"
 addopts = [
@@ -224,7 +200,7 @@ namespace_packages = true
 module = ["diskcache.*"]
 ignore_missing_imports = true
 
-# beets ships no py.typed marker; `beetkeeper.core` is the only package allowed to import it.
+# beets ships no py.typed marker.
 [[tool.mypy.overrides]]
 module = ["beets.*"]
 ignore_missing_imports = true

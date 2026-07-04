@@ -1,0 +1,51 @@
+---
+# Copied from https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
+name: Bug Report
+description: File a bug report.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees:
+  - octocat
+type: bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us, what did you expect to happen?
+      placeholder: "Example: I clicked on link X and it did <some bad or unexpected behavior>."
+    validations:
+      required: true
+  - type: textarea
+    id: what-was-expected
+    attributes:
+      label: What was expected?
+      description: Tell us, what you expected to happen instead.
+      placeholder: "Example: When clicking on link X, it should have <expected action>"
+    validations:
+      required: true
+  - type: textarea
+    id: beetkeeper-version
+    attributes:
+      label: beetkeeper version
+      description: What version of beetkeeper are you running? Please specify fully (<major>.<minor>.<patch>).
+	  placeholder: 0.1.0
+	validations:
+	  required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      render: shell
+  - type: upload
+    id: screenshots
+    attributes:
+      label: Add screenshots
+      description: If applicable, add screenshots to help explain your problem.
+    validations:
+      required: false

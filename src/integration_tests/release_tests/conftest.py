@@ -8,13 +8,10 @@ import tomlkit
 
 _RELEASE_TEST_MARKER: Final[str] = "release_tests"
 
-# Path to `src/` directory (conftest lives at `src/integration_tests/release_tests/conftest.py`).
 _SRC_PATH: Final[Path] = Path(__file__).resolve().parent.parent.parent
-# Path to `src/beetsplug/pyproject.toml` file
 _PLUGIN_PYPROJ_PATH: Final[Path] = _SRC_PATH / "beetsplug" / "pyproject.toml"
-# Path to `src/python/beetkeeper/_version.py` file
 _BK_VERSION_DOT_PY_PATH: Final[Path] = _SRC_PATH / "python" / "beetkeeper" / "_version.py"
-# Path to the repo-root `VERSION` file — the single source of truth propagated by hooks/version-sync.sh.
+# The repo-root `VERSION` file is the single source of truth, propagated by hooks/version-sync.sh.
 _VERSION_FILE_PATH: Final[Path] = _SRC_PATH.parent / "VERSION"
 _BK_VERSION_REGEX: Final[re.Pattern[str]] = re.compile(r"^__version__ = \"([^\"]+)\"\s*$")
 # A release tag is exactly `vMAJOR.MINOR.PATCH` (matches the release workflow's publish gate). Anything
@@ -36,7 +33,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     skip_marker = pytest.mark.skip(reason=f"opt-in release-tests; run with `-m {_RELEASE_TEST_MARKER}`")
     for item in items:
         if here not in item.path.parents:
-            continue  # only affect integration tests in this directory
+            continue
         item.add_marker(getattr(pytest.mark, _RELEASE_TEST_MARKER))
         if not opted_in:
             item.add_marker(skip_marker)

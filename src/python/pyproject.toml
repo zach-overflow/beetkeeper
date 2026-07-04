@@ -1,13 +1,6 @@
-# Build-only pyproject for the `python_distribution` at `src/python:beetkeeper-whl`.
-#
-# This file (not the repo-root pyproject.toml) is what setuptools' PEP 517 backend reads when
-# building the wheel, because `generate_setup=False` makes Pants run the backend from the source
-# root (`src/python`), where this file lands after source-root stripping. Keeping it here is what
-# lets `[tool.setuptools.dynamic]` resolve the version from `beetkeeper/_version.py`.
-#
-# NOTE: because `generate_setup=False` disables Pants' dependency inference for the distribution,
-# the build-relevant `[project]` metadata below is maintained here by hand and must be kept in
-# sync with the repo-root pyproject.toml.
+# Build-only pyproject for `src/python:beetkeeper-whl`: with `generate_setup=False`, setuptools reads this
+# file directly (source root, so `[tool.setuptools.dynamic]` finds `_version.py`) and Pants does no
+# dependency inference — the `[project]` deps below are hand-maintained and must match what the code imports.
 [build-system]
 requires = ["setuptools>=80.9"]
 build-backend = "setuptools.build_meta"
@@ -26,9 +19,7 @@ keywords = [
 ]
 license = "AGPL-3.0-or-later"
 description = "Self-hosted webserver for interactive Beets music library administration."
-dynamic = [
-  "version",
-] # Resolved from `beetkeeper._version.__version__` (see [tool.setuptools.dynamic]).
+dynamic = ["version"]
 requires-python = ">=3.14,<3.15"
 dependencies = [
   "anyio==4.14",
@@ -36,9 +27,8 @@ dependencies = [
   "alembic>=1.16",
   "beets>=2.11.0",
   "click==8.4.1",
-  # Plain fastapi (not `[all]`) + the one extra we actually use (form parsing). The `[all]` extra dragged in
-  # fastapi-cli/fastapi-cloud-cli (sentry-sdk, typer, rich), uvicorn[standard], httpx, orjson/ujson, etc. —
-  # none of which the self-hosted server needs (jinja2 for templates comes via jinja2-fragments).
+  # Plain fastapi (not `[all]`, which drags in cli/uvicorn[standard]/httpx/etc. the server doesn't need);
+  # `python-multipart` is the one extra we use (form parsing).
   "fastapi==0.138.0",
   "python-multipart>=0.0.20",
   "greenlet>=3.1",
@@ -69,14 +59,10 @@ include = ["beetkeeper*"]
 
 [tool.setuptools.package-data]
 beetkeeper = ["py.typed"]
-# Non-`.py` alembic files (the `.py` env/versions modules are included automatically as package modules).
-# `script.py.mako` intentionally omitted since it is only required for development of new revision scripts. `db upgrade` works without it.
+# `script.py.mako` omitted: only needed to author new revisions, `db upgrade` works without it.
 "beetkeeper.db" = ["alembic.ini"]
 
-# NOTE: no `[tool.mypy]` here. Pants runs a single mypy with `--config-file=<repo-root>/pyproject.toml`
-# (see `pants.toml` `[mypy] config`), so any `[tool.mypy]` in this file would be silently ignored. The
-# repo-root pyproject.toml is the only mypy config; Pants supplies source roots via `MYPYPATH` itself.
+# No `[tool.mypy]` here: Pants runs one mypy against the repo-root config, so it'd be silently ignored.
 
 [tool.uv]
-# https://docs.astral.sh/uv/reference/settings/#package
 package = true

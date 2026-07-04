@@ -10,8 +10,7 @@ edit_uri: edit/main/docs/
 
 docs_dir: docs
 
-# Keep non-doc files that live under docs/ out of the published site (e.g. the Pants BUILD file that defines
-# the docs build targets). gitignore-style patterns, relative to docs_dir.
+# Keep non-doc files (e.g. the Pants BUILD file) out of the published site.
 # https://www.mkdocs.org/user-guide/configuration/#exclude_docs
 exclude_docs: |
   BUILD
@@ -26,8 +25,7 @@ theme:
   favicon: assets/images/logo/favicon-16.png
   icon:
     repo: fontawesome/brands/github
-  # Stock Material light/dark toggle, but with `custom` primary/accent: the CRT green (primary) + neon purple
-  # (accent), plus the Courier headings/TOC and scanlines, are defined in extra_css (docs/assets/css/…).
+  # `custom` primary/accent: the actual CRT colors are defined in extra_css (docs/assets/css/…).
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: slate
@@ -55,8 +53,6 @@ theme:
     - content.action.edit
     - content.tabs.link
 
-# Stock Material with a few CRT callbacks to the web UI: Courier font, heading glow, and scanlines on the
-# header + admonition titles (see docs/assets/css/beetkeeper.css). Remove this line for pure stock Material.
 extra_css:
   - assets/css/beetkeeper.css
 

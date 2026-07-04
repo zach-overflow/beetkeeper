@@ -1,4 +1,3 @@
-# https://www.pantsbuild.org/stable/docs/using-pants/validating-dependencies#dependencies-and-dependents
 __dependencies_rules__(("*", "*"))
 
 file(name="pyproject", source="pyproject.toml")
@@ -12,8 +11,7 @@ docker_image(
     context_root="",
     registries=["@ghcr"],
     repository="zach-overflow/beetkeeper",
-    # `latest` + the release semver. `env("RELEASE_TAG", "dev")` reads the env var the `pants` process runs
-    # with (the release workflow exports the v-stripped version); non-release / local builds fall back to `dev`.
+    # RELEASE_TAG is the v-stripped version exported by the release workflow; local builds fall back to `dev`.
     image_tags=["latest", env("RELEASE_TAG", "dev")],
     dependencies=[
         "src/python:dist-pyproject",
@@ -24,7 +22,7 @@ docker_image(
     ],
 )
 
-# TODO [later]: enable the packaging of beetkeeper as a standalone scie binary.
+# TODO [later]: enable packaging beetkeeper as a standalone scie binary.
 # cli(
 #     name="beetkeeper-binary",
 #     entrypoint="beetkeeper.main:cli",

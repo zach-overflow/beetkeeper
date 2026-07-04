@@ -30,7 +30,6 @@ import_ui_fragments_router = APIRouter(prefix="/fragment/import")
 _JOB_FRAGMENT = "fragment_templates/import_job.html"
 _JOB_LIST_FRAGMENT = "fragment_templates/import_job_list.html"
 _PATH_SUGGESTIONS_FRAGMENT = "fragment_templates/path_suggestions.html"
-# Non-terminal jobs are "active": still running or needing a user decision.
 _ACTIVE_STATUSES = frozenset({ImportJobStatus.PENDING, ImportJobStatus.RUNNING, ImportJobStatus.AWAITING_DECISION})
 _MAX_PATH_SUGGESTIONS = 25
 _MAX_DIR_SCAN = 500  # hard cap on entries scanned per directory, to bound work on huge folders
@@ -64,7 +63,7 @@ async def _dir_suggestions(raw_path: str) -> list[str]:
     if text.endswith("/"):
         parent, prefix = AsyncPath(text), ""
     elif text == _IMPORT_ROOT:
-        parent, prefix = AsyncPath(_IMPORT_ROOT), ""  # the root typed without a trailing slash
+        parent, prefix = AsyncPath(_IMPORT_ROOT), ""
     else:
         typed = AsyncPath(text)
         parent, prefix = typed.parent, typed.name
@@ -80,9 +79,9 @@ async def _dir_suggestions(raw_path: str) -> list[str]:
                 if child.name.lower().startswith(prefix_lower) and await child.is_dir():
                     matches.append(str(child))
             except OSError:
-                continue  # skip unreadable entries (broken symlinks, permission, …)
+                continue
     except OSError:
-        return []  # parent missing / not a directory / unreadable
+        return []
     matches.sort()
     return matches[:_MAX_PATH_SUGGESTIONS]
 

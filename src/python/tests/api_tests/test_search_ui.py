@@ -35,9 +35,9 @@ async def test_search_page_renders(client: AsyncClient) -> None:
     assert response.status_code == 200
     body = response.text
     assert "Search the library" in body
-    assert 'name="filepath"' in body  # structured path filter input
-    assert ">List</button>" in body and ">Stats</button>" in body  # the two query modes
-    # The page wires the fragment endpoints via url_for (would 500 if any endpoint name were wrong).
+    assert 'name="filepath"' in body
+    assert ">List</button>" in body and ">Stats</button>" in body
+    # Endpoints are wired via url_for, so a wrong endpoint name would 500 rather than just omit the string.
     assert "/fragment/search/results" in body
     assert "/fragment/search/stats" in body
     assert "/fragment/search/fields" in body
@@ -52,7 +52,7 @@ async def test_results_fragment_empty_library(client: AsyncClient) -> None:
 
 @pytest.mark.anyio
 async def test_results_fragment_reports_query_error(client: AsyncClient) -> None:
-    # `year` is numeric; a non-numeric value is an invalid beets query → surfaced, not a 500.
+    # `year` is numeric, so a non-numeric value is an invalid beets query: surfaced, not a 500.
     response = await client.get("/fragment/search/results", params={"query": "year:notanumber"})
     assert response.status_code == 200
     assert "Query error" in response.text
@@ -60,11 +60,9 @@ async def test_results_fragment_reports_query_error(client: AsyncClient) -> None
 
 @pytest.mark.anyio
 async def test_results_fragment_filepath_param(client: AsyncClient) -> None:
-    # An empty filepath must be ignored (not appended as a bogus query part).
     empty = await client.get("/fragment/search/results", params={"query": "", "filepath": ""})
     assert empty.status_code == 200
     assert "No matches." in empty.text
-    # A real path filter parses into a beets path query without error (empty library -> no matches).
     pathed = await client.get("/fragment/search/results", params={"filepath": "/music/nobody"})
     assert pathed.status_code == 200
     assert "No matches." in pathed.text
@@ -79,7 +77,6 @@ async def test_stats_fragment(client: AsyncClient) -> None:
 
 @pytest.mark.anyio
 async def test_stats_fragment_runs_over_the_query(client: AsyncClient) -> None:
-    # Stats now accepts the same inputs as list; a (non-matching) query still returns a 200 summary.
     response = await client.get("/fragment/search/stats", params={"query": "artist:nobody", "filepath": ""})
     assert response.status_code == 200
     assert "tracks" in response.text

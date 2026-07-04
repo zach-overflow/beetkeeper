@@ -1,13 +1,5 @@
-# Build-only pyproject for the `python_distribution` at `src/beetsplug:plugin-whl`.
-#
-# This file (not the repo-root pyproject.toml) is what setuptools' PEP 517 backend reads when
-# building the wheel, because `generate_setup=False` makes Pants run the backend from the source
-# root (`src/python`), where this file lands after source-root stripping. Keeping it here is what
-# lets `[tool.setuptools.dynamic]` resolve the version from `beetkeeper/_version.py`.
-#
-# NOTE: because `generate_setup=False` disables Pants' dependency inference for the distribution,
-# the build-relevant `[project]` metadata below is maintained here by hand and must be kept in
-# sync with the repo-root pyproject.toml.
+# Build-only pyproject for `src/beetsplug:plugin-whl`: with `generate_setup=False`, setuptools reads this
+# file directly, so the `[project]` metadata below is hand-maintained and must stay in sync with the app's.
 [build-system]
 requires = ["setuptools>=80.9"]
 build-backend = "setuptools.build_meta"
@@ -37,18 +29,14 @@ Repository = "https://github.com/zach-overflow/beetkeeper"
 Changelog = "https://github.com/zach-overflow/beetkeeper/releases"
 
 [tool.setuptools.packages.find]
-# Only the plugin package ships in the wheel. `plugin_tests*` is named explicitly (and `include` already
-# whitelists just `beetkeeper_plugin*`) so the renamed test tree can never leak into the distribution.
+# `plugin_tests*` excluded explicitly so the test tree can never leak into the distribution.
 include = ["beetkeeper_plugin*"]
 exclude = ["plugin_tests*"]
 
 [tool.setuptools.package-data]
 "*" = ["py.typed"]
 
-# NOTE: no `[tool.mypy]` here. Pants runs a single mypy with `--config-file=<repo-root>/pyproject.toml`
-# (see `pants.toml` `[mypy] config`), so any `[tool.mypy]` in this file would be silently ignored. The
-# repo-root pyproject.toml is the only mypy config; Pants supplies source roots via `MYPYPATH` itself.
+# No `[tool.mypy]` here: Pants runs one mypy against the repo-root config, so it'd be silently ignored.
 
 [tool.uv]
-# https://docs.astral.sh/uv/reference/settings/#package
 package = true

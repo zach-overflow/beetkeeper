@@ -1,0 +1,12 @@
+# CI-only overrides layered on top of pants.toml; enabled via `PANTS_CONFIG_FILES=pants.ci.toml`.
+
+[GLOBAL]
+colors = true
+dynamic_ui = false
+
+[stats]
+log = true
+
+[docker]
+# Clear the credential helper pants.toml sets for local macOS; CI runners lack it and would fail to find it.
+tools = []

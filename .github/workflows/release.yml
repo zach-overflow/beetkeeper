@@ -16,16 +16,13 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
-# This workflow mirrors `.github/workflows/build-and-test.yml` through its validation + `pants package ::`
-# steps, then publishes the release artifacts. Every `v*` tag is built + validated; only an exact
-# `vMAJOR.MINOR.PATCH` tag is actually PUBLISHED (a pre-release like `v0.0.1-dev` builds but is not pushed).
-# The single semver of all three artifacts (the `beetkeeper` wheel, the `beetkeeper-plugin` wheel, and the
-# Docker image) is OWNED by the committed source (`beetkeeper._version` + the plugin's `[project].version`);
-# the "Validate release versions" step asserts those agree with each other and with the pushed tag.
-#
-# The wheels are published from a separate `publish-pypi` job so PyPI's OIDC trusted publishing is scoped to
-# the `pypi` GitHub environment (and `id-token: write` is granted only there). The build job hands the wheels
-# to that job as artifacts, one per PyPI project (a minted OIDC token is project-scoped).
+# Layer CI-only overrides on top of pants.toml for every Pants invocation below (see pants.ci.toml).
+env:
+  PANTS_CONFIG_FILES: pants.ci.toml
+
+# Every `v*` tag builds + validates, but only an exact `vMAJOR.MINOR.PATCH` tag publishes (pre-releases like
+# `v0.0.1-dev` build but are not pushed). Version is owned by the committed source. Wheels publish from a
+# separate `publish-pypi` job so PyPI OIDC trusted publishing is scoped to the `pypi` environment.
 jobs:
   release:
     name: Pants build, validate, and push image
@@ -37,7 +34,6 @@ jobs:
       is_release: ${{ steps.gate.outputs.is_release }}
       version: ${{ steps.gate.outputs.version }}
     steps:
-      # ---- Identical to build-and-test.yml, up to (but replacing) "Build artifacts (no push)". ----
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -45,9 +41,7 @@ jobs:
           fetch-depth: 0
 
       - name: Lint GitHub Actions workflows
-        # actionlint has no Pants backend, so the shared hook (also used by prek) runs it directly; it
-        # downloads a pinned actionlint since the runner has none on PATH. yamllint (via `pants lint ::`
-        # below) covers generic YAML; this adds the GitHub-Actions-specific checks.
+        # No Pants backend for actionlint, so the shared hook runs it directly (downloads a pinned binary).
         run: |
           bash hooks/actionlint.sh
 
@@ -57,8 +51,7 @@ jobs:
           python-version: '3.14'
 
       - name: Set up uv
-        # The Pants lint/test goals delegate to `uv run` (hooks/*.sh and the `//:pytest` test_shell_command),
-        # so uv must be on PATH. Pinned to match uv.lock / the Dockerfile.
+        # Pants lint/test goals shell out to `uv run`, so uv must be on PATH. Pinned to match uv.lock.
         uses: astral-sh/setup-uv@v5
         with:
           version: '0.11.23'
@@ -76,19 +69,14 @@ jobs:
         run: |
           pants update-build-files --check ::
 
-      - name: Lint, test, type-check, and security scan
-        # `pants test ::` runs the `//:pytest` test command plus the mypy + bandit + uv-lockfile-check `test_cmd`s
-        # (see hooks/BUILD); `pants lint ::` runs ruff / shellcheck / shfmt / hadolint / taplo / visibility checks.
-        # Runs against the pristine source (before the release version is stamped in below).
+      - name: Static checks and tests
         run: |
-          pants lint test ::
+          pants lint check test ::
 
-      # ---- Release-specific: decide eligibility, validate the version, build, then publish. ----
       - name: Version tag gate
         id: gate
-        # Publish ONLY for an exact `vMAJOR.MINOR.PATCH` tag. Pre-release / build-metadata tags (e.g.
-        # `v0.0.1-dev`) still build + validate, but every publish step below is skipped. GitHub `if:`
-        # expressions have no regex, so the decision is computed here and exposed as a step + job output.
+        # GitHub `if:` expressions have no regex, so compute the "is this an exact vMAJOR.MINOR.PATCH tag?"
+        # decision here and expose it as an output; pre-release tags build + validate but skip publishing.
         run: |
           ref="${GITHUB_REF_NAME}"
           echo "version=${ref#v}" >> "$GITHUB_OUTPUT"
@@ -101,18 +89,12 @@ jobs:
           fi
 
       - name: Validate release versions
-        # Drift guard (src/integration_tests/release_tests, opt-in via `-m release_tests`): asserts the committed
-        # `beetkeeper._version.__version__` and the plugin's static `[project].version` agree with each
-        # other and -- for a `vMAJOR.MINOR.PATCH` tag -- with the pushed tag. The committed source OWNS the
-        # version (there is no in-CI stamping), so a forgotten bump fails the release here, before any build
-        # or publish. The git-tag assertion reads GITHUB_REF_TYPE / GITHUB_REF_NAME, set for this tag push.
-        # `--all-groups` matches the `//:pytest` invocation (and pulls in tomlkit, used by the conftest).
+        # Drift guard (opt-in via `-m release_tests`): asserts the committed versions agree with each other
+        # and, for a `vMAJOR.MINOR.PATCH` tag, with the pushed tag, so a forgotten bump fails before publish.
         run: |
           uv run --all-groups pytest -m release_tests -vv src/integration_tests/release_tests
 
       - name: Build artifacts
-        # Builds the wheels (-> dist/) and the Docker image (loaded into the local daemon as
-        # `beetkeeper-server:latest`). Same command the build-and-test workflow runs.
         run: |
           pants package ::
 
@@ -127,18 +109,14 @@ jobs:
       - name: Publish image to GHCR
         if: steps.gate.outputs.is_release == 'true'
         env:
-          # The `v`-stripped semver. `image_tags` in //:BUILD resolve `env("RELEASE_TAG", "dev")`, so this
-          # tags the image `:latest` + `:<version>`; non-release/local builds fall back to `:dev`.
+          # `image_tags` in //:BUILD resolve `env("RELEASE_TAG", "dev")`; this tags `:latest` + `:<version>`.
           RELEASE_TAG: ${{ steps.gate.outputs.version }}
-        # Pants owns build+tag+push: `pants publish` (re)builds the image (cache hit from `pants package ::`
-        # above) and pushes it to `ghcr.io/zach-overflow/beetkeeper` (the `@ghcr` registry + `repository` in
-        # //:BUILD), using the `docker login` above for auth.
+        # `pants publish` rebuilds the image (cache hit from `pants package ::` above) and pushes to GHCR.
         run: |
           pants publish //:beetkeeper-server-image
 
-      # Hand each wheel to the `publish-pypi` job as its own artifact. They are kept separate because OIDC
-      # trusted publishing mints a project-scoped token, so each PyPI project is uploaded on its own.
-      # `beetkeeper-*` and `beetkeeper_plugin-*` don't overlap (the dash vs. underscore disambiguates).
+      # Each wheel is its own artifact: OIDC trusted publishing mints a project-scoped token, so each PyPI
+      # project uploads separately.
       - name: Upload beetkeeper wheel
         if: steps.gate.outputs.is_release == 'true'
         uses: actions/upload-artifact@v4
@@ -163,12 +141,11 @@ jobs:
           path: .pants.d/workdir/pants.log
 
   publish-pypi:
-    name: Publish wheels to PyPI (trusted publishing)
+    name: Publish to PyPI
     needs: release
     if: needs.release.outputs.is_release == 'true'
     runs-on: ubuntu-latest
-    # Binds this job to the `pypi` GitHub environment that the PyPI trusted publishers are registered
-    # against (its protection rules, if any, gate publishing here only -- not the build/image push above).
+    # The `pypi` environment the PyPI trusted publishers are registered against (gates publishing here only).
     environment: pypi
     permissions:
       contents: read
@@ -186,8 +163,7 @@ jobs:
           name: wheel-beetkeeper-plugin
           path: dist/beetkeeper-plugin
 
-      # One publish per PyPI project: the minted OIDC token is project-scoped, so a single upload of both
-      # wheels would be rejected. Each `packages-dir` holds exactly one project's wheel.
+      # One publish per project: the OIDC token is project-scoped, so a combined upload would be rejected.
       - name: Publish beetkeeper to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
@@ -200,3 +176,55 @@ jobs:
         with:
           packages-dir: dist/beetkeeper-plugin
           skip-existing: true
+
+  # Publish the docs site only after the image and wheels have published (same `is_release` gate). Requires
+  # repo Pages source = "GitHub Actions".
+  docs-build:
+    name: Build docs site
+    needs: [release, publish-pypi]
+    if: needs.release.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Full history so mkdocs-material's git-based features and Pants diffing behave.
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Set up uv
+        # The `[python] resolver = "uv"` resolve is built with uv, so Pants needs it on PATH.
+        uses: astral-sh/setup-uv@v5
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v8
+        with:
+          gha-cache-key: docs-v0
+          named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
+      - name: Build docs site
+        run: pants run docs:mkdocs-pex -- build --strict
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  docs-deploy:
+    name: Deploy docs to GitHub Pages
+    needs: docs-build # (transitively requires release + publish-pypi + the release-tag gate)
+    runs-on: ubuntu-latest
+    # Pages-deploy scopes: granted to THIS job only (the workflow default is `contents: read`).
+    permissions:
+      pages: write
+      id-token: write # deploy-pages mints an OIDC token to prove the artifact's provenance
+    # Serialize Pages deployments; let an in-progress deploy finish rather than cancelling it.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

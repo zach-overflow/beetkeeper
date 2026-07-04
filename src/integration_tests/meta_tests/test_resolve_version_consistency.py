@@ -23,12 +23,10 @@ from typing import Final
 
 import pytest
 
-# Packages pinned in BOTH resolves that must stay in lockstep (compared by version only, ignoring extras).
 _SHARED_PACKAGES: Final[tuple[str, ...]] = ("pydantic", "fastapi")
 
-# Repo-relative paths of the two files holding the pins. `_ROOT_MARKER` anchors `_repo_root()`: under Pants'
-# pytest sandbox the test runs in a chroot (not the repo root), so the root is the dir where both files are
-# materialized as `file` deps (see this dir's BUILD). Both are `file` targets, so they keep their full path.
+# Under Pants' pytest sandbox the test runs in a chroot, not the repo root; `_ROOT_MARKER` anchors
+# `_repo_root()` to the dir where both `file` deps are materialized (see this dir's BUILD).
 _TOOLS_REQS_RELPATH: Final[str] = "3rdparty/tools/tools-resolve-requirements.txt"
 _PYPROJECT_RELPATH: Final[str] = "src/python/pyproject.toml"
 _ROOT_MARKER: Final[str] = _TOOLS_REQS_RELPATH
@@ -75,7 +73,7 @@ def _tools_resolve_requirement(package: str) -> str:
     reqs_file = _repo_root() / _TOOLS_REQS_RELPATH
     matches = []
     for raw_line in reqs_file.read_text(encoding="utf-8").splitlines():
-        line = raw_line.split("#", 1)[0].strip()  # drop comments + surrounding whitespace
+        line = raw_line.split("#", 1)[0].strip()
         if line and _requirement_is(line, package):
             matches.append(line)
     assert len(matches) == 1, f"expected exactly one `{package}` requirement in {reqs_file}, found {matches}"

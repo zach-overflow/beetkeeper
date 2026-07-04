@@ -1,19 +1,14 @@
-name: Docs
-run-name: Docs ${{ github.ref }} by ${{ github.actor }}
+name: Docs (manual)
+run-name: Docs deploy (manual) by ${{ github.actor }}
 
-# Build the MkDocs site with Pants (mkdocs + Material from `tools-resolve`) and publish it to
-# GitHub Pages via the official Pages actions. Pages must be configured with source = "GitHub Actions"
-# (Settings -> Pages). Publishes on push to `main` for doc-affecting paths, or on demand via "Run workflow".
+# Manual escape hatch for deploying docs between releases (the automatic publish lives in the Release
+# workflow). Requires Pages source = "GitHub Actions".
 on:
-  push:
-    branches: [main]
-    paths:
-      - "docs/**"
-      - "mkdocs.yml"
-      - "3rdparty/tools/**"
-      - "pants.toml"
-      - ".github/workflows/docs.yml"
   workflow_dispatch:
+
+# Layer CI-only overrides on top of pants.toml for the Pants build step (see pants.ci.toml).
+env:
+  PANTS_CONFIG_FILES: pants.ci.toml
 
 # Least-privilege token: read the repo, write the Pages deployment, mint the OIDC token deploy-pages needs.
 permissions:
@@ -21,14 +16,14 @@ permissions:
   pages: write
   id-token: write
 
-# Allow only one concurrent Pages deployment; let an in-progress run finish rather than cancelling it.
+# Serialize with the release workflow's Pages deploy; let an in-progress deploy finish rather than cancelling.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
   build:
-    name: Build site (Pants -> mkdocs --strict)
+    name: Build docs site
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -43,13 +38,12 @@ jobs:
       - name: Set up uv
         # The `[python] resolver = "uv"` resolve is built with uv, so Pants needs it on PATH.
         uses: astral-sh/setup-uv@v5
-      - name: Init Pants
+      - name: Initialize Pants
         uses: pantsbuild/actions/init-pants@v8
         with:
           gha-cache-key: docs-v0
           named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
-      - name: Build the docs site
-        # `pants run` executes the mkdocs pex_binary in the workspace -> ./site. `--strict` fails on warnings.
+      - name: Build docs site
         run: pants run docs:mkdocs-pex -- build --strict
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
