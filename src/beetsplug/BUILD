@@ -3,6 +3,7 @@ __defaults__(
     {(python_sources, python_tests, python_test_utils, python_requirements): dict(resolve="beetsplug-resolve")}
 )
 
+file(name="pypi-readme", source="README.md")
 # With `generate_setup=False`, setuptools reads this pyproject and resolves the version from `_version.py`.
 file(name="plugin-pyproject", source="pyproject.toml")
 python_requirements(name="plugin-requirements", source="pyproject.toml")
@@ -11,6 +12,7 @@ python_distribution(
     dependencies=[
         ":plugin-pyproject",
         ":plugin-requirements",
+        ":pypi-readme",
         "./beetkeeper_plugin:beetkeeper_plugin",
         "!src/python:app-requirements",
     ],

@@ -1,3 +1,4 @@
+file(name="pypi-readme", source="README.md")
 # With `generate_setup=False`, setuptools reads this pyproject and resolves the version from `_version.py`.
 file(name="dist-pyproject", source="pyproject.toml")
 python_requirements(name="app-requirements", source="pyproject.toml")
@@ -22,6 +23,7 @@ python_distribution(
     # Alembic env/version scripts are loaded dynamically, so inference can't see them; list them explicitly.
     dependencies=[
         ":dist-pyproject",
+        ":pypi-readme",
         "./beetkeeper:beetkeeper",
         "./beetkeeper/db:alembic-ini",
         "./beetkeeper/db/alembic",
