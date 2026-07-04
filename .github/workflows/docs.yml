@@ -1,0 +1,63 @@
+name: Docs (manual)
+run-name: Docs deploy (manual) by ${{ github.actor }}
+
+# Manual escape hatch for deploying docs between releases (the automatic publish lives in the Release
+# workflow). Requires Pages source = "GitHub Actions".
+on:
+  workflow_dispatch:
+
+# Layer CI-only overrides on top of pants.toml for the Pants build step (see pants.ci.toml).
+env:
+  PANTS_CONFIG_FILES: pants.ci.toml
+
+# Least-privilege token: read the repo, write the Pages deployment, mint the OIDC token deploy-pages needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Serialize with the release workflow's Pages deploy; let an in-progress deploy finish rather than cancelling.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build docs site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Full history so mkdocs-material's git-based features and Pants diffing behave.
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Set up uv
+        # The `[python] resolver = "uv"` resolve is built with uv, so Pants needs it on PATH.
+        uses: astral-sh/setup-uv@v5
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v8
+        with:
+          gha-cache-key: docs-v0
+          named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
+      - name: Build docs site
+        run: pants run docs:mkdocs-pex -- build --strict
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

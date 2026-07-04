@@ -61,6 +61,6 @@ async def test_event_fragment_renders_recent_events(client: AsyncClient) -> None
     body = response.text
     assert "album_imported" in body
     assert "item_imported" in body
-    assert "101" in body  # the album id from both events
-    assert "777" in body  # the track item id
-    assert "2026-06-23" in body  # the formatted pushed_at timestamp
+    assert "101" in body
+    assert "777" in body
+    assert "2026-06-23" in body

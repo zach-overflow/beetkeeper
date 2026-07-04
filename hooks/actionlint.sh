@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Lint the GitHub Actions workflow files with actionlint (https://github.com/rhysd/actionlint).
-# Shared by the prek `actionlint` hook and by CI. actionlint is a Go binary (not a python/uv tool), so it
-# is used from PATH when present, otherwise a PINNED release is downloaded into a cache dir (once).
-# prek passes the changed workflow files as args; with no args (CI) actionlint auto-discovers all of
-# `.github/workflows`.
+# Lint GitHub Actions workflows with actionlint (https://github.com/rhysd/actionlint), shared by prek + CI.
+# actionlint is a Go binary, so it's used from PATH when present, else a pinned release is downloaded once.
 
 ACTIONLINT_VERSION="1.7.12"
 

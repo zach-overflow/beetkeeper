@@ -74,8 +74,6 @@ class ImportStore:
             quiet=record.quiet,
         )
 
-    # -- job lifecycle (called by web handlers and the worker) ---------------------------------------
-
     async def create(self, paths: Sequence[str], *, quiet: bool = False) -> ImportJob:
         """Insert a new PENDING job and return its view (`quiet` runs it non-interactively, like `-q`)."""
         now = _utcnow()
@@ -161,8 +159,6 @@ class ImportStore:
             )
         )
 
-    # -- decision exchange ---------------------------------------------------------------------------
-
     async def set_awaiting(self, request: DecisionRequest) -> None:
         """Park a job on a decision: store the request and mark AWAITING_DECISION (clears any stale answer)."""
         async with self._sessionmaker() as session:
@@ -213,8 +209,6 @@ class ImportStore:
             await session.commit()
             return decision if _rowcount(result) == 1 else None
 
-    # -- cooperative abort ---------------------------------------------------------------------------
-
     async def request_abort(self, job_id: str) -> bool:
         """Flag a non-terminal job for cooperative abort; True if such a job exists."""
         async with self._sessionmaker() as session:
@@ -231,8 +225,6 @@ class ImportStore:
         async with self._sessionmaker() as session:
             record = await session.get(ImportJobRecord, job_id)
             return bool(record and record.abort_requested)
-
-    # -- leader election + claiming ------------------------------------------------------------------
 
     async def ensure_lock_row(self) -> None:
         """Create the singleton lock row if it doesn't exist yet (idempotent)."""

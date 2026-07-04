@@ -1,13 +1,10 @@
 """Full-page HTML routes. Each renders a `page_templates/*.html` that extends `base_template.html`."""
 
-import logging
-
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from beetkeeper.api.constants import TEMPLATES
 
-_LOGGER = logging.getLogger(__name__)
 pages_ui_router = APIRouter()
 
 

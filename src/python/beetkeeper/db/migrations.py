@@ -17,7 +17,6 @@ from alembic.config import Config
 
 from beetkeeper.settings import UserConfig
 
-# The packaged alembic environment (env.py + versions/ live under here).
 _ALEMBIC_DIR: Final[Path] = Path(__file__).resolve().parent / "alembic"
 
 # Custom alembic main-option keys read by `env.py` to resolve the connection URL for each mode. We keep

@@ -37,33 +37,28 @@ fi
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 pants package //:beetkeeper-server-image
 
-# Trap function to remove any temporary files / directories
 cleanup() {
 	if [[ -n "${tmp_dirpath:-}" && -d "${tmp_dirpath}" ]]; then
 		rm -rf "${tmp_dirpath}"
 	fi
 }
 
-# Add a trap statement which calls the `cleanup` function (also on Ctrl-C, which exits via EXIT).
 tmp_dirpath="$(mktemp -d)"
 trap cleanup EXIT
 
-# Copy each subdirectory into the temp dir (host files are untouched; APFS copy-on-write keeps the large
-# `downloads/` copy cheap). Each temp subdir is mounted separately into the container further below.
+# Copy into a temp dir so host files are untouched (APFS copy-on-write keeps the large `downloads/` copy cheap).
 cp -R "${host_dirpath}/beets" "${tmp_dirpath}/beets"
 cp -R "${host_dirpath}/downloads" "${tmp_dirpath}/downloads"
 cp -R "${host_dirpath}/music" "${tmp_dirpath}/music"
 
-# Point the (copied) beets config at CONTAINER paths: import FROM /downloads, INTO /music, with the beets
-# library db kept under the /beets app-data mount.
+# Rewrite the copied beets config to container paths (import from /downloads into /music; db under /beets).
 sed -i.bak \
 	-e "s|^directory:.*|directory: /music|" \
 	-e "s|^library:.*|library: /beets/library.db|" \
 	"${tmp_dirpath}/beets/config.yaml"
 rm -f "${tmp_dirpath}/beets/config.yaml.bak"
 
-# Append beetkeeper's settings as the OPTIONAL top-level `beetkeeper` section of the (copied) beets config;
-# beetkeeper reads its settings from there. Every path below is a CONTAINER path.
+# beetkeeper reads its settings from a top-level `beetkeeper` section of the beets config; paths are container paths.
 cat >>"${tmp_dirpath}/beets/config.yaml" <<'EOF'
 
 beetkeeper:
@@ -76,7 +71,6 @@ beetkeeper:
     sqlite_path: /beets/beetkeeper.db
 EOF
 
-# Mount each subdir separately; one-off DB migration, then run the server.
 docker_args=(
 	--rm
 	-e BEETKEEPER_CONFIG=/beets/config.yaml
@@ -99,9 +93,7 @@ echo "Press Ctrl-C to stop."
 echo
 set -x
 
-# Start the server. Any host `extra-reqs.txt` was copied to /beets/extra-reqs.txt; install it (into the
-# system env where beetkeeper/beets live) before launching — same container, since each `--rm` run is
-# ephemeral. `set -e` aborts startup if a plugin requirement fails to install.
+# Install any host extra-reqs.txt (3rd-party beets plugins) before launching, in the same `--rm` container.
 startup_cmd='set -e
 if [ -f /beets/extra-reqs.txt ]; then
 	echo "Installing extra beets plugin requirements from /beets/extra-reqs.txt ..."

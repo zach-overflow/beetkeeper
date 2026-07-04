@@ -75,7 +75,6 @@ def test_album_diff_track_changes_sorted_by_position() -> None:
     track_lines = [line for line in lines if "->" in line]
 
     assert track_lines == ["    (track 1) a -> A", "    (track 9) z -> Z"]
-    # Identical album fields produce no Artist:/Album: change lines.
     assert not any(line.strip().startswith(("Artist:", "Album:")) for line in lines)
 
 
@@ -107,7 +106,7 @@ def test_choose_match_apply_writes_diff_to_output() -> None:
 
     result = session.choose_match(task)
 
-    assert result is candidate  # the chosen AlbumMatch is handed back to beets' pipeline
+    assert result is candidate
     output = session._output.snapshot()[1]
     assert "Applying candidate 'New Artist - New Album' to 'Old Artist - Old Album':" in output
     assert "Match: New Artist - New Album (2020) [MusicBrainz] (90.0% match)" in output
@@ -206,7 +205,7 @@ def test_quiet_mode_applies_a_strong_match_without_prompting() -> None:
 
     result = session.choose_match(task)
 
-    assert result is candidate  # strong recommendation -> apply the best candidate, no decision request
+    assert result is candidate
     output = session._output.snapshot()[1]
     assert "Quiet import: applying strong match" in output
     assert "(track 1) old -> New" in output

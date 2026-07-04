@@ -37,9 +37,9 @@ class ImportJobStatus(StrEnum):
 class ImportAction(StrEnum):
     """beetkeeper-side mirror of beets' import `action` choices (decoupled from beets internals)."""
 
-    APPLY = "apply"  # accept the candidate at `ImportDecision.candidate_index`
+    APPLY = "apply"
     ASIS = "asis"  # import without changing tags
-    SKIP = "skip"  # skip this task
+    SKIP = "skip"
     # TODO[Claude]: extend + map to `beets.importer.action.*` in `import_worker` as the flow grows
     #     (e.g. as-tracks, group-albums, manual id/search). Keep this enum the API-facing contract.
 
@@ -54,9 +54,8 @@ class ImportCandidate(BaseModel):
 
     model_config = ConfigDict(frozen=True)
     index: int
-    label: str  # human-readable summary, e.g. "Artist - Album"
+    label: str
     similarity: float | None = Field(default=None, description="1.0 - beets match distance, if available.")
-    # Differentiating release attributes (any may be absent, depending on the metadata source).
     data_source: str | None = None
     year: int | None = None
     country: str | None = None

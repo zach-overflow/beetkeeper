@@ -3,34 +3,14 @@
 repos:
   - repo: local
     hooks:
-      - id: lint
-        name: lint
-        entry: pants --changed-since=HEAD lint fmt
-        language: system
-        pass_filenames: false
-      
-      - id: mypy
-        name: mypy
-        entry: pants --changed-since=HEAD check
-        language: system
-        files: '^.*\.py$'
-        pass_filenames: false
-        verbose: true
-        
       - id: uv-lockfile-check
         name: uv lockfile check
         entry: "pants test hooks:uv-lockfile-check"
         language: system
         files: '^(pyproject\.toml|uv\.lock)$'
         pass_filenames: false
-      
-      - id: actionlint
-        name: actionlint
-        description: "Lint GitHub Actions workflow files (syntax, expressions, shellcheck on run blocks)."
-        entry: hooks/actionlint.sh
-        language: script
-        files: '^\.github/workflows/.*\.ya?ml$'
-        pass_filenames: true
+        groups: [dependencies-checks]
+        priority: 0
 
       - id: version-sync-check
         name: version sync check
@@ -39,3 +19,42 @@ repos:
         files: '^(VERSION|src/python/beetkeeper/_version\.py|src/beetsplug/pyproject\.toml)$'
         language: system
         pass_filenames: false
+        groups: [dependency-validations]
+        priority: 1
+
+      - id: lint
+        name: lint
+        entry: pants --changed-since=HEAD lint fmt
+        language: system
+        pass_filenames: false
+        groups: [linting]
+        priority: 2
+
+      - id: mypy
+        name: mypy
+        entry: pants --changed-since=HEAD check
+        language: system
+        files: '^.*\.py$'
+        pass_filenames: false
+        verbose: true
+        groups: [typechecks]
+        priority: 3
+
+      - id: actionlint
+        name: actionlint
+        description: "Lint GitHub Actions workflow files (syntax, expressions, shellcheck on run blocks)."
+        entry: hooks/actionlint.sh
+        language: script
+        files: '^\.github/workflows/.*\.ya?ml$'
+        pass_filenames: true
+        groups: [linting]
+        priority: 3
+
+      - id: docs-build-check
+        name: docs build check
+        description: "Ensure the MkDocs build without error"
+        entry: "pants run docs:mkdocs-pex -- build --strict"
+        files: '^docs/.*$'
+        language: system
+        pass_filenames: false
+        priority: 20

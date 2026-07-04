@@ -46,7 +46,6 @@ class TrackEvent(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     listener_event_id: int | None = Field(default=None, foreign_key="listener_event.event_id", ondelete="CASCADE")
     beets_item_id: int
-    # The beets album this track belongs to, if known (links the track event back to its album).
     beets_album_id: int | None = Field(default=None)
 
 

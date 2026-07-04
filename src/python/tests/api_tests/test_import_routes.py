@@ -52,7 +52,6 @@ async def test_submit_quiet_flag_is_recorded(client: AsyncClient) -> None:
     body = (await client.post("/api/import", json={"paths": ["/m/1"], "quiet": True})).json()
     assert body["status"] == "pending"
     assert body["quiet"] is True
-    # The flag persists, so the worker (any process) sees it when it later claims the job.
     assert (await client.get(f"/api/import/{body['id']}")).json()["quiet"] is True
 
 
@@ -89,7 +88,7 @@ async def test_unknown_job_is_404(client: AsyncClient) -> None:
 async def test_health_reports_pid_and_shared_job_count(client: AsyncClient) -> None:
     body = (await client.get("/api/health")).json()
     assert isinstance(body["process_pid"], int)
-    assert body["import_lock_holder"] is None  # no import worker runs in these tests
+    assert body["import_lock_holder"] is None
     assert body["is_import_leader"] is False
     before = body["job_count"]
 

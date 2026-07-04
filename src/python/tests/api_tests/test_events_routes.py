@@ -76,7 +76,7 @@ async def test_track_event_persists(client: AsyncClient, session_factory: async_
         tracks = (await session.execute(select(TrackEvent))).scalars().all()
     assert len(tracks) == 1
     assert tracks[0].beets_item_id == 777
-    assert tracks[0].beets_album_id == 55  # album linkage recorded on the track event
+    assert tracks[0].beets_album_id == 55
 
 
 @pytest.mark.anyio
@@ -101,7 +101,7 @@ async def test_filesystem_event_persists_each_item(
         tracks = (await session.execute(select(TrackEvent))).scalars().all()
     assert len(listeners) == 1
     assert sorted(t.beets_item_id for t in tracks) == [11, 12, 13]
-    assert {t.beets_album_id for t in tracks} == {90}  # all tracks linked to their album
+    assert {t.beets_album_id for t in tracks} == {90}
 
 
 @pytest.mark.anyio

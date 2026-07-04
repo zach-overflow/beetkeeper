@@ -1,16 +1,17 @@
 bandit==1.9.4
-fastapi[standard]==0.138.0
+
 mypy>=2.1.0
 mypy-extensions>=1.1.0
-# Exact pins, kept in lockstep with `src/python/pyproject.toml` by
-# `src/python/tests/meta_tests/test_resolve_version_consistency.py` — the `pydantic.mypy` plugin should
-# match the pydantic the app runs with, and the test suite's FastAPI must match the app's. Pants can't
-# single-source these across resolves (parametrize is unsupported on `python_requirements` overrides), so
-# the test enforces the pins stay equal. `fastapi[standard]` here (vs. plain `fastapi` in the app deps)
-# adds the test/tool extras (uvicorn, httpx, ...); only the version is required to match.
+# `pydantic`/`fastapi` exact pins kept equal to `src/python/pyproject.toml` by
+# `src/integration_tests/meta_tests/test_resolve_version_consistency.py` (Pants can't single-source across resolves).
 pydantic==2.13.4
+
+fastapi[standard]==0.138.0
 pytest>=9.1.1
 pytest-socket>=0.8.0
 pytest-xdist>=3.8.0
 ruamel-yaml>=0.19.1
 tomlkit
+
+mkdocs>=1.6.1
+mkdocs-material>=9.7.6

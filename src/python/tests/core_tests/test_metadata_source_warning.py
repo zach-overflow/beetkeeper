@@ -62,6 +62,6 @@ def test_no_warning_when_autotag_is_off() -> None:
     from beets import config
 
     config["import"]["autotag"] = False
-    _reload_plugins([])  # no sources, but autotag is off so candidates aren't expected anyway
+    _reload_plugins([])
 
     assert _metadata_source_warning() is None

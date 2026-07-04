@@ -31,7 +31,7 @@ def test_revision_history_is_walkable(alembic_cfg: Config) -> None:
     script_dir = ScriptDirectory.from_config(alembic_cfg)
     revisions = list(script_dir.walk_revisions("base", "heads"))
     assert revisions, "no migration revisions found"
-    assert revisions[-1].down_revision is None  # the base revision
+    assert revisions[-1].down_revision is None
 
 
 def test_no_pending_autogenerate_diff(alembic_cfg: Config, sync_url: str) -> None:

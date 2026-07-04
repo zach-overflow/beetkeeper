@@ -57,7 +57,6 @@ class UserConfig(BaseSettings):
     """
 
     model_config = SettingsConfigDict(frozen=True)
-    # The beets config file these settings were read from; set by `load_config` to the loaded path itself.
     beets_config_filepath: FilePath
     log_level: Literal["CRITICAL", "DEBUG", "ERROR", "INFO", "NOTSET", "WARNING"]
     server: ServerConfSection
@@ -83,7 +82,6 @@ def load_config(raw_conf_path: Path) -> UserConfig:
         raise BeetKeeperConfigError(
             f"Beets config file does not exist. Check `{CONFIG_PATH_ENVVAR}` environment variable."
         )
-    # Parse the beets YAML and pull out the optional `beetkeeper` section (absent -> empty mapping).
     beets_config_data = YamlConfigSettingsSource(settings_cls=UserConfig, yaml_file=conf_path).yaml_data or {}
     beetkeeper_section = beets_config_data.get("beetkeeper") or {}
     if not isinstance(beetkeeper_section, dict):

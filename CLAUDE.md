@@ -95,6 +95,14 @@ Inline `TODO[Claude]:` comments now mark each open question in the relevant file
 
 ## Coding style and conventions
 
+### In-code comments
+In-code comments (`#`, `/* */`, etc., across Python, BUILD, config, CI, and CSS) are **discouraged**. Write
+self-explanatory code and let names, types, and docstrings carry the intent. Only add a comment when it
+explains something genuinely **unexpected or unintuitive** — a workaround, a subtle gotcha, or a non-obvious
+constraint a competent reader couldn't infer from the code. Such cases should be rare. When one is warranted,
+keep it **brief** (ideally one line) and, where useful, link out (GitHub issue thread, doc, etc.) rather than
+explaining at length. (Python docstrings are documentation, not comments, and are encouraged.)
+
 ### Python source code
 1. Write code with the expectation that it may be running within an asynchronous event loop.
 	- Use the [anyio](https://anyio.readthedocs.io/en/stable/) library instead of the builtin `asyncio` library.

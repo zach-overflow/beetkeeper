@@ -227,7 +227,7 @@ class WebImportSession(ImportSession):  # beets is untyped; base resolves to Any
         self._output = output
         self._quiet = quiet
 
-    # -- beets interactive hooks (executed in beets pipeline threads) --------------------------------
+    # beets interactive hooks below execute in beets' pipeline threads, not the event loop.
 
     def choose_match(self, task: Any) -> Any:
         """Ask the UI which candidate to apply for an album `task` (or to skip / import as-is)."""
@@ -251,7 +251,6 @@ class WebImportSession(ImportSession):  # beets is untyped; base resolves to Any
         if decision.action is ImportAction.ASIS:
             self._output.append(f"Importing '{album_label}' as-is (tags unchanged).")
             return Action.ASIS
-        # APPLY: return the chosen candidate match object back to the pipeline.
         # TODO[Claude]: validate `candidate_index` against `task.candidates`; handle empty/None.
         index = decision.candidate_index or 0
         chosen = request.candidates[index].label if index < len(request.candidates) else f"#{index}"

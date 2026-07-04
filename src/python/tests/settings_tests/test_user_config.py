@@ -7,7 +7,6 @@ import pytest
 from beetkeeper.settings import UserConfig, load_config
 from beetkeeper.settings.user_config import BeetKeeperConfigError
 
-# A beets-config preamble (ordinary beets keys) followed by the optional `beetkeeper` settings section.
 _BEETS_PREAMBLE = "directory: /music\nlibrary: /lib.db\n"
 _BEETKEEPER_SECTION = """\
 beetkeeper:

@@ -23,8 +23,6 @@ def test_git_tag_matches_static_versions(github_release_tag_semver: str | None, 
     defined versions in `src/beetsplug/pyproject.toml` and `src/python/beetkeeper/_version.py`.
     Skips if run outside of a GitHub Actions environment, or is running from a non-tag-based workflow in GH Actions.
     """
-    # `github_release_tag_semver` folds in both gates (running in GH Actions AND triggered by a `vMAJOR.MINOR.PATCH`
-    # tag); it is `None` whenever there is no release tag to validate against, in which case there is nothing to check.
     if github_release_tag_semver is None:
         pytest.skip(reason="No release tag to validate (not a `vMAJOR.MINOR.PATCH` tag-triggered GitHub Actions run).")
     # `test_static_file_base_versions_match` already ties both files to the canonical `VERSION`, so validating the
