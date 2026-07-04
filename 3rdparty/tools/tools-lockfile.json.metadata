@@ -6,8 +6,12 @@
   "generated_with_requirements": [
     "bandit==1.9.4",
     "fastapi[standard]==0.138.0",
+    "mkdocs-material>=9.7.6",
+    "mkdocs>=1.6.1",
+    "mkdocstrings[python]>=1.0.4",
     "mypy-extensions>=1.1.0",
     "mypy>=2.1.0",
+    "neoteroi-mkdocs>=1.1.0",
     "pydantic==2.13.4",
     "pytest-socket>=0.8.0",
     "pytest-xdist>=3.8.0",

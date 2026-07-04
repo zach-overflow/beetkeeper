@@ -25,4 +25,5 @@ src/python/beetkeeper/api/static/** linguist-vendored
 ###################
 #####   DOCS   ####
 ###################
+docs/** linguist-documentation
 src/docs/** linguist-documentation

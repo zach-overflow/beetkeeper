@@ -39,3 +39,11 @@ repos:
         files: '^(VERSION|src/python/beetkeeper/_version\.py|src/beetsplug/pyproject\.toml)$'
         language: system
         pass_filenames: false
+
+      - id: docs-build-check
+        name: docs build check
+        description: "Ensure the MkDocs build without error"
+        entry: "pants run docs:mkdocs-pex -- build --strict"
+        files: '^docs/.*$'
+        language: system
+        pass_filenames: false

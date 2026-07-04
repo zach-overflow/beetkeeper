@@ -24,6 +24,7 @@ pants_ignore = [
   ".*/",
   "**/.venv/",
   "/dist/",
+  "/site/",
   "__pycache__",
   "!.semgrep/",
   "!.github/",

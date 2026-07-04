@@ -193,3 +193,6 @@ dist/
 examples/cache/*
 examples/summaries/*
 *.tsv
+
+# MkDocs build output
+/site/
