@@ -49,13 +49,7 @@ WORKDIR /app
 # Pants. TARGETARCH is amd64/arm64; each PEX carries only that arch's wheels.
 ARG TARGETARCH
 COPY beetkeeper-linux-${TARGETARCH}.pex /app/beetkeeper.pex
-# Bake the PEX's dependency extraction into an image layer so the first container start isn't slow. `--help`
-# exercises the entrypoint without starting the server; `inherit_path="fallback"` lets a derived image add
-# beets plugins via `pip install` into this interpreter and have the PEX pick them up.
-ENV PEX_ROOT=/app/.pex
-RUN python3.14 /app/beetkeeper.pex --help > /dev/null
-
 ARG RELEASE_TAG=""
-ENV RELEASE_TAG=${RELEASE_TAG}
+ENV RELEASE_TAG=${RELEASE_TAG} PEX_ROOT=/app/.pex
 ENTRYPOINT ["python3.14", "/app/beetkeeper.pex"]
 CMD ["run"]
