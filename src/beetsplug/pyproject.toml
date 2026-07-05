@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "beetkeeper-plugin"
-version = "0.0.3"
+version = "0.1.0"
 requires-python = ">=3.14,<3.15"
 dependencies = ["beets>=2.11.0", "requests>=2.34"]
 authors = [{ name = "Zach Gottesman" }]

@@ -65,7 +65,6 @@ search_path = ["<PYENV>", "<ASDF>", "<PATH>"]
 # `skip_tests=True` on the targets; we run pytest through `//:pytest` to use plugins without a separate
 # resolve: https://www.pantsbuild.org/stable/reference/subsystems/pytest#requirements
 [python]
-# resolver = "uv"
 resolver = "pex"
 enable_resolves = true
 default_resolve = "beetkeeper-resolve"
@@ -76,8 +75,6 @@ separate_lockfile_metadata_file = true
 
 [python.resolves]
 "beetkeeper-resolve" = "3rdparty/python/beetkeeper-lockfile.json"
-# Separate resolve so `beets` has one owner per resolve, keeping import inference unambiguous.
-"beetsplug-resolve" = "3rdparty/python/beetsplug-lockfile.json"
 "tools-resolve" = "3rdparty/tools/tools-lockfile.json"
 
 [bandit]
@@ -92,19 +89,11 @@ install_from_resolve = "tools-resolve"
 requirements = [
   "mypy",
   "mypy-extensions",
-  "pydantic",        # for the `pydantic.mypy` plugin
-  "pytest",          # so type checking can proceed on test files
+  "pydantic",        # for the `pydantic.mypy` plugin so type checking can proceed on test files
+  "pytest",
 ]
 
 [pytest]
-# args = [
-# 	# "-v",
-#   "-p",
-#   "no:cacheprovider",
-#   "--disable-socket",
-#   "--allow-hosts=testclient",
-#   "--durations=5",
-# ]
 config = "pyproject.toml"
 install_from_resolve = "tools-resolve"
 # Must include every plugin whose options we pass in `args`/`addopts` (e.g. `pytest-socket`), or pex's

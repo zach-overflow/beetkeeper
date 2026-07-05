@@ -30,7 +30,7 @@ from anyio.from_thread import BlockingPortal
 from beets.importer import Action, ImportSession
 from beets.util import bytestring_path
 
-from beetkeeper.core.import_jobs import (
+from beetkeeper.core.import_jobs import (  # pants: no-infer-dep
     DecisionRequest,
     ImportAction,
     ImportCandidate,

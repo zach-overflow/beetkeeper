@@ -148,6 +148,7 @@ dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
     { name = "anyio" },
+    { name = "beetkeeper-plugin" },
     { name = "beets" },
     { name = "click" },
     { name = "fastapi" },
@@ -168,6 +169,7 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21" },
     { name = "alembic", specifier = ">=1.16" },
     { name = "anyio", specifier = "==4.14" },
+    { name = "beetkeeper-plugin", editable = "src/beetsplug" },
     { name = "beets", specifier = ">=2.11.0" },
     { name = "click", specifier = "==8.4.1" },
     { name = "fastapi", specifier = "==0.138.0" },
@@ -185,7 +187,7 @@ requires-dist = [
 
 [[package]]
 name = "beetkeeper-plugin"
-version = "0.0.3"
+version = "0.1.0"
 source = { editable = "src/beetsplug" }
 dependencies = [
     { name = "beets" },

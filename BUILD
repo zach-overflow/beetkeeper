@@ -22,7 +22,7 @@ pex_binary(
     inherit_path="fallback",
     complete_platforms=["//3rdparty/platforms:linux-amd64"],
     tags=["pex"],
-    dependencies=["//src/python:app-requirements", "//src/python:beetkeeper-whl"],
+    dependencies=["//src/python:app-requirements", "//src/python:beetkeeper-whl", "//src/beetsplug:plugin-whl"],
 )
 pex_binary(
     name="beetkeeper-linux-arm64",
@@ -34,9 +34,8 @@ pex_binary(
     inherit_path="fallback",
     complete_platforms=["//3rdparty/platforms:linux-aarch64"],
     tags=["pex"],
-    dependencies=["//src/python:app-requirements", "//src/python:beetkeeper-whl"],
+    dependencies=["//src/python:app-requirements", "//src/python:beetkeeper-whl", "//src/beetsplug:plugin-whl"],
 )
-
 
 # Native single-arch image: `pants package` builds it for the host arch and loads it into the local daemon.
 # CI builds this on a matrix of native runners (one arch each, no QEMU) and pushes per-arch tags that a merge

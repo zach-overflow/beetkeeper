@@ -1,6 +1,6 @@
 # Subtree default: separate resolve so `beets` has one owner per resolve, keeping import inference unambiguous.
 __defaults__(
-    {(python_sources, python_tests, python_test_utils, python_requirements): dict(resolve="beetsplug-resolve")}
+    {(python_sources, python_tests, python_test_utils, python_requirements): dict(resolve="beetkeeper-resolve")}
 )
 
 file(name="pypi-readme", source="README.md")
