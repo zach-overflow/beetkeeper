@@ -97,8 +97,8 @@ set -x
 startup_cmd='set -e
 if [ -f /beets/extra-reqs.txt ]; then
 	echo "Installing extra beets plugin requirements from /beets/extra-reqs.txt ..."
-	uv pip install --system -r /beets/extra-reqs.txt
+	pip install -r /beets/extra-reqs.txt
 	cp /beets/originquery.py /usr/local/lib/python3.14/site-packages/beetsplug/
 fi
-exec beetkeeper run'
+exec /app/beetkeeper.pex run'
 docker run -it "${docker_args[@]}" -p 8337:8337 --entrypoint /bin/sh ghcr.io/zach-overflow/beetkeeper:latest -c "${startup_cmd}"

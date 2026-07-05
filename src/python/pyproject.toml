@@ -57,7 +57,17 @@ version = { attr = "beetkeeper._version.__version__" }
 include = ["beetkeeper*"]
 
 [tool.setuptools.package-data]
-beetkeeper = ["py.typed"]
+# Static assets live in non-package subdirs (no __init__.py), so patterns must be recursive + path-qualified
+# under the top `beetkeeper` package — bare `*.css` only matches files directly in `beetkeeper/`.
+beetkeeper = [
+  "py.typed",
+  "api/static/**/*.css",
+  "api/static/**/*.html",
+  "api/static/**/*.js",
+  "api/static/**/*.ico",
+  "api/static/**/*.png",
+  "api/static/**/*.svg",
+]
 # `script.py.mako` omitted: only needed to author new revisions, `db upgrade` works without it.
 "beetkeeper.db" = ["alembic.ini"]
 
