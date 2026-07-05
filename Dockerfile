@@ -41,28 +41,21 @@ LABEL org.opencontainers.image.source="https://github.com/zach-overflow/beetkeep
 	org.opencontainers.image.description="A highly configurable, self-hosted app for beets music library management. Supports both automated and manual workflows." \
 	org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
-# Use the container's system Python and install into it directly (no uv-managed venv).
-ENV UV_SYSTEM_PYTHON=1 UV_PROJECT_ENVIRONMENT=/usr/local/
-# https://docs.astral.sh/uv/guides/integration/docker/#installing-uv
-# Pinned to match the uv that writes uv.lock; a different version can fail the in-image `uv lock --check`.
-COPY --from=ghcr.io/astral-sh/uv:0.11.23 /uv /uvx /bin/
 # Static ffmpeg from the `ffmpeg` stage (beets' replaygain backend); no apt needed in this image.
 COPY --from=ffmpeg /usr/local/bin/ffmpeg /usr/local/bin/
 WORKDIR /app
 
-# COPY LICENSE.txt pyproject.toml uv.lock ./
-# `uv lock --check` validates the whole workspace, so both members' pyproject must be present even though
-# only the `beetkeeper` package is installed (the plugin's source is not needed here).
-# COPY src/python/pyproject.toml src/python/pyproject.toml
-# COPY src/beetsplug/pyproject.toml src/beetsplug/pyproject.toml
-# COPY src/python/beetkeeper/ /app/src/python/beetkeeper
-COPY . /app/
-RUN pex -v ./beetkeeper-0.0.3-py3-none-any.whl --entry-point beetkeeper.main:cli  -o bk.pex
-# `--no-dev`: uv installs the `dev` group by default even with `--package`, bloating the image with the
-# dev toolchain (mypy, ruff, pytest, …).
-# RUN uv lock --check && uv sync --locked --no-cache --no-dev --package beetkeeper
+# The thin, single-arch PEX for this image's arch (`//:beetkeeper-linux-<arch>`), placed at the build-context root by
+# Pants. TARGETARCH is amd64/arm64; each PEX carries only that arch's wheels.
+ARG TARGETARCH
+COPY beetkeeper-linux-${TARGETARCH}.pex /app/beetkeeper.pex
+# Bake the PEX's dependency extraction into an image layer so the first container start isn't slow. `--help`
+# exercises the entrypoint without starting the server; `inherit_path="fallback"` lets a derived image add
+# beets plugins via `pip install` into this interpreter and have the PEX pick them up.
+ENV PEX_ROOT=/app/.pex
+RUN python3.14 /app/beetkeeper.pex --help > /dev/null
 
 ARG RELEASE_TAG=""
 ENV RELEASE_TAG=${RELEASE_TAG}
-ENTRYPOINT ["beetkeeper"]
+ENTRYPOINT ["python3.14", "/app/beetkeeper.pex"]
 CMD ["run"]

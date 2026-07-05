@@ -80,19 +80,6 @@ separate_lockfile_metadata_file = true
 "beetsplug-resolve" = "3rdparty/python/beetsplug-lockfile.json"
 "tools-resolve" = "3rdparty/tools/tools-lockfile.json"
 
-# https://www.pantsbuild.org/stable/reference/subsystems/python#resolves_to_no_binary
-# https://www.pantsbuild.org/stable/docs/python/overview/pex#setting-the-target-platforms-for-a-pex
-# [python.resolves_to_no_binary]
-# __default__ = []
-# beetkeeper-resolver = []
-# 
-# [python.resolves_to_no_binary]
-# __default__ = []
-# beetkeeper-resolver = []
-
-# [python.resolves_to_complete_platforms]
-# beetkeeper-resolve = ["3rdparty/platforms:py314_linux_arm64"]
-
 [bandit]
 args = ["--quiet", "--severity-level=medium", "--confidence-level=medium"]
 config = "pyproject.toml"

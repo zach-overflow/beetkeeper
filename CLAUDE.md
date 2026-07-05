@@ -37,7 +37,7 @@ pants package src/python:beetkeeper-whl   # build the wheel -> dist/
 pants package //:beetkeeper-server-image  # build app docker image
 pants package ::                      # Packages all pants targets which support the package command.
 uv lock                               # regenerate lockfile after dep changes
-uv lock --check                       # verify lockfile is current (also gated in Dockerfile)
+uv lock --check                       # verify lockfile is current (gated in prek + CI)
 ```
 Lint/type/security logic is shared with prek + CI via `hooks/*.sh` (ruff, mypy, bandit,
 uv-lockfile-check). Install git hooks with `prek install`.
@@ -47,6 +47,10 @@ uv-lockfile-check). Install git hooks with `prek install`.
   single `//:beetkeeper-server-image` `docker_image` target in root `BUILD`. The image is named/pushed via
   the `@ghcr` registry (`ghcr.io/zach-overflow/beetkeeper`); see `pants.toml` `[docker.registries.ghcr]` and
   the `env("RELEASE_TAG", "dev")` tag in `BUILD`.
+- The `app` stage runs no `uv`/resolve — it just COPYs a thin, single-arch PEX (`//:beetkeeper-linux-<arch>`, one per
+  linux arch via `complete_platforms`, selected by `ARG TARGETARCH`). `pants package` builds only the host
+  arch; CI builds + pushes the image per-arch on native runners (no QEMU) and stitches a multi-arch manifest
+  list — see `.github/workflows/release.yml`.
 
 ## Relevant public docs
 - Pants: https://www.pantsbuild.org/stable/docs/introduction/welcome-to-pants
