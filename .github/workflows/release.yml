@@ -25,7 +25,7 @@ env:
 # separate `publish-pypi` job so PyPI OIDC trusted publishing is scoped to the `pypi` environment.
 jobs:
   release:
-    name: Pants build, validate, and push image
+    name: Pants build, validate, stage wheels
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -94,26 +94,12 @@ jobs:
         run: |
           uv run --all-groups pytest -m release_tests -vv src/integration_tests/release_tests
 
-      - name: Build artifacts
+      # Only the wheels here — the Docker image is built + pushed by the `build-image` matrix and stitched by
+      # `merge-manifest` (native per-arch runners, no QEMU). Building `::` would rebuild the image (and its
+      # fat PEX) redundantly on this amd64 runner.
+      - name: Build wheels
         run: |
-          pants package ::
-
-      - name: Log in to GHCR
-        if: steps.gate.outputs.is_release == 'true'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish image to GHCR
-        if: steps.gate.outputs.is_release == 'true'
-        env:
-          # `image_tags` in //:BUILD resolve `env("RELEASE_TAG", "dev")`; this tags `:latest` + `:<version>`.
-          RELEASE_TAG: ${{ steps.gate.outputs.version }}
-        # `pants publish` rebuilds the image (cache hit from `pants package ::` above) and pushes to GHCR.
-        run: |
-          pants publish //:beetkeeper-server-image
+          pants package src/python:beetkeeper-whl src/beetsplug:plugin-whl
 
       # Each wheel is its own artifact: OIDC trusted publishing mints a project-scoped token, so each PyPI
       # project uploads separately.
@@ -139,6 +125,96 @@ jobs:
         with:
           name: pants-log
           path: .pants.d/workdir/pants.log
+
+  # Build the image on native per-arch runners (no QEMU): each job `pants package`s a single-arch image into
+  # its local daemon, then pushes it under a per-arch tag. Runs on every v* tag (build validation); the push
+  # is gated on `is_release`. `merge-manifest` stitches the per-arch tags into the multi-arch manifest list.
+  build-image:
+    name: Build image (${{ matrix.arch }})
+    needs: release
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.11.23'
+          enable-cache: true
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v8
+        with:
+          gha-cache-key: image-${{ matrix.arch }}-v0
+          named-caches-hash: ${{ hashFiles('uv.lock') }}
+          cache-lmdb-store: 'true'
+
+      # Plain `pants package` builds for the host arch and loads the image into the local Docker daemon.
+      - name: Build image (native ${{ matrix.arch }})
+        run: |
+          pants package //:beetkeeper-server-image
+
+      - name: Log in to GHCR
+        if: needs.release.outputs.is_release == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Push the locally-built image under an arch-suffixed tag; `merge-manifest` combines them.
+      - name: Push per-arch tag
+        if: needs.release.outputs.is_release == 'true'
+        env:
+          REF: ghcr.io/zach-overflow/beetkeeper
+          VERSION: ${{ needs.release.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          docker tag "${REF}:latest" "${REF}:${VERSION}-${ARCH}"
+          docker push "${REF}:${VERSION}-${ARCH}"
+
+  # Stitch the per-arch tags into a single multi-arch manifest list (`:<version>` + `:latest`). Non-Pants:
+  # Pants `docker_image` can't push by digest / assemble a manifest list, but `buildx imagetools` can.
+  merge-manifest:
+    name: Merge multi-arch manifest
+    needs: [release, build-image]
+    if: needs.release.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create + push manifest list
+        env:
+          REF: ghcr.io/zach-overflow/beetkeeper
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          docker buildx imagetools create \
+            -t "${REF}:${VERSION}" \
+            -t "${REF}:latest" \
+            "${REF}:${VERSION}-amd64" \
+            "${REF}:${VERSION}-arm64"
 
   publish-pypi:
     name: Publish to PyPI
@@ -181,7 +257,7 @@ jobs:
   # repo Pages source = "GitHub Actions".
   docs-build:
     name: Build docs site
-    needs: [release, publish-pypi]
+    needs: [release, publish-pypi, merge-manifest]
     if: needs.release.outputs.is_release == 'true'
     runs-on: ubuntu-latest
     steps:

@@ -57,9 +57,11 @@ jobs:
         run: |
           pants lint check test ::
 
-      - name: Build artifacts (no push)
+      # Non-docker artifacts (wheels + all PEXes) build here; the image is validated per-arch in `build-image`
+      # below. The image build needs a native runner per arch, so it can't be exercised in this single job.
+      - name: Build non-docker artifacts
         run: |
-          pants package ::
+          pants package --filter-target-type=-docker_image ::
 
       - name: Build docs site
         run: |
@@ -71,3 +73,39 @@ jobs:
         with:
           name: pants-log
           path: .pants.d/workdir/pants.log
+
+  # Validate the image on both arches natively (no push): each runner builds for its own arch, so the
+  # arm64 TARGETARCH COPY + running the arm64 PEX in-container are exercised here, not first at release.
+  build-image:
+    name: Build image (${{ matrix.arch }})
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.11.23'
+          enable-cache: true
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v8
+        with:
+          gha-cache-key: image-${{ matrix.arch }}-v0
+          named-caches-hash: ${{ hashFiles('uv.lock') }}
+          cache-lmdb-store: 'true'
+      - name: Build image (native ${{ matrix.arch }}, no push)
+        run: |
+          pants package //:beetkeeper-server-image

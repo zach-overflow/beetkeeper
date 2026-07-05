@@ -15,7 +15,7 @@
 #   downloads/  -> mounted at /downloads  (raw, un-imported audio to import FROM).
 #   music/      -> mounted at /music      (the beets music library; imports land here).
 #
-# The server is published on http://localhost:8080; press Ctrl-C to stop (the temp copy is then removed).
+# The server is published on http://localhost:8337; press Ctrl-C to stop (the temp copy is then removed).
 
 set -exuo pipefail
 
@@ -65,7 +65,7 @@ beetkeeper:
   log_level: INFO
   server:
     hostname: 0.0.0.0
-    port: 8080
+    port: 8337
     server_workers: 1
   database:
     sqlite_path: /beets/beetkeeper.db
@@ -82,7 +82,7 @@ docker run "${docker_args[@]}" ghcr.io/zach-overflow/beetkeeper:latest db upgrad
 
 set +x
 echo
-echo "beetkeeper test server -> http://localhost:8080"
+echo "beetkeeper test server -> http://localhost:8337"
 echo "Temp data (host): ${tmp_dirpath}  (mounted at /beets, /downloads, /music; removed on exit)"
 echo "Import albums from these container paths (Import page or POST /api/import):"
 find "${tmp_dirpath}/downloads" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sed 's|^|  /downloads/|' || true
@@ -101,4 +101,4 @@ if [ -f /beets/extra-reqs.txt ]; then
 	cp /beets/originquery.py /usr/local/lib/python3.14/site-packages/beetsplug/
 fi
 exec beetkeeper run'
-docker run -it "${docker_args[@]}" -p 8080:8080 --entrypoint /bin/sh ghcr.io/zach-overflow/beetkeeper:latest -c "${startup_cmd}"
+docker run -it "${docker_args[@]}" -p 8337:8337 --entrypoint /bin/sh ghcr.io/zach-overflow/beetkeeper:latest -c "${startup_cmd}"

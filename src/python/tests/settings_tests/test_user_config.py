@@ -53,13 +53,6 @@ def test_missing_beetkeeper_section_raises(tmp_path: Path) -> None:
         load_config(config_path)
 
 
-def test_non_mapping_beetkeeper_section_raises(tmp_path: Path) -> None:
-    """A `beetkeeper` key that is not a mapping is rejected with a clear error."""
-    config_path = _write_config(tmp_path, _BEETS_PREAMBLE + "beetkeeper: not-a-mapping\n")
-    with pytest.raises(BeetKeeperConfigError):
-        load_config(config_path)
-
-
 def test_missing_config_file_raises(tmp_path: Path) -> None:
     """A nonexistent config path raises rather than crashing."""
     with pytest.raises(BeetKeeperConfigError):

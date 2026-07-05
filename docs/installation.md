@@ -24,7 +24,7 @@ Map your host directories to the container's volume paths:
       -v /host/path/to/downloads:/data/raw \
       -v /host/path/to/music_library:/data/music \
       -e BEETKEEPER_CONFIG=/beets/config.yaml \
-      -p 8080:8080 \
+      -p 8337:8337 \
       ghcr.io/zach-overflow/beetkeeper
     ```
 
@@ -36,7 +36,7 @@ Map your host directories to the container's volume paths:
         image: ghcr.io/zach-overflow/beetkeeper
         restart: unless-stopped
         ports:
-          - "8080:8080"
+          - "8337:8337"
         environment:
           BEETKEEPER_CONFIG: /beets/config.yaml
         volumes:

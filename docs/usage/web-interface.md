@@ -1,7 +1,7 @@
 # Using the Web Interface
 
 Once the server is running (see the [Quick Start Demo](quickstart.md)), open it in your browser at
-`http://<hostname>:<port>/` (port `8080` by default). The web UI exposes the same functionality as the
+`http://<hostname>:<port>/` (port `8337` by default). The web UI exposes the same functionality as the
 [REST API](rest-api.md).
 
 ## Imports

@@ -65,7 +65,8 @@ search_path = ["<PYENV>", "<ASDF>", "<PATH>"]
 # `skip_tests=True` on the targets; we run pytest through `//:pytest` to use plugins without a separate
 # resolve: https://www.pantsbuild.org/stable/reference/subsystems/pytest#requirements
 [python]
-resolver = "uv"
+# resolver = "uv"
+resolver = "pex"
 enable_resolves = true
 default_resolve = "beetkeeper-resolve"
 interpreter_constraints = [">=3.14,<3.15"]

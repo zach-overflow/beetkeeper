@@ -35,7 +35,7 @@ docker run -d --name beetkeeper \
   -e BEETKEEPER_CONFIG=/config/beets-config.yaml \
   -v "$DEPLOY/beets-config.yaml:/config/beets-config.yaml:ro" \
   -v beetkeeper-data:/data \
-  -p 8080:8080 \
+  -p 8337:8337 \
   ghcr.io/zach-overflow/beetkeeper:latest          # default CMD is `run`
 ```
 
@@ -43,10 +43,10 @@ docker run -d --name beetkeeper \
 
 ```bash
 docker logs -f beetkeeper                       # watch startup
-curl -s localhost:8080/home | head              # full page
-curl -s localhost:8080/events | head            # full page
-curl -s localhost:8080/fragment/nav-links       # HTMX fragment
-curl -s -o /dev/null -w '%{http_code}\n' localhost:8080/static/css/classless.css   # 200
+curl -s localhost:8337/home | head              # full page
+curl -s localhost:8337/events | head            # full page
+curl -s localhost:8337/fragment/nav-links       # HTMX fragment
+curl -s -o /dev/null -w '%{http_code}\n' localhost:8337/static/css/classless.css   # 200
 ```
 
 ## Teardown

@@ -16,6 +16,6 @@ At a high level, the API lets you:
 
 Responses are JSON, and the API follows standard HTTP conventions (status codes, verbs). It's an ordinary
 FastAPI application, so a running instance also serves **interactive Swagger UI at `/docs`** and the raw
-schema at `/openapi.json` — point them at your own server (e.g. <http://localhost:8080/docs>) to try
+schema at `/openapi.json` — point them at your own server (e.g. <http://localhost:8337/docs>) to try
 requests live. Swagger UI is the complete, always-current endpoint-by-endpoint reference (paths,
 parameters, and request/response schemas).

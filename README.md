@@ -11,6 +11,7 @@ You should have received a copy of the GNU Affero General Public License along w
 
 # Beetkeeper
 
+[![PyPI Version](https://img.shields.io/pypi/v/beetkeeper)](https://pypi.org/project/beetkeeper/)
 [![python](https://img.shields.io/badge/python-3.14-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
 ![license](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue?style=flat)
 
@@ -80,7 +81,7 @@ services:
     image: ghcr.io/zach-overflow/beetkeeper
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8337:8337"
 	environment:
 	  BEETKEEPER_CONFIG=/beets/config.yaml
     volumes:
@@ -112,7 +113,7 @@ beetkeeper:
   log_level: INFO
   server:
     hostname: 0.0.0.0
-    port: 8080
+    port: 8337
     server_workers: 2
   database:
     # beetkeeper's own SQLite db (separate from the beets library); created on first `beetkeeper db upgrade`.

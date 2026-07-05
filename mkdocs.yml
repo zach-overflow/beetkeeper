@@ -91,4 +91,5 @@ nav:
   - Contributing:
       - Overview: contributor_docs/index.md
       - Testing & development: contributor_docs/testing_and_development.md
+      - Building artifacts: contributor_docs/building_artifacts.md
       - Release management: contributor_docs/release_management.md

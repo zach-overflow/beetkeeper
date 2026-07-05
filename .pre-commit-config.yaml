@@ -19,8 +19,8 @@ repos:
         files: '^(VERSION|src/python/beetkeeper/_version\.py|src/beetsplug/pyproject\.toml)$'
         language: system
         pass_filenames: false
-        groups: [dependency-validations]
-        priority: 1
+        groups: [dependencies-checks]
+        priority: 0
 
       - id: lint
         name: lint

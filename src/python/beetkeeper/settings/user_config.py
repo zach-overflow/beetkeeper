@@ -1,21 +1,27 @@
 import json
 import logging
 from pathlib import Path
-from typing import Final, Literal
+from typing import Any, Final, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, FilePath, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, FilePath, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
 CONFIG_PATH_ENVVAR: Final[str] = "BEETKEEPER_CONFIG"
 _LOGGER = logging.getLogger(__name__)
 
 
+class BeetKeeperConfigError(ValueError):
+    """Raised on failures loading beetkeeper settings from the beets config's `beetkeeper` section."""
+
+    pass
+
+
 class ServerConfSection(BaseModel):
     """Model for the `server` subsection of the beets config's `beetkeeper` section."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
     hostname: str
-    port: int = Field(default=8080, gt=0)
+    port: int = Field(default=8337, gt=0)
     server_workers: int = Field(default=2, gt=0)
 
 
@@ -27,9 +33,9 @@ class DatabaseConfSection(BaseModel):
     need not exist yet — it is created when alembic migrations are first applied (see `beetkeeper.db`).
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
     sqlite_path: Path = Field(
-        description="Filesystem path to beetkeeper's SQLite db file (created on first migration)."
+        description="Filesystem path to beetkeeper's SQLite db file. NOTE: this is must be a different file than beets' `library.db`."
     )
 
     @property
@@ -49,58 +55,51 @@ class DatabaseConfSection(BaseModel):
 
 
 class UserConfig(BaseSettings):
-    """Beetkeeper's settings, read from the optional `beetkeeper` section of the beets config.
-
-    Constructed by `load_config`. `beets_config_filepath` is the path of the beets config file itself
-    (the file these settings were read from); it is set by `load_config`, NOT a value set by the user
-    inside the `beetkeeper` section.
+    """
+    Beetkeeper's settings, read from the `beetkeeper` section of the beets config.
+    Constructed via `load_config` from the file at `beets_config_filepath`.
     """
 
-    model_config = SettingsConfigDict(frozen=True)
+    model_config = SettingsConfigDict(frozen=True, extra="ignore")
     beets_config_filepath: FilePath
     log_level: Literal["CRITICAL", "DEBUG", "ERROR", "INFO", "NOTSET", "WARNING"]
     server: ServerConfSection
     database: DatabaseConfSection
 
-
-class BeetKeeperConfigError(ValueError):
-    """Raised on failures loading beetkeeper settings from the beets config's `beetkeeper` section."""
-
-    pass
+    @model_validator(mode="after")
+    def final_config_checks(self) -> Self:
+        """Runs any checks which can only happen after all subsection fields are loaded and individually validated."""
+        if self.database.resolved_sqlite_path == self.beets_config_filepath:
+            raise BeetKeeperConfigError(
+                "`beetkeeper.database.sqlite_path` and beets' library.db must have different paths."
+            )
+        return self
 
 
 def load_config(raw_conf_path: Path) -> UserConfig:
     """Load beetkeeper settings from the beets config at `raw_conf_path`, returning a `UserConfig`.
 
     `raw_conf_path` is the path to the *beets* YAML config. Beetkeeper reads its own settings from that
-    file's OPTIONAL top-level `beetkeeper:` mapping (a plain beets config without it is still a valid beets
-    config). The beets config path itself becomes `UserConfig.beets_config_filepath`. Raises a
-    `BeetKeeperConfigError` on a missing config file, a non-mapping `beetkeeper` section, or invalid settings.
+    file's top-level `beetkeeper:` mapping. The beets config path itself becomes `UserConfig.beets_config_filepath`. Raises a
+    `BeetKeeperConfigError` on a missing config file, or bad settings.
     """
-    conf_path = Path(raw_conf_path).resolve()
-    if not conf_path.exists() or conf_path.is_dir():
-        raise BeetKeeperConfigError(
-            f"Beets config file does not exist. Check `{CONFIG_PATH_ENVVAR}` environment variable."
-        )
-    beets_config_data = YamlConfigSettingsSource(settings_cls=UserConfig, yaml_file=conf_path).yaml_data or {}
-    beetkeeper_section = beets_config_data.get("beetkeeper") or {}
-    if not isinstance(beetkeeper_section, dict):
-        raise BeetKeeperConfigError("The beets config's optional `beetkeeper` section must be a mapping of settings.")
     try:
-        # The beets config path itself is `beets_config_filepath` (no longer a user-set setting); a stray
-        # `beets_config_filepath` inside the `beetkeeper` section is overridden by the loaded path.
-        return UserConfig(**{**beetkeeper_section, "beets_config_filepath": conf_path})
+        return UserConfig(**_load_app_conf_data(raw_conf_path=raw_conf_path))
     except ValidationError as e:
-        # `default=str` since error `input` values include the injected `beets_config_filepath` Path.
-        _LOGGER.exception(
-            "Beetkeeper settings (beets config `beetkeeper` section) have problems: "
-            + json.dumps(e.errors(), indent=2, default=str)
-        )
-        raise BeetKeeperConfigError(
-            "Beetkeeper settings in the beets config's `beetkeeper` section have errors (see above)."
-        ) from e
+        err_msg_prefix = "Beetkeeper is misconfigured. Beets' `beetkeeper` config section has problem(s). "
+        _LOGGER.exception(err_msg_prefix + f"See below:\n{json.dumps(e.errors(), indent=2, default=str)}")
+        raise BeetKeeperConfigError(err_msg_prefix + "See above.") from e
     except ValueError as e:
-        _LOGGER.exception("Ran into error while loading beetkeeper settings from the beets config.")
-        raise BeetKeeperConfigError(
-            "Beetkeeper settings in the beets config's `beetkeeper` section have errors (see above)."
-        ) from e
+        raise BeetKeeperConfigError("Failed to load beets' `beetkeeper` config section (see above for errors).") from e
+
+
+def _load_app_conf_data(raw_conf_path: Path) -> dict[str, Any]:
+    """Loads and returns the raw dict of YAML data under the `beetkeeper` config section."""
+    if not raw_conf_path.exists() or raw_conf_path.is_dir():
+        raise BeetKeeperConfigError(f"Beets config file '{str(raw_conf_path)}' does not exist.")
+    conf_path = Path(raw_conf_path).resolve()
+    app_conf_data = YamlConfigSettingsSource(settings_cls=UserConfig, yaml_file=conf_path).yaml_data.get("beetkeeper")
+    if not app_conf_data:
+        raise BeetKeeperConfigError("Invalid beets config: missing required `beetkeeper` section.")
+    app_conf_data["beets_config_filepath"] = conf_path
+    return app_conf_data
