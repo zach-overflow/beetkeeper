@@ -18,7 +18,8 @@ dev = [
 [tool.uv]
 # Constrains only how uv resolves the shared lockfile, keeping both workspace members' `beets` in lockstep;
 # the wheels' actual `beets` deps come from each member's `[project]`.
-constraint-dependencies = ["beets>=2.11.0"]
+# When bumping this, the Docker base image must be bumped as well.
+constraint-dependencies = ["beets==2.12.0"]
 
 # Members must be registered here or uv (which only reads this root file) can't see them and `uv lock` fails.
 [tool.uv.workspace]

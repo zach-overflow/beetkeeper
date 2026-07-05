@@ -50,15 +50,17 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.23 /uv /uvx /bin/
 COPY --from=ffmpeg /usr/local/bin/ffmpeg /usr/local/bin/
 WORKDIR /app
 
-COPY LICENSE.txt pyproject.toml uv.lock ./
+# COPY LICENSE.txt pyproject.toml uv.lock ./
 # `uv lock --check` validates the whole workspace, so both members' pyproject must be present even though
 # only the `beetkeeper` package is installed (the plugin's source is not needed here).
-COPY src/python/pyproject.toml src/python/pyproject.toml
-COPY src/beetsplug/pyproject.toml src/beetsplug/pyproject.toml
-COPY src/python/beetkeeper/ /app/src/python/beetkeeper
+# COPY src/python/pyproject.toml src/python/pyproject.toml
+# COPY src/beetsplug/pyproject.toml src/beetsplug/pyproject.toml
+# COPY src/python/beetkeeper/ /app/src/python/beetkeeper
+COPY . /app/
+RUN pex -v ./beetkeeper-0.0.3-py3-none-any.whl --entry-point beetkeeper.main:cli  -o bk.pex
 # `--no-dev`: uv installs the `dev` group by default even with `--package`, bloating the image with the
 # dev toolchain (mypy, ruff, pytest, …).
-RUN uv lock --check && uv sync --locked --no-cache --no-dev --package beetkeeper
+# RUN uv lock --check && uv sync --locked --no-cache --no-dev --package beetkeeper
 
 ARG RELEASE_TAG=""
 ENV RELEASE_TAG=${RELEASE_TAG}

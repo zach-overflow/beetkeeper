@@ -80,7 +80,7 @@ services:
     image: ghcr.io/zach-overflow/beetkeeper
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8337:8337"
 	environment:
 	  BEETKEEPER_CONFIG=/beets/config.yaml
     volumes:
@@ -112,7 +112,7 @@ beetkeeper:
   log_level: INFO
   server:
     hostname: 0.0.0.0
-    port: 8080
+    port: 8337
     server_workers: 2
   database:
     # beetkeeper's own SQLite db (separate from the beets library); created on first `beetkeeper db upgrade`.

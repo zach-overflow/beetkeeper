@@ -19,8 +19,17 @@ repos:
         files: '^(VERSION|src/python/beetkeeper/_version\.py|src/beetsplug/pyproject\.toml)$'
         language: system
         pass_filenames: false
-        groups: [dependency-validations]
-        priority: 1
+        groups: [dependencies-checks]
+        priority: 0
+      
+      - id: base-image-version-sync-check
+        name: base image version sync check
+        entry: "pants test hooks:base-image-version-sync-check"
+        language: system
+        files: '^(pyproject\.toml|Dockerfile)$'
+        pass_filenames: false
+        groups: [dependencies-checks]
+        priority: 0
 
       - id: lint
         name: lint

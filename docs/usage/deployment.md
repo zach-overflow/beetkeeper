@@ -42,7 +42,7 @@ docker run --rm \
         image: ghcr.io/zach-overflow/beetkeeper:latest
         restart: unless-stopped
         ports:
-          - "8080:8080"
+          - "8337:8337"
         environment:
           BEETKEEPER_CONFIG: /config/beets-config.yaml
         volumes:
@@ -65,7 +65,7 @@ docker run --rm \
       -e BEETKEEPER_CONFIG=/config/beets-config.yaml \
       -v "$DEPLOY/beets-config.yaml:/config/beets-config.yaml:ro" \
       -v beetkeeper-data:/data \
-      -p 8080:8080 \
+      -p 8337:8337 \
       ghcr.io/zach-overflow/beetkeeper:latest          # default CMD is `run`
     ```
 
@@ -73,7 +73,7 @@ docker run --rm \
 
 ```bash
 docker logs -f beetkeeper                                        # watch startup
-curl -s -o /dev/null -w '%{http_code}\n' localhost:8080/home     # 200
+curl -s -o /dev/null -w '%{http_code}\n' localhost:8337/home     # 200
 ```
 
 ## Upgrading an existing install

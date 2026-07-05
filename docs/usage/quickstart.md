@@ -20,7 +20,7 @@ beetkeeper:
   log_level: INFO
   server:
     hostname: 0.0.0.0   # bind all interfaces so the published port is reachable from the host
-    port: 8080
+    port: 8337
     server_workers: 1   # single worker keeps the demo's SQLite simple
   database:
     sqlite_path: /data/beetkeeper.db   # on the persistent volume
@@ -45,17 +45,17 @@ docker run -d --name beetkeeper-demo \
   -e BEETKEEPER_CONFIG=/config/beets-config.yaml \
   -v "$(pwd)/beets-config.yaml:/config/beets-config.yaml:ro" \
   -v beetkeeper-demo:/data \
-  -p 8080:8080 \
+  -p 8337:8337 \
   ghcr.io/zach-overflow/beetkeeper:latest
 ```
 
 ## 4. Explore
 
-Open **<http://localhost:8080/>** and try:
+Open **<http://localhost:8337/>** and try:
 
 - **[The web interface](web-interface.md)** — run imports, browse the event history, and search your library.
 - **[The REST API](rest-api.md)** — the same functionality for automation, with interactive docs at
-  <http://localhost:8080/docs>.
+  <http://localhost:8337/docs>.
 
 ## Tear down the demo
 

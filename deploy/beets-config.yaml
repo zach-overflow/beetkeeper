@@ -10,7 +10,7 @@ beetkeeper:
   server:
     # 0.0.0.0 (not localhost) so the server is reachable from the host via the published port.
     hostname: 0.0.0.0
-    port: 8080
+    port: 8337
     # Single worker keeps SQLite simple for a smoke test (raising it risks "database is locked" errors).
     server_workers: 1
   database:

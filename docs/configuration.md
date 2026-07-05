@@ -18,7 +18,7 @@ beetkeeper:
   log_level: INFO
   server:
     hostname: 0.0.0.0
-    port: 8080
+    port: 8337
     server_workers: 2
   database:
     # beetkeeper's own SQLite db (separate from the beets library db); created on first `beetkeeper db upgrade`.
@@ -31,7 +31,7 @@ beetkeeper:
 | :------------------------ | :------ | :------ | :-------------------------------------------------------------- |
 | `log_level`               | string  | —       | One of `CRITICAL`, `DEBUG`, `ERROR`, `INFO`, `NOTSET`, `WARNING`. |
 | `server.hostname`         | string  | —       | Interface to bind (e.g. `0.0.0.0` to listen on all interfaces). |
-| `server.port`             | int     | `8080`  | Port the server listens on (must be `> 0`).                     |
+| `server.port`             | int     | `8337`  | Port the server listens on (must be `> 0`).                     |
 | `server.server_workers`   | int     | `2`     | Number of server worker processes (must be `> 0`).             |
 | `database.sqlite_path`    | path    | —       | Path to beetkeeper's own SQLite db (created on first migration). |
 

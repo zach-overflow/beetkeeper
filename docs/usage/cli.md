@@ -12,7 +12,7 @@ Runs the web server.
 beetkeeper run --config-path /path/to/beets/config.yaml
 ```
 
-Once running, open the web UI at `http://<hostname>:<port>/` (defaults to port `8080`).
+Once running, open the web UI at `http://<hostname>:<port>/` (defaults to port `8337`).
 
 ## `beetkeeper db upgrade`
 
