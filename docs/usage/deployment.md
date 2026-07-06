@@ -2,7 +2,7 @@
 
 This page covers running beetkeeper under Docker for real use. It mirrors the setup in the repo's
 [`deploy/`](https://github.com/zach-overflow/beetkeeper/tree/main/deploy) directory, which includes an
-example `beets-config.yaml` (with container paths). beetkeeper reads its settings from that file's optional
+example `config.yaml` (with container paths). beetkeeper reads its settings from that file's optional
 top-level `beetkeeper` section; the rest is an ordinary beets config — see [Configuration](../configuration.md).
 
 For a throwaway try-it-out run, start with the [Quick Start Demo](quickstart.md) instead.
@@ -26,8 +26,8 @@ beetkeeper does **not** auto-migrate on startup. Apply migrations once into a pe
 DEPLOY="$(pwd)/deploy"
 
 docker run --rm \
-  -e BEETKEEPER_CONFIG=/config/beets-config.yaml \
-  -v "$DEPLOY/beets-config.yaml:/config/beets-config.yaml:ro" \
+  -e BEETSDIR=/config \
+  -v "$DEPLOY/config.yaml:/config/config.yaml:ro" \
   -v beetkeeper-data:/data \
   ghcr.io/zach-overflow/beetkeeper:latest db upgrade
 ```
@@ -44,9 +44,9 @@ docker run --rm \
         ports:
           - "8337:8337"
         environment:
-          BEETKEEPER_CONFIG: /config/beets-config.yaml
+          BEETSDIR: /config
         volumes:
-          - ./deploy/beets-config.yaml:/config/beets-config.yaml:ro
+          - ./deploy/config.yaml:/config/config.yaml:ro
           - beetkeeper-data:/data
     volumes:
       beetkeeper-data:
@@ -62,8 +62,8 @@ docker run --rm \
     DEPLOY="$(pwd)/deploy"
 
     docker run -d --name beetkeeper \
-      -e BEETKEEPER_CONFIG=/config/beets-config.yaml \
-      -v "$DEPLOY/beets-config.yaml:/config/beets-config.yaml:ro" \
+      -e BEETSDIR=/config \
+      -v "$DEPLOY/config.yaml:/config/config.yaml:ro" \
       -v beetkeeper-data:/data \
       -p 8337:8337 \
       ghcr.io/zach-overflow/beetkeeper:latest          # default CMD is `run`
@@ -96,8 +96,8 @@ docker rm -f beetkeeper    # or: docker compose down
 
 DEPLOY="$(pwd)/deploy"
 docker run --rm \
-  -e BEETKEEPER_CONFIG=/config/beets-config.yaml \
-  -v "$DEPLOY/beets-config.yaml:/config/beets-config.yaml:ro" \
+  -e BEETSDIR=/config \
+  -v "$DEPLOY/config.yaml:/config/config.yaml:ro" \
   -v beetkeeper-data:/data \
   ghcr.io/zach-overflow/beetkeeper:latest db upgrade
 ```
@@ -120,8 +120,9 @@ docker volume rm beetkeeper-data    # only if you want to discard the DB
 
 ## Notes
 
-- **Config:** beetkeeper's settings live under the `beetkeeper` section of `beets-config.yaml`; the same
-  file is the beets config (`directory`, `library`, …). `BEETKEEPER_CONFIG` points at it.
+- **Config:** beetkeeper's settings live under the `beetkeeper` section of `config.yaml`; the same file is
+  the beets config (`directory`, `library`, …). `BEETSDIR` points at the **directory** holding it (beets'
+  own convention), and the file inside must be named `config.yaml`.
 - **Volumes:** mount the config read-only (`:ro`); the DB lives on the read-write `beetkeeper-data` volume
   so it persists across restarts. The migrate step and the server **must** use the same volume.
 - **Workers / SQLite:** keep `server.server_workers` low — raising it risks SQLite "database is locked"

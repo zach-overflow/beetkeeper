@@ -69,7 +69,7 @@ docker run \
 	-v /host/path/to/beets_app_directory:/beets \
 	-v /host/path/to/downloads:/data/raw \
 	-v /host/path/to/music_library:/data/music \
-	-e BEETKEEPER_CONFIG=/beets/config.yaml \
+	-e BEETSDIR=/beets \
 	ghcr.io/zach-overflow/beetkeeper
 ```
 
@@ -83,7 +83,7 @@ services:
     ports:
       - "8337:8337"
 	environment:
-	  BEETKEEPER_CONFIG=/beets/config.yaml
+	  BEETSDIR: /beets
     volumes:
       - /host/path/to/beets_app_directory:/beets
 	  - /host/path/to/downloads:/data/raw
@@ -102,7 +102,8 @@ Then, within the same virtualenv, run `beetkeeper --config-path <path to beets c
 
 ### Configuration
 
-Both methods point beetkeeper at your **beets** config (`BEETKEEPER_CONFIG` / `--config-path`). beetkeeper
+Both methods point beetkeeper at your **beets** config: `BEETSDIR` (the **directory** holding your beets
+`config.yaml`, beets' own convention) or `--config-path` (the config file itself). beetkeeper
 reads its own settings from an **optional** top-level `beetkeeper` section in that beets config — a plain
 beets config without it is still valid for beets. For example:
 

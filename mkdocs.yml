@@ -21,7 +21,7 @@ theme:
   name: material
   color_mode: false
   user_color_mode_toggle: false
-  logo: assets/images/logo/logo-crt-green.svg
+  logo: assets/images/logo/logo-CRT-green.svg
   favicon: assets/images/logo/favicon-16.png
   icon:
     repo: fontawesome/brands/github

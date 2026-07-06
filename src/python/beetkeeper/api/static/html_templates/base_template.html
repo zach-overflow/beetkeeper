@@ -7,18 +7,25 @@
 	     template render must pass `request` into the TemplateResponse context (or `url_for` raises). -->
 	<script src="{{ url_for('static', path='/js/htmx.min.js') }}"></script>
 	<link rel="stylesheet" href="{{ url_for('static', path='/css/classless.css') }}">
-	<link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='/img/favicon.svg') }}">
+	 <!-- Light mode choice: Displays when theme background is light (uses dark icon) -->
+    <!-- <link rel="icon" href="{{ url_for('static', path='/img/favicon-dark.ico') }}" media="(prefers-color-scheme: light)"> -->
+    <!-- Dark mode choice: Displays when theme background is dark (uses light icon) -->
+    <link rel="icon" href="{{ url_for('static', path='/img/crt-purple-favicon.ico') }}" type="image/x-icon">
+	<!-- Preload the hover-state logo so the first hover swaps without a flash (see `.logo-main` in classless.css). -->
+	<link rel="preload" href="{{ url_for('static', path='/img/logo-CRT-green.svg') }}" as="image" type="image/svg+xml">
+	 
 	<!-- No base-target override here, so links open in the current tab (the browser default). -->
 </head>
 <body>
 	<!-- Shared nav bar, rendered on every page via this base template (no need to repeat it per page). -->
 	<div id="nav-links">
-		<p>
-			<a href="/home" role="button">Main Page</a>
-			<a href="/events" role="button">Beets Events</a>
-			<a href="/import" role="button">Import</a>
-			<a href="/search" role="button">Search</a>
-		</p>
+		<div class="logo-main">
+			<a href="https://beetkeeper.dadbodaudio.com/"><img src="{{ url_for('static', path='/img/logo-CRT-purple.svg') }}" alt="beetkeeper logo"></a>
+		</div>
+		<!-- <a href="/home" role="button">Main Page</a> -->
+		<a href="/events" role="button">Beets Events</a>
+		<a href="/import" role="button">Import</a>
+		<a href="/search" role="button">Search</a>
 	</div>
 	{% block content %}{% endblock %}
 

@@ -10,9 +10,10 @@ point it at a real one later; see [Configuration](../configuration.md) and [Depl
 ## 1. Create a demo config
 
 beetkeeper reads its settings from the optional `beetkeeper` section of a beets config. In an empty working
-directory, save the following as `beets-config.yaml` — a minimal demo config using in-container paths:
+directory, save the following as `config.yaml` — a minimal demo config using in-container paths. It must be
+named `config.yaml`, since `BEETSDIR` (below) points at the *directory* holding it:
 
-```yaml title="beets-config.yaml"
+```yaml title="config.yaml"
 directory: /data/music
 library: /data/library.db
 
@@ -32,8 +33,8 @@ beetkeeper does not auto-migrate. Create its tables once into a named volume (`b
 
 ```bash
 docker run --rm \
-  -e BEETKEEPER_CONFIG=/config/beets-config.yaml \
-  -v "$(pwd)/beets-config.yaml:/config/beets-config.yaml:ro" \
+  -e BEETSDIR=/config \
+  -v "$(pwd)/config.yaml:/config/config.yaml:ro" \
   -v beetkeeper-demo:/data \
   ghcr.io/zach-overflow/beetkeeper:latest db upgrade
 ```
@@ -42,8 +43,8 @@ docker run --rm \
 
 ```bash
 docker run -d --name beetkeeper-demo \
-  -e BEETKEEPER_CONFIG=/config/beets-config.yaml \
-  -v "$(pwd)/beets-config.yaml:/config/beets-config.yaml:ro" \
+  -e BEETSDIR=/config \
+  -v "$(pwd)/config.yaml:/config/config.yaml:ro" \
   -v beetkeeper-demo:/data \
   -p 8337:8337 \
   ghcr.io/zach-overflow/beetkeeper:latest

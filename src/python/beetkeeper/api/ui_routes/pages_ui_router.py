@@ -1,11 +1,16 @@
 """Full-page HTML routes. Each renders a `page_templates/*.html` that extends `base_template.html`."""
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Request, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from beetkeeper.api.constants import TEMPLATES
 
 pages_ui_router = APIRouter()
+
+
+@pages_ui_router.get("/")
+async def default_page() -> RedirectResponse:
+    return RedirectResponse(url="/search", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
 
 @pages_ui_router.get("/home", response_class=HTMLResponse)

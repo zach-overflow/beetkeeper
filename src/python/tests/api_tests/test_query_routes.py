@@ -1,33 +1,22 @@
 """Tests for the read-only `/api/query` routes against a real (empty) beets library.
 
-`get_beets_library` is overridden with a `BeetsLibrary` pointed at a throwaway beets config, so these run
-the actual beets query/stats/fields code paths (no music files, no network) and assert the JSON shape.
+`get_beets_library` is overridden with a `BeetsLibrary` pointed at a throwaway beets config (see this
+package's `conftest.py`), so these run the actual beets query/stats/fields code paths (no music files, no
+network) and assert the JSON shape.
 """
 
-from collections.abc import AsyncIterator
-from pathlib import Path
-
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
 from beetkeeper.api.dependencies import get_beets_library
-from beetkeeper.api.fastapi_app import beetkeeper_app
 from beetkeeper.core import BeetsLibrary
+
+from .conftest import DependencyOverrides
 
 
 @pytest.fixture
-async def client(tmp_path: Path) -> AsyncIterator[AsyncClient]:
-    """A client whose `get_beets_library` dependency points at a fresh, empty beets library."""
-    beets_config = tmp_path / "beets.yaml"
-    beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n")
-    library = BeetsLibrary(beets_config)
-    beetkeeper_app.dependency_overrides[get_beets_library] = lambda: library
-    try:
-        transport = ASGITransport(app=beetkeeper_app)
-        async with AsyncClient(transport=transport, base_url="http://testclient") as http_client:
-            yield http_client
-    finally:
-        beetkeeper_app.dependency_overrides.clear()
+def app_dependency_overrides(beets_library: BeetsLibrary) -> DependencyOverrides:
+    return {get_beets_library: lambda: beets_library}
 
 
 @pytest.mark.anyio

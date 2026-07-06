@@ -41,8 +41,8 @@ beetkeeper db downgrade -c /path/to/config.yaml --revision base
        revision --autogenerate -m "describe your change"
    ```
 
-   Alternatively, set `BEETKEEPER_CONFIG=/path/to/config.yaml` (env.py will read the DB URL from it) and
-   drop the `-x db_url=...` argument. The new script lands in `alembic/versions/`.
+   Alternatively, set `BEETSDIR=/path/to/beets-config-dir` (env.py reads the DB URL from its `config.yaml`)
+   and drop the `-x db_url=...` argument. The new script lands in `alembic/versions/`.
 
 3. **Review the generated script.** Autogenerate is a starting point, not gospel:
    - SQLite cannot `ALTER` columns in place, so env.py enables **batch mode** (`render_as_batch=True`);

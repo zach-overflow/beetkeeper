@@ -3,8 +3,9 @@
 beetkeeper can be run either as a **Docker image** (recommended for a self-hosted deployment) or installed
 from **PyPI** alongside an existing beets install.
 
-Both methods point beetkeeper at your **beets** config via `BEETKEEPER_CONFIG` (env var) or `--config-path`
-(CLI flag). See [Configuration](configuration.md) for what beetkeeper reads from that file.
+Both methods point beetkeeper at your **beets** config: `BEETSDIR` (env var — the **directory** holding your
+beets `config.yaml`) or `--config-path` (CLI flag — the config file itself). See
+[Configuration](configuration.md) for what beetkeeper reads from that file.
 
 ## Docker
 
@@ -23,7 +24,7 @@ Map your host directories to the container's volume paths:
       -v /host/path/to/beets_app_directory:/beets \
       -v /host/path/to/downloads:/data/raw \
       -v /host/path/to/music_library:/data/music \
-      -e BEETKEEPER_CONFIG=/beets/config.yaml \
+      -e BEETSDIR=/beets \
       -p 8337:8337 \
       ghcr.io/zach-overflow/beetkeeper
     ```
@@ -38,7 +39,7 @@ Map your host directories to the container's volume paths:
         ports:
           - "8337:8337"
         environment:
-          BEETKEEPER_CONFIG: /beets/config.yaml
+          BEETSDIR: /beets
         volumes:
           - /host/path/to/beets_app_directory:/beets
           - /host/path/to/downloads:/data/raw
