@@ -1,1 +1,1 @@
-resources(name="favicons", sources=["favicon*"])
+resources(sources=["*.ico", "*.png", "*.svg"])

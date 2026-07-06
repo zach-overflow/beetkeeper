@@ -1,8 +1,8 @@
 # Using the CLI
 
 beetkeeper ships a single `beetkeeper` command with a small set of subcommands. Every command reads your
-beets config via `--config-path`/`-c` (or the `BEETKEEPER_CONFIG` environment variable) — see
-[Configuration](../configuration.md).
+beets config via `--config-path`/`-c` (the config file), or the `BEETSDIR` environment variable (the
+directory holding your beets `config.yaml`) — see [Configuration](../configuration.md).
 
 ## `beetkeeper run`
 

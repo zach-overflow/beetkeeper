@@ -61,9 +61,6 @@ extra_env_vars = ["PANTS=true"]
 [python-bootstrap]
 search_path = ["<PYENV>", "<ASDF>", "<PATH>"]
 
-# We don't set `[pytest].skip` — the `test` goal never reads it. Pants' own pytest is disabled via
-# `skip_tests=True` on the targets; we run pytest through `//:pytest` to use plugins without a separate
-# resolve: https://www.pantsbuild.org/stable/reference/subsystems/pytest#requirements
 [python]
 resolver = "pex"
 enable_resolves = true

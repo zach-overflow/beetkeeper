@@ -5,9 +5,12 @@ Source root is `src/python` (package: `src/python/beetkeeper`).
 
 ## Build tooling
 - **Pants 2.32** is the build system (`pants.toml`). Run `pants <goal> ::` for everything.
-- **uv** is the resolver (`[python] resolver = "uv"`, `enable_resolves = false`). The repo is a
-  uv **workspace**: root `pyproject.toml` is the workspace root; `src/python/pyproject.toml` is the
-  member that holds the real distribution `[project]`. Keep `uv.lock` in sync (`uv lock`).
+- Pants resolves with **pex** (`[python] resolver = "pex"`, `enable_resolves = true`): app deps come from
+  the `beetkeeper-resolve` lockfile, tools (mypy, bandit, pytest, ...) from `tools-resolve` — both under
+  `3rdparty/`, regenerated with `pants generate-lockfiles`.
+- **uv** manages the dev venv and workspace: root `pyproject.toml` is the workspace root;
+  `src/python/pyproject.toml` is the member that holds the real distribution `[project]`. Keep `uv.lock`
+  in sync (`uv lock`).
 
 ## Two pyproject.toml files (intentional — don't merge)
 - **Root `pyproject.toml`**: tool config only (ruff, mypy, pytest, bandit), `[dependency-groups]`
@@ -21,26 +24,31 @@ Source root is `src/python` (package: `src/python/beetkeeper`).
   stay consistent with what the code imports.
 
 ## Testing — IMPORTANT
-- We do **not** use Pants' built-in pytest (its 3rd-party-plugin support needs a separate resolve).
-  `python_tests` targets set `skip_tests=True` (in `src/python/tests/BUILD`), so the `test` goal
-  ignores them. `[pytest].skip` is a no-op for the test goal and is deliberately NOT set.
-- Real testing runs through the `//:pytest` `test_shell_command` (`uv run --all-groups pytest`),
-  defined via the `test_cmd` macro in `build_scripts/pants_macros.py`.
-- `pants test ::` runs `//:pytest`, plus `hooks:mypy` and `hooks:bandit` (also `test_shell_command`s).
+- Tests run through Pants' **built-in pytest**: `pants test ::` runs each `python_tests` file natively.
+  `[python] enable_resolves = true` (resolver: pex) supplies 3rd-party deps from the `beetkeeper-resolve`
+  lockfile (`3rdparty/python/beetkeeper-lockfile.json`); pytest itself + its plugins install from
+  `tools-resolve` via `[pytest].requirements` in `pants.toml` — any plugin whose CLI options we pass
+  (e.g. `pytest-socket`) must be listed there.
+- `pants test ::` also runs the `hooks:uv-lockfile-check` and `hooks:version-sync-check`
+  `test_shell_command`s (defined via the `test_cmd` macro in `build_scripts/pants_macros.py`).
+- **mypy** runs via `pants check ::` and **bandit** via `pants lint ::` (both are Pants backends
+  configured in `pants.toml`, reading tool config from the root `pyproject.toml`).
+- `uv run --all-groups pytest ...` also works for ad-hoc local runs against the uv dev venv.
 
 ## Common commands
 ```bash
-pants test ::                         # uv-pytest (//:pytest) + mypy + bandit
-pants lint ::                         # ruff, shellcheck, shfmt, hadolint, taplo, visibility
-pants check ::                        # (mypy is run via hooks:mypy in the test goal, not check)
+pants test ::                         # pytest (per-file, native Pants) + lockfile/version-sync check hooks
+pants lint ::                         # ruff, bandit, shellcheck, shfmt, hadolint, taplo, yamllint, visibility
+pants check ::                        # mypy
 pants package src/python:beetkeeper-whl   # build the wheel -> dist/
 pants package //:beetkeeper-server-image  # build app docker image
 pants package ::                      # Packages all pants targets which support the package command.
-uv lock                               # regenerate lockfile after dep changes
-uv lock --check                       # verify lockfile is current (gated in prek + CI)
+pants generate-lockfiles              # regenerate the Pants resolve lockfiles under 3rdparty/
+uv lock                               # regenerate uv.lock after dep changes
+uv lock --check                       # verify uv.lock is current (gated in prek + CI)
 ```
-Lint/type/security logic is shared with prek + CI via `hooks/*.sh` (ruff, mypy, bandit,
-uv-lockfile-check). Install git hooks with `prek install`.
+prek hooks (`.pre-commit-config.yaml`) call the same Pants goals (`lint fmt`, `check`, `test hooks:...`)
+plus actionlint and an MkDocs build check. Install git hooks with `prek install`.
 
 ## Docker
 - The `Dockerfile` has an `ffmpeg` fetch stage + the final `app` stage; only `app` is packaged, as the

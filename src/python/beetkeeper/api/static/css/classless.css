@@ -2863,14 +2863,20 @@ body {
    Matches the article's scheme: lime green (#00ff00) on a black screen with a green glow. */
 :root {
   --crt-bg: #000000;          /* page / screen background (black)             */
-  --crt-panel: #061206;       /* "screen panel" surface (the import-output look): code, cards, tables, forms… */
+  --crt-panel: #061206;       /* "screen panel" surface — the docs' --crt-screen */
+  --crt-panel-dark: #06030c;  /* deepest screen — the docs' --crt-screen-dark (selection / active field) */
   --crt-panel-fg: #66ff66;    /* text on panel surfaces (softer green than the body lime) */
   --crt-fg: #00ff00;          /* lime-green phosphor — body text              */
-  --crt-fg-bright: #7dff7d;   /* brighter green — headings / contrast         */
+  --crt-fg-bright: #7dff7d;   /* brighter green — headings — the docs' --crt-green-bright */
   --crt-fg-dim: #00a800;      /* dim green — muted text / borders             */
   --crt-border: #0c5f0c;      /* hairline green border                        */
   --crt-ink: #001a00;         /* near-black "ink" for text on green fills      */
-  --crt-glow: rgba(0, 255, 0, 0.6); /* glow color for text-shadows            */
+  --crt-glow: rgba(0, 255, 0, 0.55); /* green glow — the docs' --crt-green-glow */
+  --crt-line-glow: rgb(0, 60, 0);    /* table cell lines — the docs' --crt-table-line-glow */
+  /* Purple accent: green stays the primary, purple is the interaction/accent color (matches the docs site). */
+  --crt-accent: #c96bff;        /* the docs' --crt-purple                     */
+  --crt-accent-bright: #dca4ff; /* the docs' --crt-purple-bright              */
+  --crt-accent-glow: rgba(190, 90, 255, 0.6); /* the docs' --crt-purple-glow  */
 }
 
 /* Remap Pico's variables to the CRT palette. The selector list covers every theme
@@ -2886,18 +2892,19 @@ body {
 
   --pico-background-color: var(--crt-panel); /* whole-page background = the panel surface */
   --pico-color: var(--crt-panel-fg);         /* default text everywhere = the panel text color */
-  --pico-text-selection-color: rgba(0, 255, 0, 0.3);
+  --pico-text-selection-color: rgba(201, 107, 255, 0.3); /* purple selection, like the docs */
   --pico-muted-color: var(--crt-fg-dim);
   --pico-muted-border-color: var(--crt-border);
 
+  /* Green at rest, purple on interaction (hover/focus) — the docs' green-primary/purple-accent scheme. */
   --pico-primary: var(--crt-fg);
   --pico-primary-background: #00aa00;
   --pico-primary-border: var(--pico-primary-background);
   --pico-primary-underline: rgba(0, 255, 0, 0.5);
-  --pico-primary-hover: var(--crt-fg-bright);
-  --pico-primary-hover-background: #33ff33;
-  --pico-primary-hover-border: var(--pico-primary-hover-background);
-  --pico-primary-focus: rgba(0, 255, 0, 0.4);
+  --pico-primary-hover: var(--crt-accent);
+  --pico-primary-hover-background: color-mix(in srgb, var(--crt-accent) 22%, transparent);
+  --pico-primary-hover-border: var(--crt-accent);
+  --pico-primary-focus: var(--crt-accent-glow);
   --pico-primary-inverse: var(--crt-ink);
 
   --pico-secondary: var(--crt-fg-dim);
@@ -2910,15 +2917,16 @@ body {
   --pico-secondary-focus: rgba(0, 168, 0, 0.25);
   --pico-secondary-inverse: var(--crt-ink);
 
-  --pico-contrast: var(--crt-fg-bright);
-  --pico-contrast-background: var(--crt-fg-bright);
-  --pico-contrast-border: var(--crt-fg-bright);
-  --pico-contrast-underline: rgba(125, 255, 125, 0.5);
-  --pico-contrast-hover: #e8ffef;
-  --pico-contrast-hover-background: #e8ffef;
-  --pico-contrast-hover-border: #e8ffef;
-  --pico-contrast-focus: rgba(125, 255, 125, 0.3);
-  --pico-contrast-inverse: var(--crt-ink);
+  /* Contrast = the accent (purple), matching the docs where the high-emphasis accent is purple. */
+  --pico-contrast: var(--crt-accent);
+  --pico-contrast-background: var(--crt-accent);
+  --pico-contrast-border: var(--crt-accent);
+  --pico-contrast-underline: var(--crt-accent-glow);
+  --pico-contrast-hover: var(--crt-accent-bright);
+  --pico-contrast-hover-background: var(--crt-accent-bright);
+  --pico-contrast-hover-border: var(--crt-accent-bright);
+  --pico-contrast-focus: rgba(190, 90, 255, 0.3);
+  --pico-contrast-inverse: var(--crt-panel-dark);
 
   --pico-h1-color: var(--crt-fg-bright);
   --pico-h2-color: var(--crt-fg-bright);
@@ -2932,7 +2940,7 @@ body {
   --pico-blockquote-border-color: var(--crt-border);
   --pico-blockquote-footer-color: var(--crt-fg-dim);
 
-  --pico-table-border-color: var(--crt-border);
+  --pico-table-border-color: var(--crt-line-glow); /* the docs' --crt-table-line-glow cell lines */
   --pico-table-row-stripped-background-color: rgba(0, 255, 0, 0.06);
 
   --pico-code-background-color: var(--crt-panel);
@@ -2950,8 +2958,8 @@ body {
   --pico-form-element-color: var(--crt-panel-fg);
   --pico-form-element-placeholder-color: var(--crt-fg-dim);
   --pico-form-element-active-background-color: #0a140a;
-  --pico-form-element-active-border-color: var(--pico-primary);
-  --pico-form-element-focus-color: var(--pico-primary);
+  --pico-form-element-active-border-color: var(--crt-accent); /* focus/active → purple, like the docs */
+  --pico-form-element-focus-color: var(--crt-accent);
 
   --pico-switch-background-color: #0a3d0a;
   --pico-switch-checked-background-color: var(--pico-primary-background);
@@ -3066,4 +3074,86 @@ body::after {
   48% { opacity: 0.85; }
   50% { opacity: 0.68; }
   52% { opacity: 0.85; }
+}
+
+/* ----------------------------------------------------------------------------
+   Docs-site parity: the green-primary / purple-accent interaction language from
+   docs/assets/css/beetkeeper.css. Links rest green and glow purple on hover;
+   tables get the docs' purple frame + green glow; selection is purple on a dark
+   screen. End-of-file element rules win the cascade over Pico's defaults.
+   ---------------------------------------------------------------------------- */
+
+/* Links: green at rest with the shared green glow, purple glow on hover/focus. */
+:where(a):hover,
+:where(a):focus {
+  color: var(--crt-accent);
+  text-shadow: 0 0 1px currentColor, 0 0 7px var(--crt-accent-glow);
+}
+
+/* Buttons as outline controls, never a solid bright fill (the docs' core design intent): transparent
+   green-bordered green text at rest, purple border + faint purple wash + purple glow on interaction.
+   Pico's `.secondary`/`.contrast` variants keep their own treatment. */
+button:not(.secondary, .contrast),
+[type=submit]:not(.secondary, .contrast),
+[type=button]:not(.secondary, .contrast),
+[type=reset]:not(.secondary, .contrast),
+[role=button]:not(.secondary, .contrast) {
+  background-color: transparent;
+  border-color: var(--crt-fg);
+  color: var(--crt-fg-bright);
+}
+button:not(.secondary, .contrast):is(:hover, :focus),
+[type=submit]:not(.secondary, .contrast):is(:hover, :focus),
+[type=button]:not(.secondary, .contrast):is(:hover, :focus),
+[type=reset]:not(.secondary, .contrast):is(:hover, :focus),
+[role=button]:not(.secondary, .contrast):is(:hover, :focus) {
+  background-color: color-mix(in srgb, var(--crt-accent) 15%, transparent);
+  border-color: var(--crt-accent);
+  color: var(--crt-accent-bright);
+}
+
+/* Interactive controls bloom purple on hover (kept crisp at rest, above). */
+:where(button, [type=submit], [type=button], [type=reset], [role=button]):hover,
+:where(button, [type=submit], [type=button], [type=reset], [role=button]):focus {
+  text-shadow: 0 0 1px currentColor, 0 0 7px var(--crt-accent-glow);
+}
+
+/* Tables framed exactly like the docs: purple outer border + green screen glow. */
+table {
+  border: 0.05rem solid var(--crt-accent-glow);
+  box-shadow: 0 0 3px var(--crt-glow);
+}
+
+/* Selection: dark screen behind bright purple text (matches the docs' ::selection). */
+::selection {
+  background-color: var(--crt-panel-dark);
+  color: var(--crt-accent-bright);
+  text-shadow: 0 0 6px var(--crt-accent-glow);
+}
+
+#nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: var(--pico-spacing);
+}
+/* A square exactly as tall as a Pico button: 1rem text * line-height + vertical padding + borders. */
+.logo-main {
+  height: calc(1rem * var(--pico-line-height) + var(--pico-form-element-spacing-vertical) * 3 + var(--pico-border-width) * 2);
+  aspect-ratio: 1;
+  flex: none;
+}
+.logo-main a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.logo-main img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.logo-main:hover img {
+  content: url("../img/logo-CRT-green.svg");
 }

@@ -6,7 +6,11 @@ from typing import Any, Final, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, FilePath, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
-CONFIG_PATH_ENVVAR: Final[str] = "BEETKEEPER_CONFIG"
+# beets' own convention: `BEETSDIR` names the *directory* holding the beets config, and the config file
+# within it is `config.yaml`. Beetkeeper follows the same scheme (and reads its settings from that file's
+# optional `beetkeeper` section).
+BEETS_DIR_ENVVAR: Final[str] = "BEETSDIR"
+BEETS_CONFIG_FILENAME: Final[str] = "config.yaml"
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -97,7 +101,7 @@ def _load_app_conf_data(raw_conf_path: Path) -> dict[str, Any]:
     """Loads and returns the raw dict of YAML data under the `beetkeeper` config section."""
     if not raw_conf_path.exists() or raw_conf_path.is_dir():
         raise BeetKeeperConfigError(f"Beets config file '{str(raw_conf_path)}' does not exist.")
-    conf_path = Path(raw_conf_path).resolve()
+    conf_path = Path(raw_conf_path).expanduser().resolve()
     app_conf_data = YamlConfigSettingsSource(settings_cls=UserConfig, yaml_file=conf_path).yaml_data.get("beetkeeper")
     if not app_conf_data:
         raise BeetKeeperConfigError("Invalid beets config: missing required `beetkeeper` section.")

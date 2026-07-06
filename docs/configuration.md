@@ -6,8 +6,9 @@ still a valid beets config — beetkeeper only requires the section when you run
 
 You tell beetkeeper which beets config to read via either:
 
-- the `BEETKEEPER_CONFIG` environment variable, or
-- the `--config-path` CLI flag (see [the CLI](usage/cli.md)).
+- the `BEETSDIR` environment variable — the **directory** holding your beets `config.yaml` (beets' own
+  convention), or
+- the `--config-path` CLI flag — the path to the config file itself (see [the CLI](usage/cli.md)).
 
 ## Example
 

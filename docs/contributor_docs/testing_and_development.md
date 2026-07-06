@@ -26,11 +26,19 @@ Prior experience with pants is **_not required_**; however, you may find it help
 
 |  Action         |  Command            |  Description  |
 | :-------------- | :-------------------|---------------|
-| Lint Checks     | `pants lint ::`     | Runs all lint tools (`ruff`, `yamllint`, `taplo` (toml linter), `hadlo` (Dockerfile linter), etc.) across the whole repo. |
+| Lint Checks     | `pants lint ::`     | Runs all lint tools (`ruff`, `bandit`, `yamllint`, `taplo` (toml linter), `hadolint` (Dockerfile linter), `shellcheck`/`shfmt`, etc.) across the whole repo. |
+| Type Checks     | `pants check ::`    | Runs `mypy` across the whole repo. |
 | Formatting | `pants fmt fix ::`  | Runs all auto-formatting across the whole repo. |
 
 
 ### Testing
+
+Tests run through Pants' built-in pytest: each `python_tests` file runs in its own sandbox, with
+3rd-party dependencies supplied by the Pants resolve lockfiles under `3rdparty/` (regenerate with
+`pants generate-lockfiles` after dependency changes). pytest itself and its plugins install from the
+`[pytest].requirements` list in `pants.toml` — any plugin whose CLI options we pass (e.g. `pytest-socket`)
+must be listed there. `pants test ::` also runs the repo-consistency check hooks (`hooks:uv-lockfile-check`,
+`hooks:version-sync-check`).
 
 To run all tests in the repo:
 
@@ -42,15 +50,38 @@ To run only the tests found under a specific path, run:
 
 ```shell
 pants test < path-prefix-here >::
-# Example: pants test src/beetsplug/tests:: will only run tests found under src/beetsplug/tests
+# Example: pants test src/python/tests/api_tests:: will only run tests found under src/python/tests/api_tests
 ```
 
 To run pytest with pdb or other breakpoints enabled, run the command with the `--test-debug` flag. Example:
 
 ```shell
-# If you set a breakpoint in a test withiin `src/python/tests/my_pytest_file.py`.
+# If you set a breakpoint in a test within `src/python/tests/my_pytest_file.py`.
 pants --test-debug test src/python/tests/my_pytest_file.py
 ```
+
+For quick ad-hoc runs against the uv dev venv (no Pants sandboxing), `uv run --all-groups pytest ...`
+also works.
+
+### Running the Test Server
+
+For manual, interactive testing of the web app, run:
+
+```shell
+./build_scripts/run-test-server.sh
+```
+
+This packages the server Docker image (`pants package //:beetkeeper-server-image`) and starts a container
+from it, serving the app at <http://localhost:8337>. Press `Ctrl-C` to stop it. No configuration or host
+data is required: the container entrypoint (`build_scripts/dev_scripts/test_container_init.sh`) generates a
+throwaway beets/beetkeeper config under `/test_dirs` inside the container and runs the database migrations,
+so everything is discarded when the container exits.
+
+The script also mounts the repo's `src/python/beetkeeper/api/static` directory into the container and
+symlinks it over the copy the PEX extracts at startup. This means edits to static files (CSS, HTML
+templates, images, JS) on the host render on the next browser refresh — no image rebuild or container
+restart needed. Changes to **Python** code, however, are baked into the PEX, so they require re-running the
+script to rebuild the image.
 
 ### Building Artifacts Locally
 
@@ -59,7 +90,7 @@ The beetkeeper repo publishes the following artifacts for any given release:
 |  Artifact Name         |  Type                       |  Description  |  Pants target  |
 | :--------------------- | --------------------------- | :------------ | -------------: |
 | `beetkeeper-server` | Docker image                | Self-hosted `beets` + `beetkeeper_plugin` wrapped by the `beetkeeper` server | `//:beetkeeper-server-image` |
-| `beetkeeper.whl`       | Python library distribution | The beekteeper server, published as a wheel file to PyPI | `src/python:beetkeeper-whl` |
+| `beetkeeper.whl`       | Python library distribution | The beetkeeper server, published as a wheel file to PyPI | `src/python:beetkeeper-whl` |
 | `beetkeeper-plugin` | Python library distribution | `beetsplug` plugin which pushes beets events to the beetkeeper server | `src/beetsplug:plugin-whl` |
 
 To package all of the artifacts, run:
@@ -78,8 +109,10 @@ pants package src/python:beetkeeper-whl
 ## CI and GitHub Actions
 
 CI runs in GitHub Actions (`.github/workflows/`). The main workflow validates the repo through pants
-(`pants update-build-files --check ::` then `pants lint test ::`) and builds the release artifacts
-(`pants package ::`). When modifying anything under `.github/worfklows`, we use two tools for local validation and testing:
+(`pants update-build-files --check ::` then `pants lint check test ::`), builds the non-Docker artifacts
+(`pants package --filter-target-type=-docker_image ::`) plus the Docker image in a separate job, and
+verifies the docs build (`pants run docs:mkdocs-pex -- build --strict`). When modifying anything under
+`.github/workflows`, we use two tools for local validation and testing:
 
 1. [`actionlint`](https://github.com/rhysd/actionlint) — a static workflow linter
 2. [`act`](https://github.com/nektos/act) — a tool for running GitHub actions workflows locally

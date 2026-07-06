@@ -39,7 +39,7 @@ def make_alembic_config(*, async_url: str, sync_url: str) -> Config:
     return cfg
 
 
-def config_from_user_config(user_config: UserConfig) -> Config:
+def alembic_config_from_user_config(user_config: UserConfig) -> Config:
     """Builds an alembic `Config` from a loaded `UserConfig` (reads `user_config.database`)."""
     return make_alembic_config(async_url=user_config.database.async_url, sync_url=user_config.database.sync_url)
 

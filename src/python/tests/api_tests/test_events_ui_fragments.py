@@ -1,40 +1,21 @@
 """Tests that the events-page HTML fragment renders the recently ingested beets events from the DB.
 
-The `get_session` dependency is overridden onto a freshly-migrated temp DB; events are seeded through the
-public `/api/events` endpoints (the same path the listener plugin uses), then the `/fragment/event` route is
-asserted to render them. Runs fully in-process (no real DB server, no sockets).
+The `get_session` dependency is overridden onto a freshly-migrated temp DB (see this package's
+`conftest.py`); events are seeded through the public `/api/events` endpoints (the same path the listener
+plugin uses), then the `/fragment/event` route is asserted to render them.
 """
 
-from collections.abc import AsyncIterator
-from datetime import UTC, datetime
-
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from httpx import AsyncClient
 
-from beetkeeper.api.fastapi_app import beetkeeper_app
 from beetkeeper.db.session import get_session
+
+from .conftest import DependencyOverrides, SessionOverride
 
 
 @pytest.fixture
-async def client(session_factory: async_sessionmaker[AsyncSession]) -> AsyncIterator[AsyncClient]:
-    """An ASGI-transport client whose `get_session` dependency is bound to the migrated temp DB."""
-
-    async def _override_get_session() -> AsyncIterator[AsyncSession]:
-        async with session_factory() as session:
-            yield session
-
-    beetkeeper_app.dependency_overrides[get_session] = _override_get_session
-    try:
-        transport = ASGITransport(app=beetkeeper_app)
-        async with AsyncClient(transport=transport, base_url="http://testclient") as http_client:
-            yield http_client
-    finally:
-        beetkeeper_app.dependency_overrides.clear()
-
-
-def _pushed_at() -> str:
-    return datetime(2026, 6, 23, 12, 0, 0, tzinfo=UTC).isoformat()
+def app_dependency_overrides(get_session_override: SessionOverride) -> DependencyOverrides:
+    return {get_session: get_session_override}
 
 
 @pytest.mark.anyio
@@ -45,11 +26,11 @@ async def test_event_fragment_empty_when_no_events(client: AsyncClient) -> None:
 
 
 @pytest.mark.anyio
-async def test_event_fragment_renders_recent_events(client: AsyncClient) -> None:
-    album_payload = {"event_type": "album_imported", "pushed_at": _pushed_at(), "album_fields": {"id": 101}}
+async def test_event_fragment_renders_recent_events(client: AsyncClient, pushed_at: str) -> None:
+    album_payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": 101}}
     track_payload = {
         "event_type": "item_imported",
-        "pushed_at": _pushed_at(),
+        "pushed_at": pushed_at,
         "album_fields": {"id": 101},
         "track_fields": {"id": 777},
     }

@@ -1,31 +1,21 @@
 """Tests for the `/api/import` JSON routes, backed by a real `ImportStore` over a migrated temp DB.
 
-`get_import_store` is overridden with a store bound to the test sessionmaker (no import worker runs), so
-these cover submit/list/get/decision/abort against actual persisted rows.
+`get_import_store` is overridden with a store bound to the test sessionmaker (no import worker runs; see
+this package's `conftest.py`), so these cover submit/list/get/decision/abort against actual persisted rows.
 """
 
-from collections.abc import AsyncIterator
-
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from httpx import AsyncClient
 
 from beetkeeper.api.dependencies import get_import_store
-from beetkeeper.api.fastapi_app import beetkeeper_app
 from beetkeeper.core import ImportStore
+
+from .conftest import DependencyOverrides
 
 
 @pytest.fixture
-async def client(session_factory: async_sessionmaker[AsyncSession]) -> AsyncIterator[AsyncClient]:
-    """A client whose `get_import_store` dependency is bound to the migrated temp DB."""
-    store = ImportStore(session_factory)
-    beetkeeper_app.dependency_overrides[get_import_store] = lambda: store
-    try:
-        transport = ASGITransport(app=beetkeeper_app)
-        async with AsyncClient(transport=transport, base_url="http://testclient") as http_client:
-            yield http_client
-    finally:
-        beetkeeper_app.dependency_overrides.clear()
+def app_dependency_overrides(import_store: ImportStore) -> DependencyOverrides:
+    return {get_import_store: lambda: import_store}
 
 
 @pytest.mark.anyio
