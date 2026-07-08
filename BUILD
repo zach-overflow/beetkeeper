@@ -3,7 +3,6 @@ __dependencies_rules__(("*", "*"))
 file(name="pyproject", source="pyproject.toml")
 file(name="uv-lockfile", source="uv.lock")
 file(name="license-file", source="LICENSE.txt")
-file(name="version-file", source="VERSION")
 file(name="dockerfile", source="Dockerfile")
 
 # Thin, single-linux-arch PEXes for the Docker image — one per arch, each pinned to that arch's

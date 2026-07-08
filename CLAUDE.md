@@ -17,8 +17,9 @@ Source root is `src/python` (package: `src/python/beetkeeper`).
   dev deps, and `[tool.uv.workspace]`. No `[project]` table here.
 - **`src/python/pyproject.toml`**: the distribution's `[project]` (name, deps, scripts, metadata)
   + `[build-system]`. It lives in the source root so setuptools' PEP 517 backend (run there by
-  Pants) reads it. Version is dynamic: `[tool.setuptools.dynamic] version = {attr =
-  "beetkeeper._version.__version__"}`, sourced from `src/python/beetkeeper/_version.py`.
+  Pants) reads it. Version is dynamic from the `vMAJOR.MINOR.PATCH` git tag via Pants' `vcs_version`
+  targets (setuptools-scm under the hood), which generate `_scm_version.py` modules that each package's
+  committed `_version.py` re-exports (falling back to `0.0.0.dev0` outside Pants, e.g. uv dev builds).
 - The wheel is built with `generate_setup=False` (see `src/python/BUILD`), so Pants does NOT inject
   metadata — runtime deps/scripts are maintained by hand in `src/python/pyproject.toml` and must
   stay consistent with what the code imports.
@@ -29,15 +30,15 @@ Source root is `src/python` (package: `src/python/beetkeeper`).
   lockfile (`3rdparty/python/beetkeeper-lockfile.json`); pytest itself + its plugins install from
   `tools-resolve` via `[pytest].requirements` in `pants.toml` — any plugin whose CLI options we pass
   (e.g. `pytest-socket`) must be listed there.
-- `pants test ::` also runs the `hooks:uv-lockfile-check` and `hooks:version-sync-check`
-  `test_shell_command`s (defined via the `test_cmd` macro in `build_scripts/pants_macros.py`).
+- `pants test ::` also runs the `hooks:uv-lockfile-check` `test_shell_command` (defined via the
+  `test_cmd` macro in `build_scripts/pants_macros.py`).
 - **mypy** runs via `pants check ::` and **bandit** via `pants lint ::` (both are Pants backends
   configured in `pants.toml`, reading tool config from the root `pyproject.toml`).
 - `uv run --all-groups pytest ...` also works for ad-hoc local runs against the uv dev venv.
 
 ## Common commands
 ```bash
-pants test ::                         # pytest (per-file, native Pants) + lockfile/version-sync check hooks
+pants test ::                         # pytest (per-file, native Pants) + uv-lockfile check hook
 pants lint ::                         # ruff, bandit, shellcheck, shfmt, hadolint, taplo, yamllint, visibility
 pants check ::                        # mypy
 pants package src/python:beetkeeper-whl   # build the wheel -> dist/
@@ -57,8 +58,20 @@ plus actionlint and an MkDocs build check. Install git hooks with `prek install`
   the `env("RELEASE_TAG", "dev")` tag in `BUILD`.
 - The `app` stage runs no `uv`/resolve — it just COPYs a thin, single-arch PEX (`//:beetkeeper-linux-<arch>`, one per
   linux arch via `complete_platforms`, selected by `ARG TARGETARCH`). `pants package` builds only the host
-  arch; CI builds + pushes the image per-arch on native runners (no QEMU) and stitches a multi-arch manifest
-  list — see `.github/workflows/release.yml`.
+  arch; CI builds the image per-arch on native runners (no QEMU) and stitches a multi-arch manifest
+  list — see `.github/workflows/publish.yml`.
+
+## Releases
+- **Versioning**: no committed version. `vcs_version` targets (`src/python/beetkeeper/BUILD`,
+  `src/beetsplug/beetkeeper_plugin/BUILD`) generate `_scm_version.py` from git via setuptools-scm; each
+  package's committed `_version.py` re-exports it, falling back to `0.0.0.dev0` outside Pants (uv builds).
+  An exact `vMAJOR.MINOR.PATCH` tag yields a clean version; anything else is a dev version.
+- **Flow** (details: `docs/contributor_docs/release_management.md`): save a *draft* GitHub release titled
+  `MAJOR.MINOR.PATCH` → run the `Release` workflow (validates + builds everything, publishes nothing) →
+  approve the `release` environment gate, which tags the commit and publishes the draft → `Release` invokes
+  `publish.yml` via `workflow_call` (a GITHUB_TOKEN-created tag can't fire `push` triggers), which builds
+  wheels/image/docs in parallel from the tag, then publishes them in parallel (PyPI + Pages keep their
+  environment gates).
 
 ## Relevant public docs
 - Pants: https://www.pantsbuild.org/stable/docs/introduction/welcome-to-pants

@@ -12,101 +12,100 @@ A release publishes three artifacts, all carrying the **same** semver:
 | `beetkeeper-plugin` wheel | `src/beetsplug:plugin-whl` | PyPI (`beetkeeper-plugin`) |
 | `beetkeeper-server` image | `//:beetkeeper-server-image` | GHCR `ghcr.io/zach-overflow/beetkeeper` (`:latest` + `:<version>`) |
 
-## Versioning model — single source of truth
+The docs site (GitHub Pages) is also rebuilt and redeployed as part of every release.
 
-The canonical version lives in one file: **`VERSION`** (repo root). It is *propagated* into the two
-committed sites that the build backends actually read (setuptools builds each wheel from its own
-`pyproject.toml`, so the value cannot be inherited from an ancestor file — it must be written into each):
+## Versioning model — the git tag is the source of truth
 
-| Site | Field | Drives |
-| :--- | :---- | :----- |
-| `src/python/beetkeeper/_version.py` | `__version__` | the `beetkeeper` wheel **and** the Docker image (its wheel is built from this source via `uv`) |
-| `src/beetsplug/pyproject.toml` | `[project].version` | the `beetkeeper-plugin` wheel |
+Both wheels are versioned from the `vMAJOR.MINOR.PATCH` git tag via Pants'
+[`vcs_version`](https://www.pantsbuild.org/stable/reference/targets/vcs_version) target (setuptools-scm
+under the hood); **no version string is committed anywhere**. The moving parts:
 
-`hooks/version-sync.sh` is the propagator:
+- Each distribution has a `vcs_version` target (`src/python/beetkeeper/BUILD`,
+  `src/beetsplug/beetkeeper_plugin/BUILD`) that runs setuptools-scm against the real repo and generates a
+  `_scm_version.py` module into every consuming Pants sandbox (dependency inference picks it up from the
+  import in `_version.py`).
+- Each package's committed `_version.py` re-exports the generated module, falling back to `0.0.0.dev0`
+  where it doesn't exist — i.e. any build/run outside Pants, such as the uv dev venv.
+- Each `pyproject.toml` resolves `dynamic = ["version"]` via
+  `[tool.setuptools.dynamic] version = {attr = "<pkg>._version.__version__"}`, so the wheel metadata gets
+  the generated version inside Pants and the dev placeholder under uv.
+- On a checkout of the release tag (what the Publish workflow does), setuptools-scm yields the exact
+  `MAJOR.MINOR.PATCH`; on any other commit it yields a dev version (`X.Y.Z.devN+g<hash>`), which is what
+  local `pants package` produces.
 
-```shell
-hooks/version-sync.sh           # write VERSION into both sites, then `uv lock`
-hooks/version-sync.sh --check   # verify both sites equal VERSION (no writes); non-zero on drift
-```
-
-The version is **owned by committed source and validated in CI** — there is no in-CI stamping. A bump must
-be committed (and tagged) by a human; the guards below ensure nothing drifts.
-
-### Drift guards
-
-| Guard | When | Catches |
-| :---- | :--- | :------ |
-| prek `version-sync` hook | local commit (`prek`) | `VERSION` / a version site committed out of sync |
-| `version-sync-check` test_cmd | every `pants test ::` (branch + tag CI) | the same drift, repo-wide |
-| `uv-lockfile-check` test_cmd | every `pants test ::` | forgot to `uv lock` after a plugin bump |
-| `src/release_tests` (`-m release_tests`) | the release workflow, on a tag | committed version ≠ the pushed tag |
+> The git tag carries a leading `v` (GitHub release convention); every published *version id* (wheel
+> versions + the `:<version>` image tag) is the `v`-stripped semver. They can no longer disagree — the
+> version is derived from the tag.
 
 ## Cutting a release (runbook)
 
-1. **Bump + propagate** on a branch:
-   ```shell
-   echo "0.1.0" > VERSION          # the new semver, no leading `v`
-   hooks/version-sync.sh           # propagates into both sites + re-locks
-   ```
-2. **Verify locally:**
-   ```shell
-   hooks/version-sync.sh --check   # ✅ version sync OK (0.1.0)
-   pants lint test ::              # full validation (incl. version-sync-check + uv-lockfile-check)
-   ```
-3. **Commit and merge** `VERSION`, `_version.py`, `src/beetsplug/pyproject.toml`, and `uv.lock` to `main`.
-4. **Tag and release on GitHub** Use the "draft new release" button from the [beetkeeper releases page on GitHub](https://github.com/zach-overflow/beetkeeper/releases), and use the `.github/release_notes_template.md` for the release notes.
-5. The **Release** workflow (`.github/workflows/release.yml`) runs automatically (see below). On success
-   the image is on GHCR and both wheels are on PyPI at `0.1.0`.
+1. **Draft the release on GitHub**: use the "Draft a new release" button on the
+   [releases page](https://github.com/zach-overflow/beetkeeper/releases). Set the **title to the bare
+   semver** (`MAJOR.MINOR.PATCH`, no leading `v`), write the notes (see
+   `.github/release_notes_template.md`), and click **Save draft** — do *not* publish, and the tag field is
+   ignored (a draft creates no tag).
+2. **Run the Release workflow**: Actions → *Release* → *Run workflow* (from `main`). It locates the draft,
+   validates the repo, and builds every artifact without publishing anything.
+3. **Approve the `release` environment prompt** once validation is green. The workflow then tags the
+   validated commit `vX.Y.Z`, publishes the GitHub release, and hands off to the *Publish* workflow, which
+   builds and publishes the wheels, the multi-arch image, and the docs site (PyPI and Pages keep their own
+   environment approvals).
 
-> The git tag carries a leading `v` (GitHub release convention); every published *version id* (wheel
-> versions + the `:<version>` image tag) is the `v`-stripped semver. The two must agree — that is exactly
-> what `src/release_tests` asserts, failing the release early if a bump was forgotten.
+## What the Release workflow does (`.github/workflows/release.yml`)
 
-## What the release workflow does
+Triggered manually via `workflow_dispatch` (must be run from the default branch):
 
-Triggered on `push` of any `v*` tag. The `release` job mirrors `build-and-test.yml` through
-`pants lint test ::`, then:
+1. **`prepare`** — finds the repo's single draft release, validates its title is `MAJOR.MINOR.PATCH`, and
+   checks `v<title>` isn't already tagged.
+2. **Validation, all in parallel and publishing nothing**:
+   - `validate` — actionlint, `pants update-build-files --check ::`, `pants lint check test ::`, and a
+     wheel build (versioned as a dev build — the tag doesn't exist yet).
+   - `build-image` — the Docker image on native amd64 + arm64 runners (built, not pushed).
+   - `docs-build` — `mkdocs build --strict`.
+3. **`approve-and-tag`** — pauses on the **`release`** environment (the one manual gate). On approval, one
+   API call flips the draft to published with `tag_name: vX.Y.Z`, which creates the tag on the validated
+   commit.
+4. **`publish`** — invokes the Publish workflow via `workflow_call`. (A tag created with the built-in
+   `GITHUB_TOKEN` can never fire another workflow's `push` trigger — GitHub's recursive-workflow guard —
+   so the tag itself only triggers Publish when a human pushes one manually.)
 
-1. **Version tag gate** — computes the `v`-stripped `version` and whether the tag is an exact
-   `^v[0-9]+\.[0-9]+\.[0-9]+$` release tag (`is_release`, exposed as a job output).
-2. **Validate release versions** — `uv run --all-groups pytest -m release_tests src/release_tests`
-   (asserts committed versions agree with each other and, for a release tag, with the pushed tag).
-3. **Build artifacts** — `pants package ::` (wheels → `dist/`, image → local daemon as
-   `ghcr.io/zach-overflow/beetkeeper:latest`).
-4. **Publish image + stage wheels** *(only when `is_release`)* — `pants publish //:beetkeeper-server-image`
-   builds (cache hit) + pushes `ghcr.io/zach-overflow/beetkeeper` at `:latest` and `:<version>` (the `@ghcr`
-   registry + `env("RELEASE_TAG", "dev")` image tag in `BUILD`); each wheel is uploaded as its own artifact
-   for the next job.
+## What the Publish workflow does (`.github/workflows/publish.yml`)
 
-A separate **`publish-pypi` job** (`needs: release`, `if: is_release`) then publishes the wheels to PyPI
-via **OIDC trusted publishing**, bound to the **`pypi`** GitHub environment. It downloads the wheel
-artifacts and runs `pypa/gh-action-pypi-publish` once per project (a minted OIDC token is project-scoped,
-so each project is uploaded on its own). No PyPI API token is stored. Because the `pypi` environment
-requires a reviewer, this job **pauses for manual approval** after the build + image push complete.
+Invoked by Release via `workflow_call` (or by a manually pushed `vMAJOR.MINOR.PATCH` tag). Three build
+jobs run in parallel from the tag's commit, then three publication jobs run in parallel once **all**
+builds succeed:
 
-Every `v*` tag is built and validated; **only an exact `vMAJOR.MINOR.PATCH` tag is published.** A
-pre-release tag (e.g. `v0.1.0-dev`) builds and validates but skips all publish steps — use it as a dry run.
+| Build (parallel) | Publication (parallel, after all builds) | Approval gate |
+| :--------------- | :--------------------------------------- | :------------ |
+| `build-wheels` — both wheels, versioned from the tag checkout | `publish-pypi` — OIDC trusted publishing, one upload per project | `pypi` environment |
+| `build-image` — native per-arch builds, exported as tarball artifacts | `publish-image` — push per-arch tags, stitch the `:<version>` + `:latest` manifest list with `buildx imagetools` | none (GHCR, `GITHUB_TOKEN`) |
+| `build-docs` — `mkdocs build --strict` → Pages artifact | `docs-deploy` — `actions/deploy-pages` | `github-pages` environment |
 
 ## Required configuration
 
-- **GHCR** — uses the workflow's built-in `GITHUB_TOKEN` (the `release` job grants `packages: write`); no
-  extra secret.
-- **PyPI** — uses **OIDC trusted publishing**; no stored token. Each PyPI project
-  (`beetkeeper`, `beetkeeper-plugin`) must have a Trusted Publisher registered with: owner/repo
-  `zach-overflow/beetkeeper`, workflow `release.yml`, and environment **`pypi`**. The `publish-pypi` job
-  declares `environment: pypi` + `id-token: write` to mint the matching OIDC token.
+- **`release` environment** — must exist with a **required reviewer** (repo Settings → Environments);
+  this is the single "proceed with the release?" prompt.
+- **GHCR** — uses the built-in `GITHUB_TOKEN` (`packages: write`); no extra secret.
+- **PyPI** — OIDC trusted publishing; no stored token. Each PyPI project (`beetkeeper`,
+  `beetkeeper-plugin`) needs Trusted Publishers registered for owner/repo `zach-overflow/beetkeeper` with
+  environment **`pypi`** and workflow filename — register **both** `release.yml` *and* `publish.yml`: the
+  OIDC claim carries the *top-level* workflow, which is `release.yml` when Publish runs via
+  `workflow_call` and `publish.yml` for a manually pushed tag.
+- **GitHub Pages** — repo Pages source set to "GitHub Actions"; the `github-pages` environment holds any
+  deploy approval rule.
 
 ## Troubleshooting
 
-- **`version sync OK` fails / release test mismatch** — a version site is out of step with `VERSION`. Run
-  `hooks/version-sync.sh`, commit, and re-tag.
-- **`uv.lock is out of sync`** — re-run `hooks/version-sync.sh` (it runs `uv lock`) or `uv lock`, then
-  commit `uv.lock`.
-- **Release ran but nothing published** — the tag was not an exact `vMAJOR.MINOR.PATCH` (e.g. it had a
-  `-dev` suffix); publish steps are gated off for non-release tags.
+- **`prepare` fails: "Expected exactly one draft release"** — either no draft exists yet (create one via
+  the release form and *Save draft*) or several drafts are lying around (delete the stale ones).
+- **`prepare` fails: title not `MAJOR.MINOR.PATCH`** — the draft's *title* is the version. Fix the title
+  (bare semver, no `v`) and re-run the workflow.
+- **`uv.lock is out of sync`** — run `uv lock` and commit the result.
+- **Publish ran but wheels carry a dev version** — the build didn't see the release tag; the
+  `build-wheels` job must check out `v<version>` with `fetch-depth: 0` (setuptools-scm needs the tag in
+  the checkout).
 - **PyPI publish fails with a trusted-publisher / OIDC error** — the registered Trusted Publisher must
-  match exactly: owner/repo `zach-overflow/beetkeeper`, workflow `release.yml`, environment `pypi`, on the
-  correct project. A `pypi` environment protection rule (e.g. required reviewer) will also pause the job.
+  match exactly: owner/repo `zach-overflow/beetkeeper`, environment `pypi`, and the top-level workflow
+  filename (`release.yml` via the release flow, `publish.yml` for a direct tag push — register both).
 - **PyPI upload rejected as already existing** — the publish steps use `skip-existing`, so a re-run is
   safe; publishing a *new* release requires a *new* version (PyPI forbids overwriting an existing one).

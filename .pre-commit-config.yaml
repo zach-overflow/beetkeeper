@@ -12,16 +12,6 @@ repos:
         groups: [dependencies-checks]
         priority: 0
 
-      - id: version-sync-check
-        name: version sync check
-        description: "Verify the canonical VERSION is propagated into both distributions' version fields."
-        entry: "pants test hooks:version-sync-check"
-        files: '^(VERSION|src/python/beetkeeper/_version\.py|src/beetsplug/pyproject\.toml)$'
-        language: system
-        pass_filenames: false
-        groups: [dependencies-checks]
-        priority: 0
-
       - id: lint
         name: lint
         entry: pants --changed-since=HEAD lint fmt

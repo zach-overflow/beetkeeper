@@ -187,7 +187,6 @@ markers = [
   "slow: mark test as a slow test which should be skipped by default in non-CI builds unless `--slowtests` is provided.",
   "no_autouse_mock_lifespan_singleton_inst: mark a test to not use the auto-use fixture for the fastapi lifespan singleton.",
   "override_global_httpx_mock: mark a test to override the configured httpx global fixture in favor of its own.",
-  "release_tests: Any tests specifically meant to run prior to cutting a release, only when static version numbers change and/or when a version tag is pushed. Gates the tests defined under `src/integration_tests/release_tests/`.",
 ]
 filterwarnings = ["error:pytest.PytestWarning.*"]
 

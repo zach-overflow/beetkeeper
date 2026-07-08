@@ -1,38 +1,73 @@
 name: Release
-run-name: Release ${{ github.ref_name }} by ${{ github.actor }}
-on:
-  push:
-    tags:
-      - 'v*'
+run-name: Release validation for draft by ${{ github.actor }}
 
-# Per-job least privilege (see each job's `permissions`): the build/GHCR job needs `packages: write`
-# (push the image with the built-in GITHUB_TOKEN); the PyPI job needs `id-token: write` for OIDC
-# trusted publishing. No long-lived PyPI secret is used.
+# One-click release flow:
+#   1. Fill out the GitHub "new release" form: title = `MAJOR.MINOR.PATCH`, the release notes, and SAVE AS
+#      DRAFT (a draft creates no tag and fires no workflow events).
+#   2. Run this workflow (Actions -> Release -> Run workflow, from the default branch). It locates the
+#      draft, validates the repo, and builds every artifact WITHOUT publishing anything.
+#   3. Approve the `release` environment prompt. The workflow then tags the validated commit `vX.Y.Z`,
+#      flips the draft release to published, and invokes the Publish workflow. The Publish workflow is
+#      invoked via `workflow_call` because a tag created with the built-in GITHUB_TOKEN can never fire
+#      another workflow's `push` trigger (GitHub's recursive-workflow guard).
+on:
+  workflow_dispatch:
+
 permissions:
   contents: read
 
-# Never let two releases of the same tag publish concurrently.
+# Never validate/tag two releases concurrently.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 # Layer CI-only overrides on top of pants.toml for every Pants invocation below (see pants.ci.toml).
 env:
   PANTS_CONFIG_FILES: pants.ci.toml
 
-# Every `v*` tag builds + validates, but only an exact `vMAJOR.MINOR.PATCH` tag publishes (pre-releases like
-# `v0.0.1-dev` build but are not pushed). Version is owned by the committed source. Wheels publish from a
-# separate `publish-pypi` job so PyPI OIDC trusted publishing is scoped to the `pypi` environment.
 jobs:
-  release:
-    name: Pants build, validate, stage wheels
+  prepare:
+    name: Locate draft release
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     outputs:
-      is_release: ${{ steps.gate.outputs.is_release }}
-      version: ${{ steps.gate.outputs.version }}
+      version: ${{ steps.draft.outputs.version }}
+      release_id: ${{ steps.draft.outputs.release_id }}
+    steps:
+      - name: Find the draft release and validate its title
+        id: draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [[ "${GITHUB_REF_NAME}" != "${DEFAULT_BRANCH}" ]]; then
+            echo "::error::Releases must be run from '${DEFAULT_BRANCH}' (got '${GITHUB_REF_NAME}')."
+            exit 1
+          fi
+          drafts="$(gh api "repos/${GITHUB_REPOSITORY}/releases" --jq '[.[] | select(.draft)]')"
+          count="$(jq length <<<"${drafts}")"
+          if [[ "${count}" -ne 1 ]]; then
+            echo "::error::Expected exactly one draft release, found ${count}. Create one via the GitHub \
+          release form (title MAJOR.MINOR.PATCH, 'Save draft')."
+            exit 1
+          fi
+          version="$(jq -r '.[0].name' <<<"${drafts}")"
+          release_id="$(jq -r '.[0].id' <<<"${drafts}")"
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Draft release title '${version}' is not of the form MAJOR.MINOR.PATCH."
+            exit 1
+          fi
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${version}" >/dev/null 2>&1; then
+            echo "::error::Tag v${version} already exists; bump the draft's title."
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "release_id=${release_id}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Validating ${GITHUB_SHA} for release v${version} (draft id ${release_id})."
+
+  validate:
+    name: Pants validate + build wheels
+    needs: prepare
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -73,51 +108,11 @@ jobs:
         run: |
           pants lint check test ::
 
-      - name: Version tag gate
-        id: gate
-        # GitHub `if:` expressions have no regex, so compute the "is this an exact vMAJOR.MINOR.PATCH tag?"
-        # decision here and expose it as an output; pre-release tags build + validate but skip publishing.
-        run: |
-          ref="${GITHUB_REF_NAME}"
-          echo "version=${ref#v}" >> "$GITHUB_OUTPUT"
-          if [[ "${ref}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "is_release=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::${ref} is a release tag - artifacts will be published to GHCR + PyPI."
-          else
-            echo "is_release=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::${ref} is not a vMAJOR.MINOR.PATCH tag - build + validate only, no publish."
-          fi
-
-      - name: Validate release versions
-        # Drift guard (opt-in via `-m release_tests`): asserts the committed versions agree with each other
-        # and, for a `vMAJOR.MINOR.PATCH` tag, with the pushed tag, so a forgotten bump fails before publish.
-        run: |
-          uv run --all-groups pytest -m release_tests -vv src/integration_tests/release_tests
-
-      # Only the wheels here — the Docker image is built + pushed by the `build-image` matrix and stitched by
-      # `merge-manifest` (native per-arch runners, no QEMU). Building `::` would rebuild the image (and its
-      # fat PEX) redundantly on this amd64 runner.
+      # Validation-only build (the Publish workflow rebuilds from the tag): proves both wheels build with
+      # their `vcs_version`-derived versions. The tag doesn't exist yet, so these carry a dev version.
       - name: Build wheels
         run: |
           pants package src/python:beetkeeper-whl src/beetsplug:plugin-whl
-
-      # Each wheel is its own artifact: OIDC trusted publishing mints a project-scoped token, so each PyPI
-      # project uploads separately.
-      - name: Upload beetkeeper wheel
-        if: steps.gate.outputs.is_release == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheel-beetkeeper
-          path: dist/beetkeeper-*.whl
-          if-no-files-found: error
-
-      - name: Upload beetkeeper-plugin wheel
-        if: steps.gate.outputs.is_release == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheel-beetkeeper-plugin
-          path: dist/beetkeeper_plugin-*.whl
-          if-no-files-found: error
 
       - name: Upload Pants log
         if: always()
@@ -126,15 +121,10 @@ jobs:
           name: pants-log
           path: .pants.d/workdir/pants.log
 
-  # Build the image on native per-arch runners (no QEMU): each job `pants package`s a single-arch image into
-  # its local daemon, then pushes it under a per-arch tag. Runs on every v* tag (build validation); the push
-  # is gated on `is_release`. `merge-manifest` stitches the per-arch tags into the multi-arch manifest list.
+  # Validation-only image builds on native per-arch runners (no QEMU, nothing pushed).
   build-image:
-    name: Build image (${{ matrix.arch }})
-    needs: release
-    permissions:
-      contents: read
-      packages: write
+    name: Validate image build (${{ matrix.arch }})
+    needs: prepare
     strategy:
       matrix:
         include:
@@ -163,115 +153,24 @@ jobs:
           gha-cache-key: image-${{ matrix.arch }}-v0
           named-caches-hash: ${{ hashFiles('uv.lock') }}
           cache-lmdb-store: 'true'
-
-      # Plain `pants package` builds for the host arch and loads the image into the local Docker daemon.
       - name: Build image (native ${{ matrix.arch }})
         run: |
           pants package //:beetkeeper-server-image
 
-      - name: Log in to GHCR
-        if: needs.release.outputs.is_release == 'true'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Push the locally-built image under an arch-suffixed tag; `merge-manifest` combines them.
-      - name: Push per-arch tag
-        if: needs.release.outputs.is_release == 'true'
-        env:
-          REF: ghcr.io/zach-overflow/beetkeeper
-          VERSION: ${{ needs.release.outputs.version }}
-          ARCH: ${{ matrix.arch }}
-        run: |
-          docker tag "${REF}:latest" "${REF}:${VERSION}-${ARCH}"
-          docker push "${REF}:${VERSION}-${ARCH}"
-
-  # Stitch the per-arch tags into a single multi-arch manifest list (`:<version>` + `:latest`). Non-Pants:
-  # Pants `docker_image` can't push by digest / assemble a manifest list, but `buildx imagetools` can.
-  merge-manifest:
-    name: Merge multi-arch manifest
-    needs: [release, build-image]
-    if: needs.release.outputs.is_release == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create + push manifest list
-        env:
-          REF: ghcr.io/zach-overflow/beetkeeper
-          VERSION: ${{ needs.release.outputs.version }}
-        run: |
-          docker buildx imagetools create \
-            -t "${REF}:${VERSION}" \
-            -t "${REF}:latest" \
-            "${REF}:${VERSION}-amd64" \
-            "${REF}:${VERSION}-arm64"
-
-  publish-pypi:
-    name: Publish to PyPI
-    needs: release
-    if: needs.release.outputs.is_release == 'true'
-    runs-on: ubuntu-latest
-    # The `pypi` environment the PyPI trusted publishers are registered against (gates publishing here only).
-    environment: pypi
-    permissions:
-      contents: read
-      id-token: write # mint the OIDC token PyPI exchanges for a short-lived, project-scoped API token
-    steps:
-      - name: Download beetkeeper wheel
-        uses: actions/download-artifact@v4
-        with:
-          name: wheel-beetkeeper
-          path: dist/beetkeeper
-
-      - name: Download beetkeeper-plugin wheel
-        uses: actions/download-artifact@v4
-        with:
-          name: wheel-beetkeeper-plugin
-          path: dist/beetkeeper-plugin
-
-      # One publish per project: the OIDC token is project-scoped, so a combined upload would be rejected.
-      - name: Publish beetkeeper to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/beetkeeper
-          # Don't fail a re-run if one project already uploaded (e.g. the other project's step flaked).
-          skip-existing: true
-
-      - name: Publish beetkeeper-plugin to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/beetkeeper-plugin
-          skip-existing: true
-
-  # Publish the docs site only after the image and wheels have published (same `is_release` gate). Requires
-  # repo Pages source = "GitHub Actions".
   docs-build:
-    name: Build docs site
-    needs: [release, publish-pypi, merge-manifest]
-    if: needs.release.outputs.is_release == 'true'
+    name: Validate docs build
+    needs: prepare
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # Full history so mkdocs-material's git-based features and Pants diffing behave.
           fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: '3.14'
       - name: Set up uv
-        # The `[python] resolver = "uv"` resolve is built with uv, so Pants needs it on PATH.
         uses: astral-sh/setup-uv@v5
       - name: Initialize Pants
         uses: pantsbuild/actions/init-pants@v8
@@ -280,27 +179,38 @@ jobs:
           named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
       - name: Build docs site
         run: pants run docs:mkdocs-pex -- build --strict
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
 
-  docs-deploy:
-    name: Deploy docs to GitHub Pages
-    needs: docs-build # (transitively requires release + publish-pypi + the release-tag gate)
+  # The single manual gate: approving the `release` environment tags the validated commit and publishes
+  # the draft release in one API call (publishing a draft whose tag doesn't exist yet creates the tag at
+  # `target_commitish`). Configure required reviewers on the `release` environment in repo settings.
+  approve-and-tag:
+    name: Approve, tag, and publish release
+    needs: [prepare, validate, build-image, docs-build]
     runs-on: ubuntu-latest
-    # Pages-deploy scopes: granted to THIS job only (the workflow default is `contents: read`).
+    environment: release
     permissions:
-      pages: write
-      id-token: write # deploy-pages mints an OIDC token to prove the artifact's provenance
-    # Serialize Pages deployments; let an in-progress deploy finish rather than cancelling it.
-    concurrency:
-      group: pages
-      cancel-in-progress: false
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: write
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Tag ${{ github.sha }} as v${{ needs.prepare.outputs.version }} and publish the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+        run: |
+          gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
+            -f tag_name="v${VERSION}" \
+            -f target_commitish="${GITHUB_SHA}" \
+            -F draft=false
+          echo "::notice::Tagged ${GITHUB_SHA} as v${VERSION} and published the GitHub release."
+
+  publish:
+    name: Publish artifacts
+    needs: [prepare, approve-and-tag]
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      pages: write
+    uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}

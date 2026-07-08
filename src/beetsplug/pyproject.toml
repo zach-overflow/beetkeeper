@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "beetkeeper-plugin"
-version = "0.1.0"
+dynamic = ["version"]
 requires-python = ">=3.14,<3.15"
 dependencies = ["beets>=2.11.0", "requests>=2.34"]
 authors = [{ name = "Zach Gottesman" }]
@@ -28,6 +28,12 @@ Documentation = "https://github.com/zach-overflow/beetkeeper/README.md"
 Repository = "https://github.com/zach-overflow/beetkeeper"
 "Bug Tracker" = "https://github.com/zach-overflow/beetkeeper/issues"
 Changelog = "https://github.com/zach-overflow/beetkeeper/releases"
+
+# The version comes from the git tag: Pants' `vcs_version` target (beetkeeper_plugin/BUILD) generates
+# `_scm_version.py` via setuptools-scm, and `_version.py` re-exports it (falling back to a dev placeholder
+# for builds outside Pants, e.g. the uv dev venv, where the generated module doesn't exist).
+[tool.setuptools.dynamic]
+version = { attr = "beetkeeper_plugin._version.__version__" }
 
 [tool.setuptools.packages.find]
 # `plugin_tests*` excluded explicitly so the test tree can never leak into the distribution.

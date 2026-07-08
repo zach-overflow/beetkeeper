@@ -6,10 +6,3 @@ test_cmd(
     command="./hooks/uv-lockfile-check.sh",
     execution_dependencies=["//hooks/uv-lockfile-check.sh:hooks-scripts"],
 )
-
-# Builtin deps already materialize `_version.py` + plugin pyproject; add the VERSION file + hook script.
-test_cmd(
-    name="version-sync-check",
-    command="./hooks/version-sync.sh --check",
-    execution_dependencies=["//:version-file", "//hooks/version-sync.sh:hooks-scripts"],
-)

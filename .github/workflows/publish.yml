@@ -1,0 +1,291 @@
+name: Publish
+run-name: Publish ${{ inputs.version && format('v{0}', inputs.version) || github.ref_name }}
+
+# Builds and publishes the three release artifacts from a `vMAJOR.MINOR.PATCH` tag. Normally invoked by the
+# Release workflow via `workflow_call` right after it creates the tag (a tag created with the built-in
+# GITHUB_TOKEN cannot fire the `push` trigger); the `push` trigger covers manually pushed release tags.
+#
+# Three build jobs run in parallel (wheels, per-arch images, docs), then the three publication jobs run in
+# parallel once ALL builds have succeeded — PyPI and GitHub Pages keep their environment approval gates.
+on:
+  push:
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+  workflow_call:
+    inputs:
+      version:
+        description: 'Release semver (MAJOR.MINOR.PATCH, no leading v); the tag vVERSION must already exist.'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Never let two publishes of the same version run concurrently.
+concurrency:
+  group: publish-${{ inputs.version || github.ref_name }}
+  cancel-in-progress: false
+
+# Layer CI-only overrides on top of pants.toml for every Pants invocation below (see pants.ci.toml).
+env:
+  PANTS_CONFIG_FILES: pants.ci.toml
+
+jobs:
+  setup:
+    name: Resolve release version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Validate the release version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          version="${INPUT_VERSION:-${GITHUB_REF_NAME#v}}"
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'${version}' is not an exact MAJOR.MINOR.PATCH release version - nothing to \
+          publish. Release tags must be created via the Release workflow."
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  build-wheels:
+    name: Build wheels
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      # Checking out the tag (with full history + tags) is what versions the wheels: Pants' `vcs_version`
+      # targets run setuptools-scm against this checkout, yielding the exact `MAJOR.MINOR.PATCH`.
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.setup.outputs.version }}
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.11.23'
+          enable-cache: true
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v8
+        with:
+          gha-cache-key: v0
+          named-caches-hash: ${{ hashFiles('uv.lock') }}
+          cache-lmdb-store: 'true'
+
+      - name: Build wheels
+        run: |
+          pants package src/python:beetkeeper-whl src/beetsplug:plugin-whl
+          ls dist/beetkeeper-${{ needs.setup.outputs.version }}-*.whl \
+            dist/beetkeeper_plugin-${{ needs.setup.outputs.version }}-*.whl
+
+      # Each wheel is its own artifact: OIDC trusted publishing mints a project-scoped token, so each PyPI
+      # project uploads separately.
+      - name: Upload beetkeeper wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-beetkeeper
+          path: dist/beetkeeper-*.whl
+          if-no-files-found: error
+
+      - name: Upload beetkeeper-plugin wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-beetkeeper-plugin
+          path: dist/beetkeeper_plugin-*.whl
+          if-no-files-found: error
+
+      - name: Upload Pants log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pants-log
+          path: .pants.d/workdir/pants.log
+
+  # Build each arch's image on a native runner (no QEMU) and hand it to `publish-image` as a tarball, so
+  # nothing touches the registry until the publication phase.
+  build-image:
+    name: Build image (${{ matrix.arch }})
+    needs: setup
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    env:
+      # RELEASE_TAG drives the image's `:<version>` tag (root BUILD) and the ENV baked into the container.
+      RELEASE_TAG: ${{ needs.setup.outputs.version }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.setup.outputs.version }}
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.11.23'
+          enable-cache: true
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v8
+        with:
+          gha-cache-key: image-${{ matrix.arch }}-v0
+          named-caches-hash: ${{ hashFiles('uv.lock') }}
+          cache-lmdb-store: 'true'
+
+      # Plain `pants package` builds for the host arch and loads the image into the local Docker daemon.
+      - name: Build image (native ${{ matrix.arch }})
+        run: |
+          pants package //:beetkeeper-server-image
+
+      - name: Export image tarball
+        env:
+          REF: ghcr.io/zach-overflow/beetkeeper
+          VERSION: ${{ needs.setup.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          docker tag "${REF}:${VERSION}" "${REF}:${VERSION}-${ARCH}"
+          docker save "${REF}:${VERSION}-${ARCH}" -o "image-${ARCH}.tar"
+
+      - name: Upload image tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-${{ matrix.arch }}
+          path: image-${{ matrix.arch }}.tar
+          if-no-files-found: error
+
+  build-docs:
+    name: Build docs site
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.setup.outputs.version }}
+          # Full history so mkdocs-material's git-based features and Pants diffing behave.
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v8
+        with:
+          gha-cache-key: docs-v0
+          named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
+      - name: Build docs site
+        run: pants run docs:mkdocs-pex -- build --strict
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [build-wheels, build-image, build-docs]
+    runs-on: ubuntu-latest
+    # The `pypi` environment the PyPI trusted publishers are registered against (gates publishing here only).
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write # mint the OIDC token PyPI exchanges for a short-lived, project-scoped API token
+    steps:
+      - name: Download beetkeeper wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: wheel-beetkeeper
+          path: dist/beetkeeper
+
+      - name: Download beetkeeper-plugin wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: wheel-beetkeeper-plugin
+          path: dist/beetkeeper-plugin
+
+      # One publish per project: the OIDC token is project-scoped, so a combined upload would be rejected.
+      - name: Publish beetkeeper to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/beetkeeper
+          # Don't fail a re-run if one project already uploaded (e.g. the other project's step flaked).
+          skip-existing: true
+
+      - name: Publish beetkeeper-plugin to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/beetkeeper-plugin
+          skip-existing: true
+
+  # Push the per-arch tags then stitch them into the multi-arch manifest list (`:<version>` + `:latest`).
+  # Non-Pants: Pants `docker_image` can't push by digest / assemble a manifest list, but `buildx
+  # imagetools` can.
+  publish-image:
+    name: Publish image to GHCR
+    needs: [setup, build-wheels, build-image, build-docs]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download image tarballs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: image-*
+          merge-multiple: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push per-arch tags + manifest list
+        env:
+          REF: ghcr.io/zach-overflow/beetkeeper
+          VERSION: ${{ needs.setup.outputs.version }}
+        run: |
+          docker load -i image-amd64.tar
+          docker load -i image-arm64.tar
+          docker push "${REF}:${VERSION}-amd64"
+          docker push "${REF}:${VERSION}-arm64"
+          docker buildx imagetools create \
+            -t "${REF}:${VERSION}" \
+            -t "${REF}:latest" \
+            "${REF}:${VERSION}-amd64" \
+            "${REF}:${VERSION}-arm64"
+
+  docs-deploy:
+    name: Deploy docs to GitHub Pages
+    needs: [build-wheels, build-image, build-docs]
+    runs-on: ubuntu-latest
+    # Pages-deploy scopes: granted to THIS job only (the workflow default is `contents: read`).
+    permissions:
+      pages: write
+      id-token: write # deploy-pages mints an OIDC token to prove the artifact's provenance
+    # Serialize Pages deployments; let an in-progress deploy finish rather than cancelling it.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
