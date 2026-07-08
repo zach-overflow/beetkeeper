@@ -65,13 +65,16 @@ Triggered manually via `workflow_dispatch` (must be run from the default branch)
 3. **`approve-and-tag`** — pauses on the **`release`** environment (the one manual gate). On approval, one
    API call flips the draft to published with `tag_name: vX.Y.Z`, which creates the tag on the validated
    commit.
-4. **`publish`** — invokes the Publish workflow via `workflow_call`. (A tag created with the built-in
-   `GITHUB_TOKEN` can never fire another workflow's `push` trigger — GitHub's recursive-workflow guard —
-   so the tag itself only triggers Publish when a human pushes one manually.)
+4. **`publish`** — dispatches the Publish workflow (`gh workflow run publish.yml`) on the new tag's
+   ref. Dispatch is the only viable hand-off: a tag created with the built-in `GITHUB_TOKEN` can never
+   fire another workflow's `push` trigger (GitHub's recursive-workflow guard, from which
+   `workflow_dispatch` is exempt), and a `workflow_call` hand-off breaks PyPI trusted publishing, which
+   rejects reusable workflows.
 
 ## What the Publish workflow does (`.github/workflows/publish.yml`)
 
-Invoked by Release via `workflow_call` (or by a manually pushed `vMAJOR.MINOR.PATCH` tag). Three build
+Dispatched by Release (or triggered by a manually pushed `vMAJOR.MINOR.PATCH` tag; it can also be run
+by hand via Actions → Publish → Run workflow for an existing tag). Three build
 jobs run in parallel from the tag's commit, then three publication jobs run in parallel once **all**
 builds succeed:
 
@@ -85,12 +88,17 @@ builds succeed:
 
 - **`release` environment** — must exist with a **required reviewer** (repo Settings → Environments);
   this is the single "proceed with the release?" prompt.
+- **Tag ruleset** — no ruleset may have **Restrict creations** enabled for `v*` tags: `approve-and-tag`
+  creates the release tag with the built-in `GITHUB_TOKEN`, which is rejected with "Cannot create ref due
+  to creations being restricted" and *cannot* be added to a ruleset bypass list (only roles, teams, deploy
+  keys, and installed GitHub Apps can). Restricting tag *updates/deletions* is fine. Note the trade-off:
+  any write-access collaborator can then push a `v*` tag, which triggers the Publish workflow directly
+  (PyPI/Pages publication stays environment-gated; the GHCR image push is not).
 - **GHCR** — uses the built-in `GITHUB_TOKEN` (`packages: write`); no extra secret.
 - **PyPI** — OIDC trusted publishing; no stored token. Each PyPI project (`beetkeeper`,
-  `beetkeeper-plugin`) needs Trusted Publishers registered for owner/repo `zach-overflow/beetkeeper` with
-  environment **`pypi`** and workflow filename — register **both** `release.yml` *and* `publish.yml`: the
-  OIDC claim carries the *top-level* workflow, which is `release.yml` when Publish runs via
-  `workflow_call` and `publish.yml` for a manually pushed tag.
+  `beetkeeper-plugin`) needs a Trusted Publisher registered for owner/repo `zach-overflow/beetkeeper`,
+  workflow **`publish.yml`**, environment **`pypi`**. Publish always runs as its own top-level workflow
+  (dispatched, never `workflow_call`ed) precisely because PyPI rejects reusable workflows.
 - **GitHub Pages** — repo Pages source set to "GitHub Actions"; the `github-pages` environment holds any
   deploy approval rule.
 
@@ -107,7 +115,7 @@ builds succeed:
   `build-wheels` job must check out `v<version>` with `fetch-depth: 0` (setuptools-scm needs the tag in
   the checkout).
 - **PyPI publish fails with a trusted-publisher / OIDC error** — the registered Trusted Publisher must
-  match exactly: owner/repo `zach-overflow/beetkeeper`, environment `pypi`, and the top-level workflow
-  filename (`release.yml` via the release flow, `publish.yml` for a direct tag push — register both).
+  match exactly: owner/repo `zach-overflow/beetkeeper`, workflow `publish.yml`, environment `pypi`. Also
+  note PyPI rejects reusable workflows outright, so Publish must never be converted to `workflow_call`.
 - **PyPI upload rejected as already existing** — the publish steps use `skip-existing`, so a re-run is
   safe; publishing a *new* release requires a *new* version (PyPI forbids overwriting an existing one).

@@ -68,10 +68,10 @@ plus actionlint and an MkDocs build check. Install git hooks with `prek install`
   An exact `vMAJOR.MINOR.PATCH` tag yields a clean version; anything else is a dev version.
 - **Flow** (details: `docs/contributor_docs/release_management.md`): save a *draft* GitHub release titled
   `MAJOR.MINOR.PATCH` → run the `Release` workflow (validates + builds everything, publishes nothing) →
-  approve the `release` environment gate, which tags the commit and publishes the draft → `Release` invokes
-  `publish.yml` via `workflow_call` (a GITHUB_TOKEN-created tag can't fire `push` triggers), which builds
-  wheels/image/docs in parallel from the tag, then publishes them in parallel (PyPI + Pages keep their
-  environment gates).
+  approve the `release` environment gate, which tags the commit and publishes the draft → `Release`
+  dispatches `publish.yml` (`workflow_dispatch`; a GITHUB_TOKEN-created tag can't fire `push` triggers,
+  and `workflow_call` would break PyPI trusted publishing), which builds wheels/image/docs in parallel
+  from the tag, then publishes them in parallel (PyPI + Pages keep their environment gates).
 
 ## Relevant public docs
 - Pants: https://www.pantsbuild.org/stable/docs/introduction/welcome-to-pants

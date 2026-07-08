@@ -1,9 +1,10 @@
 name: Publish
 run-name: Publish ${{ inputs.version && format('v{0}', inputs.version) || github.ref_name }}
 
-# Builds and publishes the three release artifacts from a `vMAJOR.MINOR.PATCH` tag. Normally invoked by the
-# Release workflow via `workflow_call` right after it creates the tag (a tag created with the built-in
-# GITHUB_TOKEN cannot fire the `push` trigger); the `push` trigger covers manually pushed release tags.
+# Builds and publishes the three release artifacts from a `vMAJOR.MINOR.PATCH` tag. Normally dispatched by
+# the Release workflow right after it creates the tag (`workflow_dispatch` is the one trigger the built-in
+# GITHUB_TOKEN may fire — it cannot fire `push`; and a `workflow_call` hand-off would break PyPI trusted
+# publishing, which rejects reusable workflows). The `push` trigger covers manually pushed release tags.
 #
 # Three build jobs run in parallel (wheels, per-arch images, docs), then the three publication jobs run in
 # parallel once ALL builds have succeeded — PyPI and GitHub Pages keep their environment approval gates.
@@ -11,7 +12,7 @@ on:
   push:
     tags:
       - 'v[0-9]*.[0-9]*.[0-9]*'
-  workflow_call:
+  workflow_dispatch:
     inputs:
       version:
         description: 'Release semver (MAJOR.MINOR.PATCH, no leading v); the tag vVERSION must already exist.'
