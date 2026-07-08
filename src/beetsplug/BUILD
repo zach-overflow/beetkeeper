@@ -4,7 +4,7 @@ __defaults__(
 )
 
 file(name="pypi-readme", source="README.md")
-# With `generate_setup=False`, setuptools reads this pyproject and resolves the version from `_version.py`.
+# With `generate_setup=False`, setuptools reads this pyproject directly (version via setuptools-scm).
 file(name="plugin-pyproject", source="pyproject.toml")
 python_requirements(name="plugin-requirements", source="pyproject.toml")
 python_distribution(
@@ -14,6 +14,7 @@ python_distribution(
         ":plugin-requirements",
         ":pypi-readme",
         "./beetkeeper_plugin:beetkeeper_plugin",
+        "./beetkeeper_plugin:scm-version",
         "!src/python:app-requirements",
     ],
     provides=python_artifact(name="beetkeeper-plugin"),

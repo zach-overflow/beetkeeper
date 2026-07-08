@@ -37,8 +37,7 @@ Tests run through Pants' built-in pytest: each `python_tests` file runs in its o
 3rd-party dependencies supplied by the Pants resolve lockfiles under `3rdparty/` (regenerate with
 `pants generate-lockfiles` after dependency changes). pytest itself and its plugins install from the
 `[pytest].requirements` list in `pants.toml` — any plugin whose CLI options we pass (e.g. `pytest-socket`)
-must be listed there. `pants test ::` also runs the repo-consistency check hooks (`hooks:uv-lockfile-check`,
-`hooks:version-sync-check`).
+must be listed there. `pants test ::` also runs the `hooks:uv-lockfile-check` repo-consistency check.
 
 To run all tests in the repo:
 

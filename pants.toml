@@ -4,6 +4,8 @@ backend_packages = [
   "pants.backend.docker",
   "pants.backend.docker.lint.hadolint",
   "pants.backend.experimental.adhoc",
+  # For `vcs_version` (setuptools-scm-derived versions from git tags).
+  "pants.backend.experimental.python",
   "pants.backend.experimental.python.lint.ruff.check",
   "pants.backend.experimental.python.lint.ruff.format",
   "pants.backend.experimental.tools.yamllint",

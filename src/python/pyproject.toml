@@ -1,6 +1,6 @@
 # Build-only pyproject for `src/python:beetkeeper-whl`: with `generate_setup=False`, setuptools reads this
-# file directly (source root, so `[tool.setuptools.dynamic]` finds `_version.py`) and Pants does no
-# dependency inference — the `[project]` deps below are hand-maintained and must match what the code imports.
+# file directly and Pants does no dependency inference — the `[project]` deps below are hand-maintained and
+# must match what the code imports.
 [build-system]
 requires = ["setuptools>=80.9"]
 build-backend = "setuptools.build_meta"
@@ -51,6 +51,9 @@ Changelog = "https://github.com/zach-overflow/beetkeeper/releases"
 [project.scripts]
 beetkeeper = "beetkeeper.main:cli"
 
+# The version comes from the git tag: Pants' `vcs_version` target (src/python/beetkeeper/BUILD) generates
+# `_scm_version.py` via setuptools-scm, and `_version.py` re-exports it (falling back to a dev placeholder
+# for builds outside Pants, e.g. the uv dev venv, where the generated module doesn't exist).
 [tool.setuptools.dynamic]
 version = { attr = "beetkeeper._version.__version__" }
 

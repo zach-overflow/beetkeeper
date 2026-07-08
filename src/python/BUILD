@@ -1,5 +1,5 @@
 file(name="pypi-readme", source="README.md")
-# With `generate_setup=False`, setuptools reads this pyproject and resolves the version from `_version.py`.
+# With `generate_setup=False`, setuptools reads this pyproject directly (version via setuptools-scm).
 file(name="dist-pyproject", source="pyproject.toml")
 python_requirements(name="app-requirements", source="pyproject.toml")
 # `files` hack pending https://github.com/pantsbuild/pants/issues/18379
@@ -25,6 +25,7 @@ python_distribution(
         ":dist-pyproject",
         ":pypi-readme",
         "./beetkeeper:beetkeeper",
+        "./beetkeeper:scm-version",
         "./beetkeeper/db:alembic-ini",
         "./beetkeeper/db/alembic",
         "./beetkeeper/db/alembic:script-mako",
