@@ -97,7 +97,9 @@ builds succeed:
 ## Troubleshooting
 
 - **`prepare` fails: "Expected exactly one draft release"** — either no draft exists yet (create one via
-  the release form and *Save draft*) or several drafts are lying around (delete the stale ones).
+  the release form and *Save draft*), several drafts are lying around (delete the stale ones), or — if a
+  draft definitely exists — the job's token can't see it: GitHub omits drafts from the list endpoint for
+  tokens without push access, which is why the `prepare` job must keep `contents: write`.
 - **`prepare` fails: title not `MAJOR.MINOR.PATCH`** — the draft's *title* is the version. Fix the title
   (bare semver, no `v`) and re-run the workflow.
 - **`uv.lock is out of sync`** — run `uv lock` and commit the result.

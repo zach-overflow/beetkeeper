@@ -29,6 +29,11 @@ jobs:
   prepare:
     name: Locate draft release
     runs-on: ubuntu-latest
+    permissions:
+      # The list-releases endpoint silently omits DRAFT releases unless the token has push access
+      # ("only users with push access will receive listings for draft releases"), which for the built-in
+      # GITHUB_TOKEN means `contents: write` — read-only tokens see 0 drafts. This job only reads.
+      contents: write
     outputs:
       version: ${{ steps.draft.outputs.version }}
       release_id: ${{ steps.draft.outputs.release_id }}
