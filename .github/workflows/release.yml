@@ -7,9 +7,8 @@ run-name: Release validation for draft by ${{ github.actor }}
 #   2. Run this workflow (Actions -> Release -> Run workflow, from the default branch). It locates the
 #      draft, validates the repo, and builds every artifact WITHOUT publishing anything.
 #   3. Approve the `release` environment prompt. The workflow then tags the validated commit `vX.Y.Z`,
-#      flips the draft release to published, and invokes the Publish workflow. The Publish workflow is
-#      invoked via `workflow_call` because a tag created with the built-in GITHUB_TOKEN can never fire
-#      another workflow's `push` trigger (GitHub's recursive-workflow guard).
+#      flips the draft release to published, and dispatches the Publish workflow (see the `publish` job
+#      below for why it is dispatched rather than `push`-triggered or called as a reusable workflow).
 on:
   workflow_dispatch:
 
@@ -208,14 +207,23 @@ jobs:
             -F draft=false
           echo "::notice::Tagged ${GITHUB_SHA} as v${VERSION} and published the GitHub release."
 
+  # Dispatch (not `workflow_call`) so Publish runs as its own top-level workflow: PyPI trusted publishing
+  # rejects reusable workflows, and its registered publisher is pinned to `publish.yml`. `workflow_dispatch`
+  # is exempt from GitHub's "GITHUB_TOKEN events don't create workflow runs" recursion guard (a `push` of
+  # the tag with GITHUB_TOKEN is not, which is why the tag itself can't trigger Publish here).
   publish:
-    name: Publish artifacts
+    name: Dispatch publish workflow
     needs: [prepare, approve-and-tag]
+    runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write
-      id-token: write
-      pages: write
-    uses: ./.github/workflows/publish.yml
-    with:
-      version: ${{ needs.prepare.outputs.version }}
+      actions: write
+    steps:
+      - name: Trigger publish.yml for v${{ needs.prepare.outputs.version }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          gh workflow run publish.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref "v${VERSION}" \
+            -f version="${VERSION}"
