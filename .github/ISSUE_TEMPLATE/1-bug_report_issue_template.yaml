@@ -1,5 +1,6 @@
 ---
-# Copied from https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
+# Copied from 
+# https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
 name: Bug Report
 description: File a bug report.
 title: "[Bug]: "
@@ -33,14 +34,16 @@ body:
     attributes:
       label: beetkeeper version
       description: What version of beetkeeper are you running? Please specify fully (<major>.<minor>.<patch>).
-	  placeholder: 0.1.0
-	validations:
-	  required: true
+    placeholder: 0.1.0
+    validations:
+    required: true
   - type: textarea
     id: logs
     attributes:
       label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      description: |
+        Please copy and paste any relevant log output. This will be automatically formatted into code,
+        so no need for backticks.
       render: shell
   - type: upload
     id: screenshots
