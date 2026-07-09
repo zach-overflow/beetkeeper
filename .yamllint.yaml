@@ -9,4 +9,6 @@ rules:
   # 120 chars (same as other line length confs).
   line-length:
     max: 120
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: false
     # level: warning
