@@ -191,6 +191,7 @@ markers = [
 filterwarnings = ["error:pytest.PytestWarning.*"]
 
 [tool.mypy]
+python_version = "3.14"
 plugins = ["pydantic.mypy"]
 exclude = ["build_scripts/", "docs/"]
 explicit_package_bases = true

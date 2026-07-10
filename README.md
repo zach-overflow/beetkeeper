@@ -12,7 +12,7 @@ You should have received a copy of the GNU Affero General Public License along w
 # Beetkeeper
 
 [![PyPI Version](https://img.shields.io/pypi/v/beetkeeper)](https://pypi.org/project/beetkeeper/)
-[![python](https://img.shields.io/badge/python-3.14-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
+[![python](https://img.shields.io/badge/python-3.14%2B-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
 ![license](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue?style=flat)
 
 A self-hosted web app for managing and monitoring [beets](https://beets.io/). Supports both automated and manual beet workflows.

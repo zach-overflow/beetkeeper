@@ -5,6 +5,8 @@ mypy-extensions>=1.1.0
 # `pydantic`/`fastapi` exact pins kept equal to `src/python/pyproject.toml` by
 # `src/integration_tests/meta_tests/test_resolve_version_consistency.py` (Pants can't single-source across resolves).
 pydantic==2.13.4
+# https://pyproject-fmt.readthedocs.io/en/latest/
+pyproject-fmt>=2.25.2
 
 fastapi[standard]==0.138.0
 pytest>=9.1.1
