@@ -11,6 +11,7 @@
     "mypy-extensions>=1.1.0",
     "mypy>=2.1.0",
     "pydantic==2.13.4",
+    "pyproject-fmt>=2.25.2",
     "pytest-socket>=0.8.0",
     "pytest-xdist>=3.8.0",
     "pytest>=9.1.1",
