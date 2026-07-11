@@ -6,10 +6,11 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
 
+from beetkeeper.api.constants import RouteTag
 from beetkeeper.api.dependencies import BeetsLibraryDep
 
 _LOGGER = logging.getLogger(__name__)
-query_router = APIRouter(prefix="/query")
+query_router = APIRouter(prefix="/query", tags=[RouteTag.QUERY])
 
 
 # For each possible query param and its corresponding beets query search filter, see:

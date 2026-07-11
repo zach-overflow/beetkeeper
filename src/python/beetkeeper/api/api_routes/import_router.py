@@ -11,11 +11,12 @@ import logging
 from fastapi import APIRouter, HTTPException, status
 
 from beetkeeper.api.api_models import ImportSubmitRequest
+from beetkeeper.api.constants import RouteTag
 from beetkeeper.api.dependencies import ImportStoreDep
 from beetkeeper.core import ImportDecision, ImportJob
 
 _LOGGER = logging.getLogger(__name__)
-import_router = APIRouter(prefix="/import")
+import_router = APIRouter(prefix="/import", tags=[RouteTag.IMPORT])
 
 
 @import_router.post("", status_code=status.HTTP_201_CREATED)
