@@ -299,7 +299,7 @@ class WebImportSession(ImportSession):  # beets is untyped; base resolves to Any
         """Decide what to do when an import duplicates existing library entries."""
         # TODO[Claude]: bridge a duplicate-resolution DecisionRequest (keep both / remove old / skip).
         #     Scaffold default is the safe choice: skip the duplicate import.
-        _LOGGER.warning("resolve_duplicate not yet implemented for job %s; skipping duplicate.", self._job_id)
+        _LOGGER.warning(f"resolve_duplicate not yet implemented for job {self._job_id}; skipping duplicate.")
         self._output.append("Duplicate of an existing library entry detected — skipping it.")
         task.set_choice(Action.SKIP)
 
@@ -375,7 +375,7 @@ class ImportWorker:
                     self._was_leader = True
                     recovered = await self._store.recover_orphans(self._worker_id)
                     if recovered:
-                        _LOGGER.warning("Failed %d orphaned import job(s) on becoming import leader.", recovered)
+                        _LOGGER.warning(f"Failed {recovered} orphaned import job(s) on becoming import leader.")
                 job = await self._store.claim_next(self._worker_id)
                 if job is None:
                     await anyio.sleep(_IDLE_POLL)
@@ -401,7 +401,7 @@ class ImportWorker:
                 await self._store.set_output(job.id, output.snapshot()[1])  # final flush before terminal status
                 await self._store.set_status(job.id, ImportJobStatus.ABORTED if aborted else ImportJobStatus.COMPLETED)
             except Exception as exc:  # keep the worker alive; record the failure on the job
-                _LOGGER.exception("Import job %s failed.", job.id)
+                _LOGGER.exception(f"Import job {job.id} failed.")
                 output.append(f"Import failed: {exc}")
                 await self._store.set_output(job.id, output.snapshot()[1])
                 await self._store.set_status(job.id, ImportJobStatus.FAILED, error=str(exc))

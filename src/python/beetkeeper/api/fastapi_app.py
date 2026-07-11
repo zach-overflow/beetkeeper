@@ -12,6 +12,7 @@ import anyio
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from beetkeeper._version import __version__ as beetkeeper_version
 from beetkeeper.api.constants import OPENAPI_TAG_METADATA, STATIC_DIRPATH
 from beetkeeper.core import ImportStore, ImportWorker
 from beetkeeper.db.session import make_engine, make_sessionmaker
@@ -26,6 +27,7 @@ def create_app() -> FastAPI:
     beetkeeper_app = FastAPI(
         title="beetkeeper",
         lifespan=_lifespan,
+        version=beetkeeper_version,
         license_info={"name": "AGPL-3.0-or-later", "identifier": "AGPL-3.0-or-later"},
         openapi_tags=[dict(metadata) for metadata in OPENAPI_TAG_METADATA],
     )

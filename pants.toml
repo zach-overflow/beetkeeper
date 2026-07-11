@@ -37,7 +37,7 @@ dependents = "transitive"
 
 [source]
 # Longest-matching prefix wins, so files under the two distribution roots resolve to those, not `src`.
-root_patterns = ["src", "src/beetsplug", "src/python"]
+root_patterns = ["src", "src/beetsplug", "src/python", "build_scripts"]
 
 [docker]
 use_buildx = true

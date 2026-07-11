@@ -58,6 +58,7 @@ extra_css:
 
 plugins:
   - search
+  - swagger-ui-tag
 
 markdown_extensions:
   - admonition
@@ -93,3 +94,4 @@ nav:
       - Testing & development: contributor_docs/testing_and_development.md
       - Building artifacts: contributor_docs/building_artifacts.md
       - Release management: contributor_docs/release_management.md
+  - Public API Reference: public_api_reference/index.md

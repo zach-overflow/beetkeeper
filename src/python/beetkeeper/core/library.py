@@ -71,7 +71,7 @@ def _load_plugins_once(beets_config: Any) -> None:
         plugins.load_plugins()  # reads the global config set just above; instantiates + fires 'pluginload'
         _plugins_state["loaded"] = True
         if plugin_names:
-            _LOGGER.info("Loaded beets plugins: %s", ", ".join(plugin_names))
+            _LOGGER.info(f"Loaded beets plugins: {', '.join(plugin_names)}")
 
 
 def _jsonify(model: Any) -> dict[str, Any]:

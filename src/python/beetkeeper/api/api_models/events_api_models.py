@@ -1,5 +1,6 @@
 """Define any custom FastAPI request or response pydantic models for the `/api/events` subrouter here."""
 
+from datetime import datetime
 from enum import StrEnum, unique
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
@@ -34,6 +35,21 @@ class EventIngestResponse(_BaseEventResponse):
 
 class MultiItemEventIngestResponse(_BaseEventResponse):
     event_ingest_responses: list[EventIngestResponse] = Field(default_factory=list)
+
+
+class ListenerEventRecord(_BaseEventResponse):
+    """One ingested beets listener event, with the beets album/track ids of its child rows."""
+
+    pushed_at: datetime
+    album_ids: list[int] = Field(default_factory=list)
+    track_ids: list[int] = Field(default_factory=list)
+
+
+class EventsListResponse(BaseModel):
+    """Response payload for the events listing: recently ingested listener events, newest first."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    events: list[ListenerEventRecord] = Field(default_factory=list)
 
 
 class _BaseEventBody(BaseModel):

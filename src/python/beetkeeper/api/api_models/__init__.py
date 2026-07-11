@@ -4,7 +4,9 @@ from beetkeeper.api.api_models.events_api_models import (
     APIEventType,
     APITrack,
     EventIngestResponse,
+    EventsListResponse,
     ImportTaskFilesEventBody,
+    ListenerEventRecord,
     MultiItemEventIngestResponse,
     TrackEventBody,
 )
@@ -16,8 +18,10 @@ __all__ = [
     "APITrack",
     "AlbumEventBody",
     "EventIngestResponse",
+    "EventsListResponse",
     "ImportSubmitRequest",
     "ImportTaskFilesEventBody",
+    "ListenerEventRecord",
     "MultiItemEventIngestResponse",
     "TrackEventBody",
 ]
