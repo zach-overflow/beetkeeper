@@ -10,3 +10,19 @@ pex_binary(
         "//3rdparty/tools:tools-requirements#mkdocs-swagger-ui-tag",
     ],
 )
+
+# mike shells out to a bare `mkdocs` subprocess, so it must run as a venv pex with the venv's `bin/`
+# prepended to PATH — otherwise it picks up whatever `mkdocs` (if any) is on the caller's PATH.
+pex_binary(
+    name="mike-pex",
+    script="mike",
+    resolve="tools-resolve",
+    execution_mode="venv",
+    extra_build_args=["--venv=prepend"],
+    dependencies=[
+        "//3rdparty/tools:tools-requirements#mike",
+        "//3rdparty/tools:tools-requirements#mkdocs",
+        "//3rdparty/tools:tools-requirements#mkdocs-material",
+        "//3rdparty/tools:tools-requirements#mkdocs-swagger-ui-tag",
+    ],
+)
