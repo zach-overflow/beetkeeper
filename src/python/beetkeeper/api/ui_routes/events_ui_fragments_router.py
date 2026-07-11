@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 from sqlmodel import col
 
-from beetkeeper.api.constants import TEMPLATES
+from beetkeeper.api.jinja_driver import get_templates
 from beetkeeper.db.models import AlbumEvent, ListenerEvent, TrackEvent
 from beetkeeper.db.session import SessionDep
 
@@ -65,6 +65,6 @@ async def event_fragment(request: Request, session: SessionDep) -> HTMLResponse:
         }
         for event in recent_events
     ]
-    return TEMPLATES.TemplateResponse(
+    return get_templates().TemplateResponse(
         request=request, name="fragment_templates/event_fragment.html", context={"events": events}
     )

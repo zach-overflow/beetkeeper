@@ -3157,3 +3157,10 @@ table {
 .logo-main:hover img {
   content: url("../img/logo-CRT-green.svg");
 }
+
+.version-info-box {
+  margin-left: auto;
+  text-align: right;
+  font-size: 0.6rem;
+}
+

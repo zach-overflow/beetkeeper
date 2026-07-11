@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from beetkeeper.api.constants import TEMPLATES
+from beetkeeper.api.jinja_driver import get_templates
 
 pages_ui_router = APIRouter()
 
@@ -15,17 +15,17 @@ async def default_page() -> RedirectResponse:
 
 @pages_ui_router.get("/home", response_class=HTMLResponse)
 async def home_page(request: Request) -> HTMLResponse:
-    return TEMPLATES.TemplateResponse(request=request, name="page_templates/main_page.html", context={})
+    return get_templates().TemplateResponse(request=request, name="page_templates/main_page.html", context={})
 
 
 @pages_ui_router.get("/events", response_class=HTMLResponse)
 async def events_page(request: Request) -> HTMLResponse:
-    return TEMPLATES.TemplateResponse(request=request, name="page_templates/events_page.html", context={})
+    return get_templates().TemplateResponse(request=request, name="page_templates/events_page.html", context={})
 
 
 @pages_ui_router.get("/import", response_class=HTMLResponse)
 async def import_page(request: Request) -> HTMLResponse:
-    return TEMPLATES.TemplateResponse(request=request, name="page_templates/import_page.html", context={})
+    return get_templates().TemplateResponse(request=request, name="page_templates/import_page.html", context={})
 
 
 @pages_ui_router.get("/search", response_class=HTMLResponse)
@@ -34,4 +34,4 @@ async def search_page(request: Request) -> HTMLResponse:
 
     The page is static shell; its data loads via the `search_ui_fragments_router` HTMX fragments.
     """
-    return TEMPLATES.TemplateResponse(request=request, name="page_templates/search_page.html", context={})
+    return get_templates().TemplateResponse(request=request, name="page_templates/search_page.html", context={})

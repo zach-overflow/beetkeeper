@@ -16,7 +16,7 @@ set -exuo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 repo_root="$(pwd)"
-# pants package //:beetkeeper-server-image
+pants package //:beetkeeper-server-image
 
 set +x
 echo
@@ -31,4 +31,4 @@ docker run -it --rm \
 	-v "${repo_root}/build_scripts/dev_scripts/test_container_init.sh:/test_container_init.sh:ro" \
 	-v "${repo_root}/src/python/beetkeeper/api/static:/host_static:ro" \
 	--entrypoint /test_container_init.sh \
-	ghcr.io/zach-overflow/beetkeeper:latest
+	ghcr.io/zach-overflow/beetkeeper:dev
