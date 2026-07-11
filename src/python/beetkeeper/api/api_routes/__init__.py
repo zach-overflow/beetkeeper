@@ -12,7 +12,7 @@ from beetkeeper.api.api_routes.health_router import health_router
 from beetkeeper.api.api_routes.import_router import import_router
 from beetkeeper.api.api_routes.query_router import query_router
 
-api_router = APIRouter(prefix="/api")
+api_router = APIRouter(prefix="/api", include_in_schema=True)
 api_router.include_router(events_router)
 api_router.include_router(health_router)
 api_router.include_router(import_router)

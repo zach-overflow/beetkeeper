@@ -13,10 +13,11 @@ import socket
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
+from beetkeeper.api.constants import RouteTag
 from beetkeeper.api.dependencies import ImportStoreDep
 
 _LOGGER = logging.getLogger(__name__)
-health_router = APIRouter(prefix="/health")
+health_router = APIRouter(prefix="/health", tags=[RouteTag.MONITOR])
 
 
 class HealthInfo(BaseModel):

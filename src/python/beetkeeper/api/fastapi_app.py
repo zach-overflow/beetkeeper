@@ -12,7 +12,7 @@ import anyio
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from beetkeeper.api.constants import STATIC_DIRPATH
+from beetkeeper.api.constants import OPENAPI_TAG_METADATA, STATIC_DIRPATH
 from beetkeeper.core import ImportStore, ImportWorker
 from beetkeeper.db.session import make_engine, make_sessionmaker
 from beetkeeper.settings import BEETS_CONFIG_FILENAME, BEETS_DIR_ENVVAR, load_config
@@ -23,7 +23,12 @@ def create_app() -> FastAPI:
     from beetkeeper.api.api_routes import api_router
     from beetkeeper.api.ui_routes import ui_router
 
-    beetkeeper_app = FastAPI(title="beetkeeper", lifespan=_lifespan)
+    beetkeeper_app = FastAPI(
+        title="beetkeeper",
+        lifespan=_lifespan,
+        license_info={"name": "AGPL-3.0-or-later", "identifier": "AGPL-3.0-or-later"},
+        openapi_tags=[dict(metadata) for metadata in OPENAPI_TAG_METADATA],
+    )
     # Templates resolve asset URLs via `url_for('static', ...)` against this mount name, so the prefix here is
     # the single source of truth for static URLs (see `base_template.html`).
     beetkeeper_app.mount("/static", StaticFiles(directory=STATIC_DIRPATH, html=True), name="static")

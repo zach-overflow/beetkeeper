@@ -131,6 +131,7 @@ ignore = [
 
 
 [tool.ruff.lint.per-file-ignores]
+"src/integration_tests/**/*.py" = ["I"]
 # TC off: runtime-needed type hints like `fastapi.Depends` must not move under TYPE_CHECKING.
 "src/python/beetkeeper/api/**/*.py" = ["TC", "D101"]
 # TC off: these are all runtime pydantic models.

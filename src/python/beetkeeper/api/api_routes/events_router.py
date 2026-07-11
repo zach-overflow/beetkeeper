@@ -23,11 +23,12 @@ from beetkeeper.api.api_models import (
     MultiItemEventIngestResponse,
     TrackEventBody,
 )
+from beetkeeper.api.constants import RouteTag
 from beetkeeper.db.models import AlbumEvent, ListenerEvent, TrackEvent
 from beetkeeper.db.session import SessionDep
 
 _LOGGER = logging.getLogger(__name__)
-events_router = APIRouter(prefix="/events")
+events_router = APIRouter(prefix="/events", include_in_schema=False, tags=[RouteTag.EVENT])
 
 
 async def _record_listener_event(session: AsyncSession, event_type: APIEventType, pushed_at: datetime) -> int:
