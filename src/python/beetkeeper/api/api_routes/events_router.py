@@ -17,12 +17,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from beetkeeper.api.api_models import (
     AlbumEventBody,
+    APIEventType,
     EventIngestResponse,
     ImportTaskFilesEventBody,
     MultiItemEventIngestResponse,
     TrackEventBody,
 )
-from beetkeeper.api.api_models.events_api_models import APIEventType
 from beetkeeper.db.models import AlbumEvent, ListenerEvent, TrackEvent
 from beetkeeper.db.session import SessionDep
 
@@ -55,7 +55,7 @@ async def track(track_event: TrackEventBody, session: SessionDep) -> EventIngest
         TrackEvent(
             listener_event_id=listener_event_id,
             beets_item_id=track_event.track_fields.id,
-            beets_album_id=track_event.album_fields.id,
+            beets_album_id=track_event.track_fields.album_id,
         )
     )
     await session.commit()
@@ -72,7 +72,7 @@ async def filesystem(fs_event: ImportTaskFilesEventBody, session: SessionDep) ->
             TrackEvent(
                 listener_event_id=listener_event_id,
                 beets_item_id=item.track_fields.id,
-                beets_album_id=item.album_fields.id,
+                beets_album_id=item.track_fields.album_id,
             )
         )
         ingest_responses.append(EventIngestResponse(event_type=item.event_type, ingested_id=item.track_fields.id))

@@ -51,10 +51,11 @@ class AlbumEventBody(_BaseEventBody):
     album_fields: APIAlbum
 
 
-class TrackEventBody(AlbumEventBody):
+class TrackEventBody(_BaseEventBody):
     """
     A post request payload expected from the plugin's listener for the `beetsplug.beetkeeper_plugin.event_listener`
-    client's `item_imported` (track imported) event pushes.
+    client's `item_imported` (track imported) event pushes. The track's album association (if any) travels as the
+    nullable `track_fields.album_id`, so no `album_fields` is required.
     """
 
     track_fields: APITrack
@@ -77,6 +78,8 @@ class APIAlbum(BaseModel):
 
     NOTE: This was generated from `build_scripts/code_gen/pydantic_field_info_from_beets_model.py`.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     id: int
     added: float | None = Field(default=None)
@@ -131,6 +134,8 @@ class APITrack(BaseModel):
 
     NOTE: This was generated from `build_scripts/code_gen/pydantic_field_info_from_beets_model.py`.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     id: int
     acoustid_fingerprint: str = Field(default="")

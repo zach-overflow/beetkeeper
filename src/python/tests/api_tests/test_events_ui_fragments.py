@@ -31,8 +31,7 @@ async def test_event_fragment_renders_recent_events(client: AsyncClient, pushed_
     track_payload = {
         "event_type": "item_imported",
         "pushed_at": pushed_at,
-        "album_fields": {"id": 101},
-        "track_fields": {"id": 777},
+        "track_fields": {"id": 777, "album_id": 101},
     }
     assert (await client.post("/api/events/album", json=album_payload)).status_code == 201
     assert (await client.post("/api/events/track", json=track_payload)).status_code == 201

@@ -1,6 +1,12 @@
+from __future__ import annotations
+
 import logging
+import os
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from functools import cached_property
+from datetime import UTC, datetime
+from enum import Enum
+from functools import cached_property, partial
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from beets.importer import ImportTask  # pants: no-infer-dep
@@ -14,7 +20,6 @@ from requests.auth import AuthBase
 
 if TYPE_CHECKING:
     from beets.importer import ImportSession  # pants: no-infer-dep
-    from beets.library import Library  # pants: no-infer-dep
     from beets.plugins import EventType  # pants: no-infer-dep
     from requests import PreparedRequest, Response
 
@@ -28,6 +33,15 @@ class BeetkeeperPlugin(BeetsPlugin):
     server. This allows the server to collect event data without 'peeking' into the beets database.
     https://beets.readthedocs.io/en/stable/dev/plugins/events.html"""
 
+    # Must stay a subset of the server's accepted `beetkeeper.api.api_models.APIEventType` values.
+    _EVENT_PAYLOAD_KEYS: ClassVar[dict[EventType, str]] = {
+        "album_imported": "album",
+        "album_removed": "album",
+        "import_task_files": "task",
+        "item_imported": "item",
+        "item_removed": "item",
+    }
+
     def __init__(self, beetkeeper_server_url: str, raw_api_token: str | None = None):
         """
         Args:
@@ -36,35 +50,27 @@ class BeetkeeperPlugin(BeetsPlugin):
         """
         self._client = _BeetKeeperClient(url=beetkeeper_server_url, api_token=_APIToken(value=raw_api_token or ""))
         super().__init__("beetkeeper_listener")
-        self.register_listener("album_imported", self._on_album_import)
-        self.register_listener("album_removed", self._on_album_removed)
-        self.register_listener("import_task_files", self._on_import_task_files)
-        self.register_listener("item_imported", self._on_item_imported)
-        self.register_listener("item_removed", self._on_item_removed)
+        for event_type, payload_key in self._EVENT_PAYLOAD_KEYS.items():
+            self.register_listener(event_type, partial(self._handle_event, event_type, payload_key))
 
     @cached_property
     def log(self) -> logging.Logger:
         return logging.getLogger(_LOGGER_NAME)
 
-    def _on_album_import(self, lib: Library, album: Album) -> None:
-        self.log.debug("Run listener for 'album_imported' ...")
-        self._client.post(event_type="album_imported", event_element=album)
+    def _handle_event(self, event_type: EventType, payload_key: str, **kwargs: Any) -> None:
+        """
+        The single handler behind every registered listener: posts the event's payload element (identified by
+        `payload_key` in the event's keyword arguments) to the beetkeeper server.
+        """
+        self.log.debug(f"Run listener for '{event_type}' ...")
+        self._client.post(event_type=event_type, event_element=kwargs[payload_key])
 
-    def _on_album_removed(self, lib: Library, album: Album) -> None:
-        self.log.debug("Run listener for 'album_removed' ...")
-        self._client.post(event_type="album_removed", event_element=album)
 
-    def _on_import_task_files(self, task: ImportTask, session: ImportSession) -> None:
-        self.log.debug("Run listener for 'import_task_files' ...")
-        self._client.post(event_type="import_task_files", event_element=task)
+type _EventElement = Album | Item | ImportTask | ImportSession
 
-    def _on_item_imported(self, lib: Library, item: Item) -> None:
-        self.log.debug("Run listener for 'item_imported' ...")
-        self._client.post(event_type="item_imported", event_element=item)
 
-    def _on_item_removed(self, item: Item) -> None:
-        self.log.debug("Run listener for 'item_removed' ...")
-        self._client.post(event_type="item_removed", event_element=item)
+class _BkSession(TimeoutAndRetrySession):
+    """Beetkeeper-only `SingletonMeta` subclass: keeps our Bearer auth off the session shared by other plugins."""
 
 
 class _BeetKeeperClient(RequestHandler):
@@ -80,39 +86,82 @@ class _BeetKeeperClient(RequestHandler):
         self._api_token = api_token
         super().__init__()
 
-    def create_session(self):
-        return TimeoutAndRetrySession(auth=_BkAuth(token=self._api_token), url=self._url)
+    def create_session(self) -> _BkSession:
+        session = _BkSession()
+        session.auth = _BkAuth(token=self._api_token)
+        return session
 
-    def post(self, event_type: EventType, event_element: Album | Item | ImportTask | ImportSession) -> Response:
-        """Submits a POST reques to the Beetkeeper server, with a request body containing relevant beets event info."""
+    def post(self, event_type: EventType, event_element: _EventElement) -> Response:
+        """Submits a POST request to the Beetkeeper server, with a request body containing relevant beets event info."""
         return self.request(
             method="post",
-            url=self._base_path + self._url_subpath(event_element=event_element),
-            json=_jsonify(event_type=event_type, event_element=event_element),
+            url=self._construct_request_url(event_element=event_element),
+            json=self._jsonify(event_type=event_type, event_element=event_element),
         )
 
-    def _url_subpath(self, event_element: Album | Item | ImportTask | ImportSession) -> str:
+    def _construct_request_url(self, event_element: _EventElement) -> str:
+        return self._url + self._base_path + self._url_subpath(event_element=event_element)
+
+    @staticmethod
+    def _url_subpath(event_element: _EventElement) -> str:
         match event_element:
             case Album():
                 return "/album"
             case Item():
                 return "/track"
+            case ImportTask():
+                return "/filesystem"
             case _:
                 return ""
 
+    @classmethod
+    def _jsonify(cls, event_type: EventType, event_element: _EventElement) -> dict[str, Any]:
+        """
+        Returns a JSON-serializable dictionary with the beets event details. Result is used as the POST request body,
+        and must stay shape-compatible with the server's `beetkeeper.api.api_models` event-body models.
+        """
+        body: dict[str, Any] = dict(event_type=event_type, pushed_at=datetime.now(UTC).isoformat())
+        if isinstance(event_element, Album):
+            body["album_fields"] = _model_fields(event_element)
+        elif isinstance(event_element, Item):
+            body["track_fields"] = _model_fields(event_element)
+        elif isinstance(event_element, ImportTask):
+            body["choice_flag"] = event_element.choice_flag
+            body["imported_items"] = [
+                cls._jsonify(event_type=event_type, event_element=item) for item in event_element.imported_items()
+            ]
+        else:
+            body["event_element"] = "unknown"
+        return {k: _to_json_safe(v) for k, v in body.items()}
 
-def _jsonify(event_type: EventType, event_element: Album | Item | ImportTask | ImportSession) -> dict[str, Any]:
-    """Returns a JSON-serializable dictionary with the beets event details. Result is used as POST request body."""
-    if isinstance(event_element, (Album, Item)):
-        return dict(event_type=event_type, beets_field={k: v for k, v in event_element.items()})
-    elif isinstance(event_type, ImportTask):
-        jsonified_imported_items = []
-        if imported_items := event_element.imported_items():
-            jsonified_imported_items = [_jsonify(event_type=event_type, event_element=item) for item in imported_items]
-        return dict(
-            event_type=event_type, choice_flag=event_element.choice_flag, imported_items=jsonified_imported_items
-        )
-    return dict(event_type=event_type, event_element="unknown")
+
+def _model_fields(event_element: Album | Item) -> dict[str, Any]:
+    """
+    Builds the model's field dict by key iteration (`Album.items()` returns the album's tracks, not field pairs).
+    `None`-valued (unset) fields are omitted so the server-side models' field defaults apply instead.
+    """
+    return {k: value for k in event_element if (value := event_element[k]) is not None}
+
+
+def _to_json_safe(value: Any) -> Any:
+    """
+    Recursively coerces `value` into JSON-serializable primitives, so event bodies never crash request serialization:
+    beets stores filesystem paths as `bytes`, import tasks carry `Enum` members, and any type introduced by future
+    `event_element` expansion degrades to `str(value)` rather than raising `TypeError` inside `requests`.
+    """
+    match value:
+        case str() | int() | float() | None:
+            return value
+        case bytes() | bytearray():
+            return os.fsdecode(bytes(value))
+        case Enum():
+            return value.name
+        case Mapping():
+            return {str(k): _to_json_safe(v) for k, v in value.items()}
+        case Sequence() | set() | frozenset():
+            return [_to_json_safe(v) for v in value]
+        case _:
+            return str(value)
 
 
 class _BkAuth(AuthBase):
