@@ -2,6 +2,7 @@
 # they never ship in the wheels. The pytest duplication with `tools-resolve` is expected, not removable.
 httpx
 pytest>=9.1
+pytest-mock>=3.15.1
 pytest-socket>=0.8.0
 pytest-xdist>=3.8.0
 ruamel.yaml>=0.19.1

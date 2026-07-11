@@ -20,8 +20,8 @@ from anyio import Path as AsyncPath
 from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 
-from beetkeeper.api.constants import TEMPLATES
 from beetkeeper.api.dependencies import ImportStoreDep
+from beetkeeper.api.jinja_driver import get_templates
 from beetkeeper.core import ImportAction, ImportCandidate, ImportDecision, ImportJob, ImportJobStatus
 
 _LOGGER = logging.getLogger(__name__)
@@ -157,7 +157,7 @@ def _build_cell(candidate: ImportCandidate, spec: tuple[str, str, Callable[[Any]
 def _render_job(request: Request, job: ImportJob) -> HTMLResponse:
     candidate_table = build_candidate_table(job.pending_decision.candidates) if job.pending_decision else None
     context = {"job": job, "candidate_table": candidate_table}
-    return TEMPLATES.TemplateResponse(request=request, name=_JOB_FRAGMENT, context=context)
+    return get_templates().TemplateResponse(request=request, name=_JOB_FRAGMENT, context=context)
 
 
 async def _require_job(store: ImportStoreDep, job_id: str) -> ImportJob:
@@ -177,7 +177,7 @@ async def import_active_list(request: Request, store: ImportStoreDep) -> HTMLRes
     active = [job for job in await store.list() if job.status in _ACTIVE_STATUSES]
     active.reverse()  # store.list() is oldest-first; show newest first (matches the form's prepend)
     context = {"entries": [_job_entry(job) for job in active]}
-    return TEMPLATES.TemplateResponse(request=request, name=_JOB_LIST_FRAGMENT, context=context)
+    return get_templates().TemplateResponse(request=request, name=_JOB_LIST_FRAGMENT, context=context)
 
 
 @import_ui_fragments_router.post("", response_class=HTMLResponse)
@@ -201,7 +201,7 @@ async def path_suggestions(request: Request, path: str = "") -> HTMLResponse:
     Defined before `/{job_id}` so the literal route wins over the job-status path parameter.
     """
     context = {"paths": await _dir_suggestions(path)}
-    return TEMPLATES.TemplateResponse(request=request, name=_PATH_SUGGESTIONS_FRAGMENT, context=context)
+    return get_templates().TemplateResponse(request=request, name=_PATH_SUGGESTIONS_FRAGMENT, context=context)
 
 
 @import_ui_fragments_router.get("/{job_id}", response_class=HTMLResponse)

@@ -16,8 +16,8 @@ from typing import Any
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from beetkeeper.api.constants import TEMPLATES
 from beetkeeper.api.dependencies import BeetsLibraryDep
+from beetkeeper.api.jinja_driver import get_templates
 
 _LOGGER = logging.getLogger(__name__)
 search_ui_fragments_router = APIRouter(prefix="/fragment/search")
@@ -55,7 +55,7 @@ async def search_results_fragment(
         _LOGGER.debug("Search query failed: %s", exc)
         error = str(exc)
 
-    return TEMPLATES.TemplateResponse(
+    return get_templates().TemplateResponse(
         request=request,
         name="fragment_templates/search_results.html",
         context={"results": results, "albums": albums, "error": error},
@@ -76,7 +76,7 @@ async def search_stats_fragment(
         _LOGGER.debug("Stats query failed: %s", exc)
         error = str(exc)
 
-    return TEMPLATES.TemplateResponse(
+    return get_templates().TemplateResponse(
         request=request, name="fragment_templates/search_stats.html", context={"stats": stats, "error": error}
     )
 
@@ -84,6 +84,6 @@ async def search_stats_fragment(
 @search_ui_fragments_router.get("/fields", response_class=HTMLResponse)
 async def search_fields_fragment(request: Request, library: BeetsLibraryDep) -> HTMLResponse:
     """Render the available query fields reference fragment."""
-    return TEMPLATES.TemplateResponse(
+    return get_templates().TemplateResponse(
         request=request, name="fragment_templates/search_fields.html", context={"fields": await library.fields()}
     )

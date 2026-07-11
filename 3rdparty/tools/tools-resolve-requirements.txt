@@ -10,6 +10,7 @@ pyproject-fmt>=2.25.2
 
 fastapi[standard]==0.138.0
 pytest>=9.1.1
+pytest-mock>=3.15.1
 pytest-socket>=0.8.0
 pytest-xdist>=3.8.0
 ruamel-yaml>=0.19.1

@@ -1484,6 +1484,29 @@
           "artifacts": [
             {
               "algorithm": "sha256",
+              "hash": "0a25e2eb88fe5168d535041d09a4529a188176ae608a6d249ee65abc0949630d",
+              "url": "https://files.pythonhosted.org/packages/5a/cc/06253936f4a7fa2e0f48dfe6d851d9c56df896a9ab09ac019d70b760619c/pytest_mock-3.15.1-py3-none-any.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "1849a238f6f396da19762269de72cb1814ab44416fa73a8686deac10b0d87a0f",
+              "url": "https://files.pythonhosted.org/packages/68/14/eb014d26be205d38ad5ad20d9a80f7d201472e08167f0bb4361e251084a9/pytest_mock-3.15.1.tar.gz"
+            }
+          ],
+          "project_name": "pytest-mock",
+          "requires_dists": [
+            "pre-commit; extra == \"dev\"",
+            "pytest-asyncio; extra == \"dev\"",
+            "pytest>=6.2.5",
+            "tox; extra == \"dev\""
+          ],
+          "requires_python": ">=3.9",
+          "version": "3.15.1"
+        },
+        {
+          "artifacts": [
+            {
+              "algorithm": "sha256",
               "hash": "81821ba59f07d7600fe2b551d8714f40b068bd46e8b6704c48664e9d60cdacb8",
               "url": "https://files.pythonhosted.org/packages/3f/e8/4a8568580bae3dcd678599ed8e86a82d505a44df71c1ced4246c1aa14b4b/pytest_socket-0.8.0-py3-none-any.whl"
             },
@@ -2149,9 +2172,11 @@
     "fastapi==0.138.0",
     "greenlet>=3.1",
     "httpx",
+    "httpx>=0.28.1",
     "jinja2-fragments==1.12.0",
     "pydantic-settings==2.14.2",
     "pydantic==2.13.4",
+    "pytest-mock>=3.15.1",
     "pytest-socket>=0.8.0",
     "pytest-xdist>=3.8.0",
     "pytest>=9.1",

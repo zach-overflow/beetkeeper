@@ -105,6 +105,7 @@ install_from_resolve = "tools-resolve"
 requirements = [
   "fastapi[standard]",
   "pytest",
+  "pytest-mock",
   "pytest-socket",
   "pytest-xdist",
   "ruamel-yaml",
