@@ -12,7 +12,8 @@ A release publishes three artifacts, all carrying the **same** semver:
 | `beetkeeper-plugin` wheel | `src/beetsplug:plugin-whl` | PyPI (`beetkeeper-plugin`) |
 | `beetkeeper-server` image | `//:beetkeeper-server-image` | GHCR `ghcr.io/zach-overflow/beetkeeper` (`:latest` + `:<version>`) |
 
-The docs site (GitHub Pages) is also rebuilt and redeployed as part of every release.
+The docs site (GitHub Pages) is also rebuilt and redeployed as part of every release: mike publishes
+the release's `MAJOR.MINOR` docs version to the `gh-pages` branch and points the `latest` alias at it.
 
 ## Versioning model — the git tag is the source of truth
 
@@ -82,7 +83,7 @@ builds succeed:
 | :--------------- | :--------------------------------------- | :------------ |
 | `build-wheels` — both wheels, versioned from the tag checkout | `publish-pypi` — OIDC trusted publishing, one upload per project | `pypi` environment |
 | `build-image` — native per-arch builds, exported as tarball artifacts | `publish-image` — push per-arch tags, stitch the `:<version>` + `:latest` manifest list with `buildx imagetools` | none (GHCR, `GITHUB_TOKEN`) |
-| `build-docs` — `mkdocs build --strict` → Pages artifact | `docs-deploy` — `actions/deploy-pages` | `github-pages` environment |
+| `build-docs` — `mkdocs build --strict` (validation only) | `docs-deploy` — mike deploys the `MAJOR.MINOR` docs version (+ `latest` alias) to `gh-pages` | `github-pages` environment |
 
 ## Required configuration
 
@@ -99,8 +100,9 @@ builds succeed:
   `beetkeeper-plugin`) needs a Trusted Publisher registered for owner/repo `zach-overflow/beetkeeper`,
   workflow **`publish.yml`**, environment **`pypi`**. Publish always runs as its own top-level workflow
   (dispatched, never `workflow_call`ed) precisely because PyPI rejects reusable workflows.
-- **GitHub Pages** — repo Pages source set to "GitHub Actions"; the `github-pages` environment holds any
-  deploy approval rule.
+- **GitHub Pages** — repo Pages source set to **"Deploy from a branch"** (`gh-pages`, root); mike creates
+  the branch on the first release deploy. The `github-pages` environment holds any deploy approval rule
+  (it gates the workflow's mike push, which is the publish event).
 
 ## Troubleshooting
 

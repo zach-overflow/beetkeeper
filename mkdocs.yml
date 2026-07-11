@@ -19,6 +19,8 @@ exclude_docs: |
 
 theme:
   name: material
+  # Theme partial overrides (e.g. the mike "you are viewing outdated docs" banner block).
+  custom_dir: docs_overrides
   color_mode: false
   user_color_mode_toggle: false
   logo: assets/images/logo/logo-CRT-green.svg
@@ -56,9 +58,19 @@ theme:
 extra_css:
   - assets/css/beetkeeper.css
 
+# Versioned docs (one site version per app MAJOR.MINOR, deployed by mike to the gh-pages branch):
+# https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/
+extra:
+  version:
+    provider: mike
+    default: latest
+    alias: true
+
 plugins:
   - search
-  - swagger-ui-tag
+  - swagger-ui-tag:
+      extra_css:
+        - assets/css/beetkeeper.css
 
 markdown_extensions:
   - admonition

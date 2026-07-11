@@ -2,34 +2,38 @@ name: Docs (manual)
 run-name: Docs deploy (manual) by ${{ github.actor }}
 
 # Manual escape hatch for deploying docs between releases (the automatic publish lives in the Release
-# workflow). Requires Pages source = "GitHub Actions".
+# workflow). Redeploys the docs of the LATEST released version (its MAJOR.MINOR mike version) from the
+# selected ref's docs sources. Requires Pages source = "Deploy from a branch" (`gh-pages`, root).
 on:
   workflow_dispatch:
 
-# Layer CI-only overrides on top of pants.toml for the Pants build step (see pants.ci.toml).
+# Layer CI-only overrides on top of pants.toml for the Pants build steps (see pants.ci.toml).
 env:
   PANTS_CONFIG_FILES: pants.ci.toml
 
-# Least-privilege token: read the repo, write the Pages deployment, mint the OIDC token deploy-pages needs.
+# Least-privilege default; the deploy job grants itself the gh-pages-push scope it needs.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# Serialize with the release workflow's Pages deploy; let an in-progress deploy finish rather than cancelling.
+# Serialize with the release workflow's `gh-pages` deploy; let an in-progress deploy finish rather than
+# cancelling it.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build docs site
+  deploy:
+    name: Deploy versioned docs to gh-pages
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # mike commits + pushes the version subdirectory to `gh-pages`
+    # The push only happens after this environment's approval gate.
+    environment: github-pages
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # Full history so mkdocs-material's git-based features and Pants diffing behave.
+          # Full history so mike can see/update the `gh-pages` branch and the latest release tag is visible.
           fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -43,21 +47,14 @@ jobs:
         with:
           gha-cache-key: docs-v0
           named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
-      - name: Build docs site
+      - name: Build docs site (validation)
         run: pants run docs:mkdocs-pex -- build --strict
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      # A between-release docs fix re-deploys the newest released MAJOR.MINOR (still aliased `latest`).
+      - name: Deploy latest version's docs to gh-pages with mike
+        run: |
+          version="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
+          docs_version="$(echo "${version#v}" | cut -d. -f1-2)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          pants run docs:mike-pex -- deploy --push --update-aliases "${docs_version}" latest
+          pants run docs:mike-pex -- set-default --push latest

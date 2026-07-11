@@ -189,12 +189,10 @@ jobs:
         with:
           gha-cache-key: docs-v0
           named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
-      - name: Build docs site
+      # Validation only: the actual publish is `docs-deploy`'s gated mike push to `gh-pages`, which GitHub
+      # Pages serves directly (Pages source = "Deploy from a branch").
+      - name: Build docs site (validation)
         run: pants run docs:mkdocs-pex -- build --strict
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
 
   publish-pypi:
     name: Publish to PyPI
@@ -272,21 +270,44 @@ jobs:
             "${REF}:${VERSION}-arm64"
 
   docs-deploy:
-    name: Deploy docs to GitHub Pages
-    needs: [build-wheels, build-image, build-docs]
+    name: Deploy versioned docs to GitHub Pages
+    needs: [setup, build-wheels, build-image, build-docs]
     runs-on: ubuntu-latest
-    # Pages-deploy scopes: granted to THIS job only (the workflow default is `contents: read`).
+    # Scope granted to THIS job only (the workflow default is `contents: read`): the publish IS the mike
+    # push to `gh-pages`, which GitHub Pages serves directly (Pages source = "Deploy from a branch").
     permissions:
-      pages: write
-      id-token: write # deploy-pages mints an OIDC token to prove the artifact's provenance
-    # Serialize Pages deployments; let an in-progress deploy finish rather than cancelling it.
+      contents: write # mike commits + pushes the version subdirectory to `gh-pages`
+    # Serialize `gh-pages` deploys; let an in-progress deploy finish rather than cancelling it.
     concurrency:
       group: pages
       cancel-in-progress: false
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    # The push only happens after this environment's approval gate.
+    environment: github-pages
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.setup.outputs.version }}
+          # Full history so mike can see/update the `gh-pages` branch and setuptools-scm sees the tag.
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v8
+        with:
+          gha-cache-key: docs-v0
+          named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
+      # Docs are versioned per app MAJOR.MINOR: a PATCH release updates its MAJOR.MINOR docs in place, and
+      # `latest` always aliases the newest release. https://github.com/jimporter/mike
+      - name: Deploy version to gh-pages with mike
+        env:
+          VERSION: ${{ needs.setup.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          pants run docs:mike-pex -- deploy --push --update-aliases "${VERSION%.*}" latest
+          pants run docs:mike-pex -- set-default --push latest
