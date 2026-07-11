@@ -20,12 +20,11 @@ def app_dependency_overrides(get_session_override: SessionOverride) -> Dependenc
     return {get_session: get_session_override}
 
 
-def _track_item(pushed_at: str, beets_item_id: int, beets_album_id: int = 1) -> dict[str, object]:
+def _track_item(pushed_at: str, beets_item_id: int, beets_album_id: int | None = 1) -> dict[str, object]:
     return {
         "event_type": "item_imported",
         "pushed_at": pushed_at,
-        "album_fields": {"id": beets_album_id},
-        "track_fields": {"id": beets_item_id},
+        "track_fields": {"id": beets_item_id, "album_id": beets_album_id},
     }
 
 
@@ -63,6 +62,22 @@ async def test_track_event_persists(
     assert len(tracks) == 1
     assert tracks[0].beets_item_id == 777
     assert tracks[0].beets_album_id == 55
+
+
+@pytest.mark.anyio
+async def test_singleton_track_event_persists_without_album(
+    client: AsyncClient, session_factory: async_sessionmaker[AsyncSession], pushed_at: str
+) -> None:
+    """A singleton import (no album association) is a valid track event with a NULL `beets_album_id`."""
+    response = await client.post("/api/events/track", json=_track_item(pushed_at, 888, beets_album_id=None))
+
+    assert response.status_code == 201
+    assert response.json()["ingested_id"] == 888
+
+    async with session_factory() as session:
+        tracks = (await session.execute(select(TrackEvent))).scalars().all()
+    assert len(tracks) == 1
+    assert tracks[0].beets_album_id is None
 
 
 @pytest.mark.anyio
