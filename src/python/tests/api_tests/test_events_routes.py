@@ -114,3 +114,43 @@ async def test_album_event_rejects_unknown_event_type(client: AsyncClient, pushe
     payload = {"event_type": "not_a_real_event", "pushed_at": pushed_at, "album_fields": {"id": 1}}
     response = await client.post("/api/events/album", json=payload)
     assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_events_listing_empty(client: AsyncClient) -> None:
+    response = await client.get("/api/events")
+    assert response.status_code == 200
+    assert response.json() == {"events": []}
+
+
+@pytest.mark.anyio
+async def test_events_listing_returns_recent_events_with_child_ids(client: AsyncClient, pushed_at: str) -> None:
+    """The listing returns ingested events newest-first, each with its child beets album/track ids."""
+    album_payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": 101}}
+    assert (await client.post("/api/events/album", json=album_payload)).status_code == 201
+    assert (
+        await client.post("/api/events/track", json=_track_item(pushed_at, 777, beets_album_id=101))
+    ).status_code == 201
+
+    response = await client.get("/api/events")
+    assert response.status_code == 200
+    events = response.json()["events"]
+    assert [e["event_type"] for e in events] == ["item_imported", "album_imported"]
+    assert events[0]["track_ids"] == [777]
+    assert events[0]["album_ids"] == []
+    assert events[1]["album_ids"] == [101]
+    assert events[1]["track_ids"] == []
+
+
+@pytest.mark.anyio
+async def test_events_listing_respects_limit(client: AsyncClient, pushed_at: str) -> None:
+    for beets_album_id in (1, 2, 3):
+        payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": beets_album_id}}
+        assert (await client.post("/api/events/album", json=payload)).status_code == 201
+
+    response = await client.get("/api/events", params={"limit": 2})
+    assert response.status_code == 200
+    events = response.json()["events"]
+    assert [e["album_ids"] for e in events] == [[3], [2]]
+
+    assert (await client.get("/api/events", params={"limit": 0})).status_code == 422

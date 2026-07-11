@@ -52,7 +52,7 @@ async def search_results_fragment(
     try:
         results = await (library.query_albums(parts) if albums else library.query_items(parts))
     except Exception as exc:  # surface invalid-query errors in the UI instead of a 500
-        _LOGGER.debug("Search query failed: %s", exc)
+        _LOGGER.debug(f"Search query failed: {exc}")
         error = str(exc)
 
     return get_templates().TemplateResponse(
@@ -73,7 +73,7 @@ async def search_stats_fragment(
     try:
         stats = await library.stats(parts)
     except Exception as exc:  # surface invalid-query errors in the UI instead of a 500
-        _LOGGER.debug("Stats query failed: %s", exc)
+        _LOGGER.debug(f"Stats query failed: {exc}")
         error = str(exc)
 
     return get_templates().TemplateResponse(

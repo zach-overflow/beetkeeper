@@ -5,3 +5,12 @@ run_shell_command(
     workdir="/",
     execution_dependencies=["build_scripts/run-test-server.sh", "//:beetkeeper-server-image"],
 )
+
+
+python_source(name="openapi-spec-exporter-script", source="export_openapi.py", resolve="beetkeeper-resolve")
+pex_binary(
+    name="openapi-json-exporter",
+    entry_point="export_openapi.py",
+    resolve="beetkeeper-resolve",
+    dependencies=[":openapi-spec-exporter-script", "//src/python:app-requirements"],
+)

@@ -321,6 +321,32 @@
           "artifacts": [
             {
               "algorithm": "sha256",
+              "hash": "d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9",
+              "url": "https://files.pythonhosted.org/packages/88/c6/92fcd42f1ba33e1184263f25bfabf3d27c383410470f169e4b8163bf9c17/beautifulsoup4-4.15.0-py3-none-any.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "288e3ca7d54b06f2ac191970bc275c1939cb46d450b255bf6718b04aa37ab4f7",
+              "url": "https://files.pythonhosted.org/packages/43/65/318323f98dbee45d42dff61d8f047181bc6f2268a9068cfad035a46be5af/beautifulsoup4-4.15.0.tar.gz"
+            }
+          ],
+          "project_name": "beautifulsoup4",
+          "requires_dists": [
+            "cchardet; extra == \"cchardet\"",
+            "chardet; extra == \"chardet\"",
+            "charset-normalizer; extra == \"charset-normalizer\"",
+            "html5lib; extra == \"html5lib\"",
+            "lxml; extra == \"lxml\"",
+            "soupsieve>=1.6.1",
+            "typing-extensions>=4.0.0"
+          ],
+          "requires_python": ">=3.7.0",
+          "version": "4.15.0"
+        },
+        {
+          "artifacts": [
+            {
+              "algorithm": "sha256",
               "hash": "2227dcbaafe0d2f59279d1762ddddc37783ed4354594f194ffc31d20f41fc3db",
               "url": "https://files.pythonhosted.org/packages/ef/2f/c5464532e965badff2f4c4c1a3a83f5697f0d7c407ed0cda44aaa99bb451/certifi-2026.6.17-py3-none-any.whl"
             },
@@ -1525,6 +1551,26 @@
           "artifacts": [
             {
               "algorithm": "sha256",
+              "hash": "f5d6d0558ed6cfafce54a9f0d874d9e24be0a9b02b2429553afefced61c9e55f",
+              "url": "https://files.pythonhosted.org/packages/28/28/4709ae7156a1326a9530d8a51632a3369d42392588929969b1d0aa221ff5/mkdocs_swagger_ui_tag-0.8.1-py3-none-any.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "15f199ca7734c50c088c53bfe9ec806768ad97816badb3a4e72af4e9434252db",
+              "url": "https://files.pythonhosted.org/packages/e8/ba/c660d28947d1b57a980f7dd5156fb994134c20146a7948c1adb796a80d7f/mkdocs_swagger_ui_tag-0.8.1.tar.gz"
+            }
+          ],
+          "project_name": "mkdocs-swagger-ui-tag",
+          "requires_dists": [
+            "beautifulsoup4>=4.13.3"
+          ],
+          "requires_python": ">=3.8",
+          "version": "0.8.1"
+        },
+        {
+          "artifacts": [
+            {
+              "algorithm": "sha256",
               "hash": "ecc138da861e932d1344214da4bae866b21900a9c2778824b51fe2fb47f5180e",
               "url": "https://files.pythonhosted.org/packages/28/cb/142c2097ca02c0d295b00625ff946808bdda65acda17d163c680d8a6a474/mypy-2.2.0-py3-none-any.whl"
             },
@@ -2675,6 +2721,24 @@
           "artifacts": [
             {
               "algorithm": "sha256",
+              "hash": "e7e6b0769c8f51ed59acab6e994b00621096cfb1c640a7509295987388fbaf65",
+              "url": "https://files.pythonhosted.org/packages/5e/f5/0c41cb68dcae6b7de4fac4188a3a9589e21fb31df21ea3a2e888db95e6c9/soupsieve-2.8.4-py3-none-any.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "e121fd02e975c695e4e9e8774a5ee35d74714b59307868dcc5319ad2d9e3328e",
+              "url": "https://files.pythonhosted.org/packages/47/2c/0a5f6f8ee0d5589e48c7640213ed5175d52cf540a06725b628cc1a45d6ce/soupsieve-2.8.4.tar.gz"
+            }
+          ],
+          "project_name": "soupsieve",
+          "requires_dists": [],
+          "requires_python": ">=3.9",
+          "version": "2.8.4"
+        },
+        {
+          "artifacts": [
+            {
+              "algorithm": "sha256",
               "hash": "c7372aae11c3c3f26a42df7bd626cec2f47d03483d261d369516a615a53714c6",
               "url": "https://files.pythonhosted.org/packages/ec/bb/2799cc2ede3ed41131f8975621e7213dfc7ef4acbbaadfa440f32500c370/starlette-1.3.1-py3-none-any.whl"
             },
@@ -3291,6 +3355,7 @@
     "bandit==1.9.4",
     "fastapi[standard]==0.138.0",
     "mkdocs-material>=9.7.6",
+    "mkdocs-swagger-ui-tag>=0.8.1",
     "mkdocs>=1.6.1",
     "mypy-extensions>=1.1.0",
     "mypy>=2.1.0",

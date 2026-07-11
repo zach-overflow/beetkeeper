@@ -89,3 +89,12 @@ ambient fills gaps), or `prefer` (ambient wins). The image PEXes set `inherit_pa
 image can `pip install` an extra beets plugin and have the PEX pick it up.
 
 [ip]: https://www.pantsbuild.org/stable/reference/targets/pex_binary#inherit_path
+
+
+### Generating OpenAPI Spec JSON
+
+To regenerate the OpenAPI spec JSON for the user reference site, run the following command:
+
+```bash
+pants run build_scripts:openapi-json-exporter
+```

@@ -39,6 +39,15 @@ repos:
         pass_filenames: true
         groups: [linting]
         priority: 3
+      
+      - id: openapi-json-spec-check
+        name: openapi-json-spec-check
+        description: "Ensure the beetkeeper openapi.json is up to date."
+        entry: "pants run build_scripts:openapi-json-exporter -- --check"
+        files: '^src/python/beetkeeper/api/.*$'
+        language: system
+        pass_filenames: false
+        priority: 3
 
       - id: docs-build-check
         name: docs build check

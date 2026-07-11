@@ -4,5 +4,9 @@ pex_binary(
     name="mkdocs-pex",
     script="mkdocs",
     resolve="tools-resolve",
-    dependencies=["//3rdparty/tools:tools-requirements#mkdocs", "//3rdparty/tools:tools-requirements#mkdocs-material"],
+    dependencies=[
+        "//3rdparty/tools:tools-requirements#mkdocs",
+        "//3rdparty/tools:tools-requirements#mkdocs-material",
+        "//3rdparty/tools:tools-requirements#mkdocs-swagger-ui-tag",
+    ],
 )
