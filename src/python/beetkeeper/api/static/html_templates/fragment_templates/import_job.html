@@ -8,7 +8,7 @@
      {% if polling %}hx-get="{{ url_for('import_job_status', job_id=job.id) }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
 
     <details data-persist-key="import-output-{{ job.id }}">
-        <summary><strong>{{ job.source_label }}</strong> — status: {{ job.status }} <small>· job {{ job.id[:8] }}</small></summary>
+        <summary><strong>{{ job.source_label }}</strong> — status: {{ job.status }} <small>· job {{ job.id[:8] }}</small>{% if settings_summary %} <small>· options: {{ settings_summary }}</small>{% endif %}</summary>
         <pre style="max-height: 20rem; overflow: auto; white-space: pre-wrap;">{{ job.output or '(no output yet.)' }}</pre>
     </details>
 

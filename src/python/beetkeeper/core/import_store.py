@@ -18,7 +18,7 @@ Query expressions use `sqlmodel.col(...)` so the SQLModel columns type-check as 
 
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -72,10 +72,28 @@ class ImportStore:
             decision_submitted=record.submitted_decision_json is not None,
             output=record.output,
             quiet=record.quiet,
+            logpath=record.logpath,
+            group_albums=record.group_albums,
+            flat=record.flat,
+            set_fields=json.loads(record.set_fields_json) if record.set_fields_json else {},
         )
 
-    async def create(self, paths: Sequence[str], *, quiet: bool = False) -> ImportJob:
-        """Insert a new PENDING job and return its view (`quiet` runs it non-interactively, like `-q`)."""
+    async def create(
+        self,
+        paths: Sequence[str],
+        *,
+        quiet: bool = False,
+        logpath: str | None = None,
+        group_albums: bool = False,
+        flat: bool = False,
+        set_fields: Mapping[str, str] | None = None,
+    ) -> ImportJob:
+        """Insert a new PENDING job and return its view.
+
+        The keyword arguments are the per-job import settings, mirroring `beet import` flags: `quiet` runs
+        non-interactively (`-q`), plus `logpath` (`-l`), `group_albums`, `flat`, and `set_fields` (`--set`).
+        Each job keeps the values it was submitted with, so concurrent/ad-hoc imports can differ.
+        """
         now = _utcnow()
         record = ImportJobRecord(
             id=uuid4().hex,
@@ -84,6 +102,10 @@ class ImportStore:
             created_at=now,
             updated_at=now,
             quiet=quiet,
+            logpath=logpath,
+            group_albums=group_albums,
+            flat=flat,
+            set_fields_json=json.dumps(dict(set_fields)) if set_fields else None,
         )
         async with self._sessionmaker() as session:
             session.add(record)

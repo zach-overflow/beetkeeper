@@ -4,5 +4,6 @@
 {% for entry in entries %}
     {% set job = entry.job %}
     {% set candidate_table = entry.candidate_table %}
+    {% set settings_summary = entry.settings_summary %}
     {% include "fragment_templates/import_job.html" %}
 {% endfor %}

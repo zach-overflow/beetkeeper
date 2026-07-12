@@ -22,8 +22,8 @@ beetkeeper offers the following out of the box:
 
 - :material-download: **[Install](installation.md)** — via Docker or PyPI.
 - :material-cog: **[Configure](configuration.md)** — the optional `beetkeeper` section of your beets config.
-- :material-play: **[Use it](usage/quickstart.md)** — the CLI and the web UI.
-- :material-server: **[Deploy](usage/deployment.md)** — run it under Docker.
+- :material-play: **[Use it](quickstart/quickstart.md)** — the CLI and the web UI.
+- :material-server: **[Deploy](quickstart/deployment.md)** — run it under Docker.
 
 </div>
 
@@ -31,7 +31,7 @@ beetkeeper offers the following out of the box:
 
 **Run multiple imports** — and monitor them simultaneously, whether started manually or via the REST API.
 
-![Running imports](assets/images/base_import_screenshot_0-0-3rc1.png){ width="70%" }
+![Running imports](assets/images/base_import_screenshot_0-4-0rc1.png){ width="70%" }
 
 **Automated event tracking** — album/song import completion, file modifications, and more. The full beets
 event history is retained whether triggered via the UI or the API.
@@ -40,7 +40,7 @@ event history is retained whether triggered via the UI or the API.
 
 **Search your beets library** — similar in spirit to `beets[web]`, exposing the full beets query language.
 
-![Search](assets/images/base_search_example_0-0-3rc1.png){ width="70%" }
+![Search](assets/images/base_search_example_0-4-0rc1.png){ width="70%" }
 
 ## License
 

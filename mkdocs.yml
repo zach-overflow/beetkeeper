@@ -95,12 +95,12 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Configuration: configuration.md
-  - Usage:
-      - Quick Start Demo: usage/quickstart.md
-      - Using the Web Interface: usage/web-interface.md
-      - Using the REST API: usage/rest-api.md
-      - Using the CLI: usage/cli.md
-      - Deployment: usage/deployment.md
+  - Quickstart:
+      - Demo: quickstart/quickstart.md
+      - Using the Web Interface: quickstart/web-interface.md
+      - Using the REST API: quickstart/rest-api.md
+      - Using the CLI: quickstart/cli.md
+      - Deployment: quickstart/deployment.md
   - Contributing:
       - Overview: contributor_docs/index.md
       - Testing & development: contributor_docs/testing_and_development.md

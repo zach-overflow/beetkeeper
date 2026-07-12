@@ -46,7 +46,9 @@ docker run --rm \
         environment:
           BEETSDIR: /config
         volumes:
-          - ./deploy/config.yaml:/config/config.yaml:ro
+          - /host/path/to/beetsdir:/beets:ro
+          - /host/path/to/music/downloads:/downloads
+          - /host/path/to/music/library:/music
           - beetkeeper-data:/data
     volumes:
       beetkeeper-data:
@@ -62,11 +64,12 @@ docker run --rm \
     DEPLOY="$(pwd)/deploy"
 
     docker run -d --name beetkeeper \
-      -e BEETSDIR=/config \
-      -v "$DEPLOY/config.yaml:/config/config.yaml:ro" \
-      -v beetkeeper-data:/data \
-      -p 8337:8337 \
-      ghcr.io/zach-overflow/beetkeeper:latest          # default CMD is `run`
+		-e BEETSDIR=/config \
+		-v /host/path/to/beetsdir:/beets:ro" \
+		-v /host/path/to/music/downloads:/downloads \
+		-v /host/path/to/music/library:/music \
+		-p 8337:8337 \
+		ghcr.io/zach-overflow/beetkeeper:latest     # default CMD is `run`
     ```
 
 ### 4. Verify

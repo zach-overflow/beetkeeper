@@ -18,7 +18,38 @@
            hx-trigger="keyup changed delay:200ms, focus"
            hx-target="#path-options" hx-swap="innerHTML">
     <datalist id="path-options"></datalist>
-    <br>
+
+    <details>
+        <summary>Import options</summary>
+        <p><small>Prefilled from your beets config's <code>import</code> section; changes apply to this
+           import only.</small></p>
+        <fieldset>
+            <label>
+                <input type="checkbox" name="quiet"{% if import_defaults.quiet %} checked{% endif %}>
+                Quiet — non-interactive, like <code>beet import -q</code> (no match prompts)
+            </label>
+            <br>
+            <label>
+                <input type="checkbox" name="group_albums"{% if import_defaults.group_albums %} checked{% endif %}>
+                Group albums by metadata instead of by folder (<code>--group-albums</code>)
+            </label>
+            <br>
+            <label>
+                <input type="checkbox" name="flat"{% if import_defaults.flat %} checked{% endif %}>
+                Flat — import the whole path as a single album (<code>--flat</code>)
+            </label>
+            <br>
+            <label for="logpath">Log file path (<code>-l</code>; leave empty for no log file):</label>
+            <br>
+            <input type="text" id="logpath" name="logpath" size="60" value="{{ import_defaults.logpath }}"
+                   placeholder="/path/to/import.log">
+            <br>
+            <label for="set_fields">Set fields (<code>--set</code>; one <code>field=value</code> per line):</label>
+            <br>
+            <textarea id="set_fields" name="set_fields" rows="2" cols="60" placeholder="genre=Jazz">{{ import_defaults.set_fields }}</textarea>
+        </fieldset>
+    </details>
+
     <button type="submit">Start import</button>
 </form>
 

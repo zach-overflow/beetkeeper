@@ -35,13 +35,13 @@ Not to be confused with the [beets web plugin](https://beets.readthedocs.io/en/v
 
 <table>
 	<tr>
-	<td><p style="font-size: 1.1rem;">Run multiple imports</p></td><td><img src="docs/assets/images/base_import_screenshot_0-0-3rc1.png" width="40%"><br>... and monitor them simultaneously, whether they were initiated manually, or via the backing REST API.</td>
+	<td><p style="font-size: 1.1rem;">Run multiple imports</p></td><td><img src="docs/assets/images/base_import_screenshot_0-4-0rc1.png" width="40%"><br>... and monitor them simultaneously, whether they were initiated manually, or via the backing REST API.</td>
 	</tr>
 	<tr>
 	<td><p style="font-size: 1.1rem;">Automated event tracking</p></td><td><img src="docs/assets/images/events_example_0-0-3rc1.png" width="40%"><br>... like album / song import completion, file modifications, etc. Maintains the full beets event history whether it was trigger via the UI or the API.</td>
 	</tr>
 	<tr>
-	<td><p style="font-size: 1.1rem;">Search your Beets library</p></td><td><img src="docs/assets/images/base_search_example_0-0-3rc1.png" width="40%"><br>... similar to <code>beets[web]</code>, but different</td>
+	<td><p style="font-size: 1.1rem;">Search your Beets library</p></td><td><img src="docs/assets/images/base_search_example_0-4-0rc1.png" width="40%"><br>... similar to <code>beets[web]</code>, but different</td>
 	</tr>
 </table>
 
@@ -82,12 +82,12 @@ services:
     restart: unless-stopped
     ports:
       - "8337:8337"
-	environment:
-	  BEETSDIR: /beets
+    environment:
+      BEETSDIR: /beets
     volumes:
       - /host/path/to/beets_app_directory:/beets
-	  - /host/path/to/downloads:/data/raw
-	  - /host/path/to/music_library:/data/music
+      - /host/path/to/downloads:/data/raw
+      - /host/path/to/music_library:/data/music
 ```
 
 ### PyPI Installation

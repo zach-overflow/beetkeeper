@@ -54,6 +54,52 @@ async def test_create_persists_quiet_flag(session_factory: async_sessionmaker[As
 
 
 @pytest.mark.anyio
+async def test_create_persists_per_job_import_settings(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    store = _store(session_factory)
+    job = await store.create(
+        ["/music/a"],
+        quiet=True,
+        logpath="/logs/import-a.log",
+        group_albums=True,
+        flat=True,
+        set_fields={"genre": "Jazz", "comments": "ad-hoc"},
+    )
+    assert (job.logpath, job.group_albums, job.flat) == ("/logs/import-a.log", True, True)
+    assert job.set_fields == {"genre": "Jazz", "comments": "ad-hoc"}
+    # Settings survive the DB round-trip (the worker reads them on claim, possibly in another process).
+    claimed = await store.claim_next("worker-1")
+    assert claimed is not None and claimed.id == job.id
+    assert (claimed.logpath, claimed.group_albums, claimed.flat) == ("/logs/import-a.log", True, True)
+    assert claimed.set_fields == {"genre": "Jazz", "comments": "ad-hoc"}
+
+
+@pytest.mark.anyio
+async def test_create_defaults_leave_settings_unset(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    store = _store(session_factory)
+    job = await store.create(["/music/a"])
+    fetched = await store.get(job.id)
+    assert fetched is not None
+    for view in (job, fetched):
+        assert view.logpath is None
+        assert view.group_albums is False
+        assert view.flat is False
+        assert view.set_fields == {}
+
+
+@pytest.mark.anyio
+async def test_adhoc_jobs_keep_their_own_settings(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    """Jobs submitted with differing settings each round-trip their own values (nothing bleeds across jobs)."""
+    store = _store(session_factory)
+    first = await store.create(["/music/a"], group_albums=True, set_fields={"genre": "Jazz"})
+    second = await store.create(["/music/b"], flat=True, logpath="/logs/b.log")
+    views = {job.id: job for job in await store.list()}
+    assert views[first.id].group_albums is True and views[first.id].flat is False
+    assert views[first.id].set_fields == {"genre": "Jazz"} and views[first.id].logpath is None
+    assert views[second.id].flat is True and views[second.id].group_albums is False
+    assert views[second.id].logpath == "/logs/b.log" and views[second.id].set_fields == {}
+
+
+@pytest.mark.anyio
 async def test_lease_is_mutually_exclusive(session_factory: async_sessionmaker[AsyncSession]) -> None:
     store = _store(session_factory)
     await store.ensure_lock_row()

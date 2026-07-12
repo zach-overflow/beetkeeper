@@ -107,7 +107,7 @@
           "imports"
         ],
         "summary": "Start Import",
-        "description": "Enqueue an import of the given paths and return the created (PENDING) job.\n\nSet `quiet=true` to import non-interactively (the `beet import -q` equivalent): no decision prompts.",
+        "description": "Enqueue an import of the given paths and return the created (PENDING) job.\n\nSet `quiet=true` to import non-interactively (the `beet import -q` equivalent): no decision prompts.\nThe optional per-job settings (`quiet`, `logpath`, `group_albums`, `flat`, `set_fields`) default to the\ncorresponding beets config values when left unspecified.",
         "operationId": "start_import_api_import_post",
         "requestBody": {
           "content": {
@@ -843,6 +843,34 @@
             "title": "Quiet",
             "default": false
           },
+          "logpath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logpath"
+          },
+          "group_albums": {
+            "type": "boolean",
+            "title": "Group Albums",
+            "default": false
+          },
+          "flat": {
+            "type": "boolean",
+            "title": "Flat",
+            "default": false
+          },
+          "set_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Set Fields"
+          },
           "source_label": {
             "type": "string",
             "title": "Source Label",
@@ -888,8 +916,38 @@
           "quiet": {
             "type": "boolean",
             "title": "Quiet",
-            "description": "Run non-interactively (like `beet import -q`): never prompt. Strong matches are applied automatically; anything else falls back to beets' `quiet_fallback` config (skip by default).",
-            "default": false
+            "description": "Run non-interactively (like `beet import -q`): never prompt. Strong matches are applied automatically; anything else falls back to beets' `quiet_fallback` config (skip by default)."
+          },
+          "logpath": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logpath",
+            "description": "Corresponds to the `-l` option when running an import command, or config's `import.log` option. See https://beets.readthedocs.io/en/stable/reference/cli.html#import"
+          },
+          "group_albums": {
+            "type": "boolean",
+            "title": "Group Albums",
+            "description": "See https://beets.readthedocs.io/en/stable/reference/config.html#group-albums"
+          },
+          "flat": {
+            "type": "boolean",
+            "title": "Flat",
+            "description": "Corresponds to the `--flat` flag when running an import command. See https://beets.readthedocs.io/en/stable/reference/cli.html#import"
+          },
+          "set_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Set Fields",
+            "description": "Corresponds to the `--set field=value` option for beets' `import` CLI command. Can set multiple key-value pairs."
           }
         },
         "additionalProperties": false,
@@ -898,7 +956,7 @@
           "paths"
         ],
         "title": "ImportSubmitRequest",
-        "description": "Body for starting an import: the filesystem path(s) beets should import."
+        "description": "Body for starting an import: the filesystem path(s) beets should import. All default values come from the\n`beets.config` values (cached) if left unspecified."
       },
       "ListenerEventRecord": {
         "properties": {

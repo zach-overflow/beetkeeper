@@ -46,7 +46,7 @@ Map your host directories to the container's volume paths:
           - /host/path/to/music_library:/data/music
     ```
 
-See [Deployment](usage/deployment.md) for the full Docker workflow, including the one-time database migration step.
+See [Deployment](quickstart/deployment.md) for the full Docker workflow, including the one-time database migration step.
 
 ## PyPI
 

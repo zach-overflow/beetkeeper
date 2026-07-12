@@ -41,7 +41,35 @@ _IMPORT_ROOT = "/downloads"
 def _job_entry(job: ImportJob) -> dict[str, object]:
     """A template entry pairing a job with its pre-computed candidate table (for the list fragment)."""
     table = build_candidate_table(job.pending_decision.candidates) if job.pending_decision else None
-    return {"job": job, "candidate_table": table}
+    return {"job": job, "candidate_table": table, "settings_summary": _job_settings_summary(job)}
+
+
+def _job_settings_summary(job: ImportJob) -> str:
+    """One-line summary of the job's non-default import settings (empty when it uses none of them)."""
+    flags = ((job.quiet, "quiet"), (job.group_albums, "group albums"), (job.flat, "flat"))
+    parts = [label for enabled, label in flags if enabled]
+    if job.logpath:
+        parts.append(f"log: {job.logpath}")
+    if job.set_fields:
+        parts.append("set: " + ", ".join(f"{key}={value}" for key, value in job.set_fields.items()))
+    return " · ".join(parts)
+
+
+def _parse_set_fields(raw: str) -> dict[str, str]:
+    """Parse the form's set-fields textarea (one `field=value` per line) into a dict; 422 on a bad line."""
+    fields: dict[str, str] = {}
+    for line in raw.splitlines():
+        text = line.strip()
+        if not text:
+            continue
+        key, separator, value = text.partition("=")
+        if not separator or not key.strip():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Set-fields line {text!r} is not of the form field=value.",
+            )
+        fields[key.strip()] = value.strip()
+    return fields
 
 
 def _under_import_root(path: str) -> bool:
@@ -156,7 +184,7 @@ def _build_cell(candidate: ImportCandidate, spec: tuple[str, str, Callable[[Any]
 
 def _render_job(request: Request, job: ImportJob) -> HTMLResponse:
     candidate_table = build_candidate_table(job.pending_decision.candidates) if job.pending_decision else None
-    context = {"job": job, "candidate_table": candidate_table}
+    context = {"job": job, "candidate_table": candidate_table, "settings_summary": _job_settings_summary(job)}
     return get_templates().TemplateResponse(request=request, name=_JOB_FRAGMENT, context=context)
 
 
@@ -181,8 +209,21 @@ async def import_active_list(request: Request, store: ImportStoreDep) -> HTMLRes
 
 
 @import_ui_fragments_router.post("", response_class=HTMLResponse)
-async def import_submit(request: Request, store: ImportStoreDep, path: Annotated[str, Form()]) -> HTMLResponse:
-    """Start an import of a single path (which must live under `_IMPORT_ROOT`) and render its job fragment."""
+async def import_submit(
+    request: Request,
+    store: ImportStoreDep,
+    path: Annotated[str, Form()],
+    quiet: Annotated[bool, Form()] = False,
+    group_albums: Annotated[bool, Form()] = False,
+    flat: Annotated[bool, Form()] = False,
+    logpath: Annotated[str, Form()] = "",
+    set_fields: Annotated[str, Form()] = "",
+) -> HTMLResponse:
+    """Start an import of a single path (which must live under `_IMPORT_ROOT`) and render its job fragment.
+
+    The remaining form fields are the per-job import settings (see `ImportStore.create`); the page's form
+    prefills them from the beets config, and unchecked checkboxes simply arrive absent (i.e. off).
+    """
     cleaned = path.strip()
     if not cleaned:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Provide a path to import.")
@@ -190,7 +231,14 @@ async def import_submit(request: Request, store: ImportStoreDep, path: Annotated
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Import path must be under {_IMPORT_ROOT}."
         )
-    job = await store.create([cleaned])
+    job = await store.create(
+        [cleaned],
+        quiet=quiet,
+        group_albums=group_albums,
+        flat=flat,
+        logpath=logpath.strip() or None,
+        set_fields=_parse_set_fields(set_fields),
+    )
     return _render_job(request, job)
 
 

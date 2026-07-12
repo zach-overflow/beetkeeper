@@ -5,9 +5,10 @@ fully in-process over `httpx.ASGITransport` (no sockets, no lifespan side effect
 the app by overriding the `app_dependency_overrides` fixture; the shared `client` fixture does the rest.
 """
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -65,6 +66,19 @@ def beets_library(tmp_path: Path) -> BeetsLibrary:
     beets_config = tmp_path / "beets.yaml"
     beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n")
     return BeetsLibrary(beets_config)
+
+
+@pytest.fixture
+def beets_import_config() -> Iterator[Any]:
+    """Yield beets' global `import` config view, restoring every key the import tests touch afterwards."""
+    from beets import config
+
+    originals = {key: config["import"][key].get() for key in ("quiet", "group_albums", "flat", "log", "set_fields")}
+    try:
+        yield config["import"]
+    finally:
+        for key, value in originals.items():
+            config["import"][key] = value
 
 
 @pytest.fixture

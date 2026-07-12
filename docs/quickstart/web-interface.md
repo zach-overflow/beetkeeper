@@ -13,7 +13,7 @@ beets needs a decision (for example, which candidate release to apply), the UI p
 
 Multiple imports can run and be monitored simultaneously.
 
-![Running imports](../assets/images/base_import_screenshot_0-0-3rc1.png){ width="80%" }
+![Running imports](../assets/images/base_import_screenshot_0-4-0rc1.png){ width="80%" }
 
 ## Events
 
@@ -29,4 +29,4 @@ Query your beets library using the full
 [beets query language](https://beets.readthedocs.io/en/stable/reference/query.html) — the same expressive
 queries you use on the beets command line.
 
-![Search](../assets/images/base_search_example_0-0-3rc1.png){ width="80%" }
+![Search](../assets/images/base_search_example_0-4-0rc1.png){ width="80%" }

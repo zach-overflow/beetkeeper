@@ -46,6 +46,40 @@ async def test_submit_quiet_flag_is_recorded(client: AsyncClient) -> None:
 
 
 @pytest.mark.anyio
+async def test_submit_records_per_job_import_settings(client: AsyncClient) -> None:
+    payload = {
+        "paths": ["/m/1"],
+        "quiet": True,
+        "logpath": "/logs/import.log",
+        "group_albums": True,
+        "flat": True,
+        "set_fields": {"genre": "Jazz"},
+    }
+    body = (await client.post("/api/import", json=payload)).json()
+    assert body["status"] == "pending"
+    assert body["logpath"] == "/logs/import.log"
+    assert body["group_albums"] is True
+    assert body["flat"] is True
+    assert body["set_fields"] == {"genre": "Jazz"}
+
+    fetched = (await client.get(f"/api/import/{body['id']}")).json()
+    assert fetched["logpath"] == "/logs/import.log"
+    assert fetched["group_albums"] is True
+    assert fetched["flat"] is True
+    assert fetched["set_fields"] == {"genre": "Jazz"}
+
+
+@pytest.mark.anyio
+async def test_submit_settings_default_to_beets_config(client: AsyncClient) -> None:
+    """Unspecified settings resolve from beets' config (the test env has beets' shipped defaults)."""
+    body = (await client.post("/api/import", json={"paths": ["/m/1"]})).json()
+    assert body["logpath"] is None
+    assert body["group_albums"] is False
+    assert body["flat"] is False
+    assert body["set_fields"] == {}
+
+
+@pytest.mark.anyio
 async def test_list_imports_returns_submitted_jobs(client: AsyncClient) -> None:
     await client.post("/api/import", json={"paths": ["/m/1"]})
     await client.post("/api/import", json={"paths": ["/m/2"]})
