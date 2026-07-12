@@ -4,11 +4,11 @@ FROM python:3.14-slim-bookworm AS ffmpeg
 # GL/video code beets' replaygain never uses. Pinned to an immutable release tag + per-arch SHA256. To bump:
 # pick a newer `autobuild-*` tag + stable `n*` from https://github.com/BtbN/FFmpeg-Builds/releases and update
 # the tag/version/build + both SHA256s (`sha256sum ffmpeg-<version>-<linux64|linuxarm64>-<build>.tar.xz`).
-ENV FFMPEG_TAG=autobuild-2026-06-27-13-21 \
+ENV FFMPEG_TAG=autobuild-2026-06-28-13-24 \
 	FFMPEG_VERSION=n8.1.2 \
 	FFMPEG_BUILD=gpl-8.1 \
-	FFMPEG_SHA256_AMD64=1fa7d66a8bc3cd5f7b340e365d274106f182ea14269851230c83e4f69a57fc65 \
-	FFMPEG_SHA256_ARM64=9c31feb2fb0bb87eafb9432f58e7ef06ca47269f281aefbdaeadfdf57b5c585e
+	FFMPEG_SHA256_AMD64=1db4ef08de1bc61493a86905a89f6e05d6aa8a4608425d54273127db85dfe798 \
+	FFMPEG_SHA256_ARM64=a0e30f7c24300a543fcc26f08f0e9b05197a064c95a584915bfdbd9a4e771bd3
 # Throwaway fetch-only stage, so pinning apt versions has no benefit; DL3008 ignored.
 # hadolint ignore=DL3008
 RUN apt-get update \
