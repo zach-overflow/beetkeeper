@@ -1,0 +1,1055 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "beetkeeper",
+    "license": {
+      "name": "AGPL-3.0-or-later",
+      "identifier": "AGPL-3.0-or-later"
+    },
+    "version": ""
+  },
+  "paths": {
+    "/api/events": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Events",
+        "description": "Lists the most recently ingested beets listener events (newest first), each with the beets album/track\nids of its child rows (the ones the beetkeeper event-listener plugin pushed to the POST endpoints).",
+        "operationId": "events_api_events_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Health",
+        "description": "Report this process's pid, the current import leader (lock holder), and the shared job count.",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import": {
+      "get": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "List Imports",
+        "description": "List all known import jobs.",
+        "operationId": "list_imports_api_import_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImportJob"
+                  },
+                  "type": "array",
+                  "title": "Response List Imports Api Import Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Start Import",
+        "description": "Enqueue an import of the given paths and return the created (PENDING) job.\n\nSet `quiet=true` to import non-interactively (the `beet import -q` equivalent): no decision prompts.\nThe optional per-job settings (`quiet`, `logpath`, `group_albums`, `flat`, `set_fields`) default to the\ncorresponding beets config values when left unspecified.",
+        "operationId": "start_import_api_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/{job_id}": {
+      "get": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Get Import",
+        "description": "Return a single import job (poll this for status / the pending decision).",
+        "operationId": "get_import_api_import__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/{job_id}/decision": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Decide Import",
+        "description": "Answer the decision an import is parked on; 409 if it isn't awaiting one.",
+        "operationId": "decide_import_api_import__job_id__decision_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportDecision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/{job_id}/abort": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Abort Import",
+        "description": "Request cooperative cancellation of an in-flight import.",
+        "operationId": "abort_import_api_import__job_id__abort_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/query/list": {
+      "get": {
+        "tags": [
+          "query"
+        ],
+        "summary": "List ",
+        "description": "Execute `beet list ...`: return matching tracks (or albums) as JSON objects.\n\nArgs:\n    library: injected beets library adapter.\n    albums: like `-a`; return albums instead of individual tracks.\n    keyword: repeatable bare-keyword query parts (substring match across default fields).\n    field: repeatable `field:value` parts (exact `=`, regex `::`, numeric/date ranges all supported).\n    phrase: a single multi-word phrase part.\n    filepath: a path within the beets library (becomes a path query).\n    sort_by: a beets sort token, e.g. `year+` or `artist-`.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#list",
+        "operationId": "list__api_query_list_get",
+        "parameters": [
+          {
+            "name": "albums",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Albums"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Keyword"
+            }
+          },
+          {
+            "name": "field",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Field"
+            }
+          },
+          {
+            "name": "phrase",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Phrase"
+            }
+          },
+          {
+            "name": "filepath",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "path"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filepath"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List  Api Query List Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/query/stats": {
+      "get": {
+        "tags": [
+          "query"
+        ],
+        "summary": "Stats",
+        "description": "Execute `beet stats`: track count, total time, approximate size, and artist/album counts.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#stats",
+        "operationId": "stats_api_query_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Stats Api Query Stats Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/query/fields": {
+      "get": {
+        "tags": [
+          "query"
+        ],
+        "summary": "Fields",
+        "description": "Execute `beet fields`: the item/album query fields and flexible attributes available.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#fields",
+        "operationId": "fields_api_query_fields_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object",
+                  "title": "Response Fields Api Query Fields Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "APIEventType": {
+        "type": "string",
+        "enum": [
+          "album_imported",
+          "album_removed",
+          "import_task_files",
+          "item_imported",
+          "item_removed"
+        ],
+        "title": "APIEventType",
+        "description": "Subset of beets listener `event_type`s which the API accepts from our plugin client.\nSee also:\n    https://beets.readthedocs.io/en/stable/dev/plugins/events.html"
+      },
+      "DecisionRequest": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ImportCandidate"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "allowed_actions": {
+            "items": {
+              "$ref": "#/components/schemas/ImportAction"
+            },
+            "type": "array",
+            "title": "Allowed Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "task_id",
+          "prompt"
+        ],
+        "title": "DecisionRequest",
+        "description": "Published when the importer needs a user choice for a task; the matching `ImportDecision` unblocks it."
+      },
+      "EventsListResponse": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ListenerEventRecord"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EventsListResponse",
+        "description": "Response payload for the events listing: recently ingested listener events, newest first."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthInfo": {
+        "properties": {
+          "process_pid": {
+            "type": "integer",
+            "title": "Process Pid"
+          },
+          "hostname": {
+            "type": "string",
+            "title": "Hostname"
+          },
+          "import_lock_holder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Import Lock Holder"
+          },
+          "is_import_leader": {
+            "type": "boolean",
+            "title": "Is Import Leader"
+          },
+          "job_count": {
+            "type": "integer",
+            "title": "Job Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "process_pid",
+          "hostname",
+          "import_lock_holder",
+          "is_import_leader",
+          "job_count"
+        ],
+        "title": "HealthInfo",
+        "description": "Per-process health snapshot."
+      },
+      "ImportAction": {
+        "type": "string",
+        "enum": [
+          "apply",
+          "asis",
+          "skip"
+        ],
+        "title": "ImportAction",
+        "description": "beetkeeper-side mirror of beets' import `action` choices (decoupled from beets internals)."
+      },
+      "ImportCandidate": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Similarity",
+            "description": "1.0 - beets match distance, if available."
+          },
+          "data_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Source"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "media": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media"
+          },
+          "record_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Label"
+          },
+          "catalognum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalognum"
+          },
+          "disambiguation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disambiguation"
+          },
+          "track_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track Count"
+          },
+          "album_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Album Id",
+            "description": "Source-specific release id (e.g. a MusicBrainz MBID)."
+          },
+          "details": {
+            "type": "string",
+            "title": "Details",
+            "description": "One-line summary of the differentiating attributes (empty string when none are known).",
+            "readOnly": true
+          },
+          "release_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Url",
+            "description": "A canonical web URL for the release, when derivable from the source + id (else None).",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "label",
+          "details",
+          "release_url"
+        ],
+        "title": "ImportCandidate",
+        "description": "A serializable view of one beets match candidate, surfaced to the UI for selection.\n\nBeyond the headline `label`/`similarity`, the optional release attributes below let the UI tell\notherwise-identical candidates apart (e.g. different pressings/editions of the same album); `details`\njoins the populated ones into a single human-readable line for display."
+      },
+      "ImportDecision": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ImportAction"
+          },
+          "candidate_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Index",
+            "description": "Required when `action` is APPLY."
+          }
+        },
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "ImportDecision",
+        "description": "The user's answer to a `DecisionRequest` (posted back from the UI)."
+      },
+      "ImportJob": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportJobStatus"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Paths"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "pending_decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision_submitted": {
+            "type": "boolean",
+            "title": "Decision Submitted",
+            "default": false
+          },
+          "output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          },
+          "quiet": {
+            "type": "boolean",
+            "title": "Quiet",
+            "default": false
+          },
+          "logpath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logpath"
+          },
+          "group_albums": {
+            "type": "boolean",
+            "title": "Group Albums",
+            "default": false
+          },
+          "flat": {
+            "type": "boolean",
+            "title": "Flat",
+            "default": false
+          },
+          "set_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Set Fields"
+          },
+          "source_label": {
+            "type": "string",
+            "title": "Source Label",
+            "description": "Display name for the import source: the basename(s) of the path(s) (e.g. the album folder).",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "paths",
+          "created_at",
+          "source_label"
+        ],
+        "title": "ImportJob",
+        "description": "API-facing view of a single import job (the persisted record is `db.models.ImportJobRecord`)."
+      },
+      "ImportJobStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "running",
+          "awaiting_decision",
+          "completed",
+          "failed",
+          "aborted"
+        ],
+        "title": "ImportJobStatus",
+        "description": "Lifecycle states of an import job."
+      },
+      "ImportSubmitRequest": {
+        "properties": {
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Paths",
+            "description": "One or more paths (files/dirs) to import."
+          },
+          "quiet": {
+            "type": "boolean",
+            "title": "Quiet",
+            "description": "Run non-interactively (like `beet import -q`): never prompt. Strong matches are applied automatically; anything else falls back to beets' `quiet_fallback` config (skip by default)."
+          },
+          "logpath": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logpath",
+            "description": "Corresponds to the `-l` option when running an import command, or config's `import.log` option. See https://beets.readthedocs.io/en/stable/reference/cli.html#import"
+          },
+          "group_albums": {
+            "type": "boolean",
+            "title": "Group Albums",
+            "description": "See https://beets.readthedocs.io/en/stable/reference/config.html#group-albums"
+          },
+          "flat": {
+            "type": "boolean",
+            "title": "Flat",
+            "description": "Corresponds to the `--flat` flag when running an import command. See https://beets.readthedocs.io/en/stable/reference/cli.html#import"
+          },
+          "set_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Set Fields",
+            "description": "Corresponds to the `--set field=value` option for beets' `import` CLI command. Can set multiple key-value pairs."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "paths"
+        ],
+        "title": "ImportSubmitRequest",
+        "description": "Body for starting an import: the filesystem path(s) beets should import. All default values come from the\n`beets.config` values (cached) if left unspecified."
+      },
+      "ListenerEventRecord": {
+        "properties": {
+          "event_type": {
+            "$ref": "#/components/schemas/APIEventType"
+          },
+          "pushed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pushed At"
+          },
+          "album_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Album Ids"
+          },
+          "track_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Track Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_type",
+          "pushed_at"
+        ],
+        "title": "ListenerEventRecord",
+        "description": "One ingested beets listener event, with the beets album/track ids of its child rows."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "imports",
+      "description": "Routes for managing [beets imports](https://beets.readthedocs.io/en/stable/reference/cli.html#import).\nOffer API-based import execution, import history, import choice selection, and more.\nFor automated beets setups, you will typically rely on these endpoints the most. \nThese endpoints also power the frontend import management web UI page.\n"
+    },
+    {
+      "name": "query",
+      "description": "Routes for [querying your beets library](https://beets.readthedocs.io/en/stable/reference/query.html).\nSupports API-based queries, using standard `beets` query syntax. Useful for checking the status of your\nbeets-managed library. These endpoints also power the frontend query UI page.\n"
+    },
+    {
+      "name": "events",
+      "description": "Routes pertaining to [beets events](https://beets.readthedocs.io/en/stable/dev/plugins/events.html).\nDocumented routes read-only. The [beetkeeper-plugin library](https://pypi.org/project/beetkeeper-plugin/)\nautomatically pushes beets events to the beetkeeper server. Events serve to provide a full historical\ntrace of any / all beets imports, file operations, etc. Helpful for tracing origins, or fine-tuning beets\nconfigurations, especially in automated setups.\n"
+    },
+    {
+      "name": "monitoring",
+      "description": "Routes for beetkeeper system observability, and availability checks."
+    }
+  ]
+}
