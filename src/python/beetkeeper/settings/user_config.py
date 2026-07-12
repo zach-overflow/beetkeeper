@@ -41,6 +41,14 @@ class DatabaseConfSection(BaseModel):
     sqlite_path: Path = Field(
         description="Filesystem path to beetkeeper's SQLite db file. NOTE: this is must be a different file than beets' `library.db`."
     )
+    auto_upgrade: bool = Field(
+        default=True,
+        description=(
+            "When true (default), `beetkeeper run` applies any pending schema migrations automatically at "
+            "startup (backing up the db file first). When false, a stale schema fails startup with a prompt "
+            "to run `beetkeeper db upgrade` manually."
+        ),
+    )
 
     @property
     def resolved_sqlite_path(self) -> Path:

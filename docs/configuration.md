@@ -22,7 +22,7 @@ beetkeeper:
     port: 8337
     server_workers: 2
   database:
-    # beetkeeper's own SQLite db (separate from the beets library db); created on first `beetkeeper db upgrade`.
+    # beetkeeper's own SQLite db (separate from the beets library db); created automatically on first run.
     sqlite_path: /beets/beetkeeper.db
 ```
 
@@ -34,7 +34,8 @@ beetkeeper:
 | `server.hostname`         | string  | —       | Interface to bind (e.g. `0.0.0.0` to listen on all interfaces). |
 | `server.port`             | int     | `8337`  | Port the server listens on (must be `> 0`).                     |
 | `server.server_workers`   | int     | `2`     | Number of server worker processes (must be `> 0`).             |
-| `database.sqlite_path`    | path    | —       | Path to beetkeeper's own SQLite db (created on first migration). |
+| `database.sqlite_path`    | path    | —       | Path to beetkeeper's own SQLite db (created automatically on first run). |
+| `database.auto_upgrade`   | bool    | `true`  | Apply pending schema migrations automatically when the server starts (the db file is backed up first). When `false`, a stale schema fails startup until you run `beetkeeper db upgrade`. |
 
 !!! tip "Authoritative source"
     The table above is a friendly summary. For the exact field definitions, validation, and defaults, see the
@@ -43,4 +44,5 @@ beetkeeper:
 
 !!! warning "Separate database"
     `database.sqlite_path` is beetkeeper's own bookkeeping database — **not** your beets library database.
-    It is created when you first run `beetkeeper db upgrade` (see [the CLI](quickstart/cli.md)).
+    It is created (and kept schema-current) automatically by `beetkeeper run`, or manually via
+    `beetkeeper db upgrade` (see [the CLI](quickstart/cli.md)).

@@ -1,7 +1,7 @@
 # Quick Start Demo
 
 The fastest way to explore beetkeeper is to run it under Docker with a minimal demo config and click around
-the web UI. This gets you a running instance in two commands — no existing beets library required (you can
+the web UI. This gets you a running instance in a single command — no existing beets library required (you can
 point it at a real one later; see [Configuration](../configuration.md) and [Deployment](deployment.md)).
 
 !!! info "Recommended"
@@ -30,38 +30,18 @@ beetkeeper:
     sqlite_path: /data/beetkeeper.db   # on the persistent volume
 ```
 
-## 2. Initialize the database (one-time)
+## 2. Run the server
 
-beetkeeper does not auto-migrate. Create its tables once into a named volume (`beetkeeper-demo`):
-
-=== "Docker"
-
-    ```bash
-	docker run --rm \
-		-e BEETSDIR=/config \
-		-v "$(pwd)/beetsdir:/beets:ro" \
-		-v beetkeeper-demo:/data \
-		ghcr.io/zach-overflow/beetkeeper:latest db upgrade
-	```
-
-=== "Python Standalone"
-
-    ```shell
-	pip install beetkeeper
-	export BEETSDIR=<path to folder holding beets config.yaml>
-    beetkeeper db upgrade
-    ```
-
-## 3. Run the server
+beetkeeper creates its database (and applies any schema migrations) automatically at startup — no separate
+initialization step.
 
 === "Docker"
 
 	```bash
-	docker run -d --name beetkeeper \
+	docker run -d --name beetkeeper-demo \
 		-e BEETSDIR=/config \
-		-v /host/path/to/beetsdir:/beets:ro" \
-		-v /host/path/to/music/downloads:/downloads \
-		-v /host/path/to/music/library:/music \
+		-v "$(pwd):/config:ro" \
+		-v beetkeeper-demo:/data \
 		-p 8337:8337 \
 		ghcr.io/zach-overflow/beetkeeper:latest
 	```
@@ -69,11 +49,12 @@ beetkeeper does not auto-migrate. Create its tables once into a named volume (`b
 === "Python Standalone"
 
     ```shell
+	pip install beetkeeper
 	export BEETSDIR=<path to folder holding beets config.yaml>
     beetkeeper run
     ```
 
-## 4. Explore
+## 3. Explore
 
 Open **<http://localhost:8337/>** and try:
 

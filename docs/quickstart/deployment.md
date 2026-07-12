@@ -17,22 +17,10 @@ Pull the published image (or build it locally with `pants package //:beetkeeper-
 docker pull ghcr.io/zach-overflow/beetkeeper:latest
 ```
 
-### 2. Create the schema (one-time)
+### 2. Run the server
 
-beetkeeper does **not** auto-migrate on startup. Apply migrations once into a persistent named volume
-(`beetkeeper-data`). The image entrypoint is `beetkeeper`, so the trailing args run `db upgrade`:
-
-```bash
-DEPLOY="$(pwd)/deploy"
-
-docker run --rm \
-  -e BEETSDIR=/config \
-  -v "$DEPLOY/config.yaml:/config/config.yaml:ro" \
-  -v beetkeeper-data:/data \
-  ghcr.io/zach-overflow/beetkeeper:latest db upgrade
-```
-
-### 3. Run the server
+beetkeeper creates its database schema automatically at startup, into the persistent named volume
+(`beetkeeper-data`) — no separate migration step is needed.
 
 === "docker compose"
 
@@ -72,7 +60,7 @@ docker run --rm \
 		ghcr.io/zach-overflow/beetkeeper:latest     # default CMD is `run`
     ```
 
-### 4. Verify
+### 3. Verify
 
 ```bash
 docker logs -f beetkeeper                                        # watch startup
@@ -81,38 +69,24 @@ curl -s -o /dev/null -w '%{http_code}\n' localhost:8337/home     # 200
 
 ## Upgrading an existing install
 
-When moving to a newer beetkeeper version:
-
-### 1. Pull the new image
+When moving to a newer beetkeeper version, pull the new image and restart the server against the **same**
+volume:
 
 ```bash
 docker pull ghcr.io/zach-overflow/beetkeeper:latest
-```
-
-### 2. Apply any new migrations
-
-New versions may add migrations. Stop the server, then run `db upgrade` against the **same** volume before
-starting the new version (the app does not migrate itself):
-
-```bash
 docker rm -f beetkeeper    # or: docker compose down
-
-DEPLOY="$(pwd)/deploy"
-docker run --rm \
-  -e BEETSDIR=/config \
-  -v "$DEPLOY/config.yaml:/config/config.yaml:ro" \
-  -v beetkeeper-data:/data \
-  ghcr.io/zach-overflow/beetkeeper:latest db upgrade
+docker compose up -d       # or the `docker run` command from first-time setup step 2
 ```
 
-### 3. Restart the server
+Any schema migrations the new version brings are applied automatically at startup. Before migrating,
+beetkeeper backs up the db file alongside itself (e.g. `beetkeeper.db.pre-<revision>.bak` on the
+`beetkeeper-data` volume), so you can roll back if an upgrade doesn't go as planned. To manage migrations
+manually instead, set `database.auto_upgrade: false` and use `beetkeeper db upgrade` — see
+[Configuration](../configuration.md).
 
-Start the server again with the new image (`docker compose up -d`, or the `docker run` command from
-first-time setup step 3). Your data persists because it lives on the `beetkeeper-data` volume.
-
-!!! tip "Back up first"
-    Before upgrading, back up the `beetkeeper-data` volume (it holds beetkeeper's SQLite database) so you
-    can roll back if a migration doesn't go as planned.
+!!! warning "Never downgrade the app against a newer database"
+    If the database was written by a newer beetkeeper version, the server refuses to start rather than
+    downgrade the schema. Restore the matching `.bak` file (or upgrade beetkeeper) to recover.
 
 ## Teardown
 
@@ -127,6 +101,6 @@ docker volume rm beetkeeper-data    # only if you want to discard the DB
   the beets config (`directory`, `library`, …). `BEETSDIR` points at the **directory** holding it (beets'
   own convention), and the file inside must be named `config.yaml`.
 - **Volumes:** mount the config read-only (`:ro`); the DB lives on the read-write `beetkeeper-data` volume
-  so it persists across restarts. The migrate step and the server **must** use the same volume.
+  so it persists across restarts (and holds the automatic pre-migration `.bak` backups).
 - **Workers / SQLite:** keep `server.server_workers` low — raising it risks SQLite "database is locked"
   errors under concurrent writes.
