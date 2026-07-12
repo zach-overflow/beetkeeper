@@ -24,8 +24,17 @@ async def start_import(body: ImportSubmitRequest, store: ImportStoreDep) -> Impo
     """Enqueue an import of the given paths and return the created (PENDING) job.
 
     Set `quiet=true` to import non-interactively (the `beet import -q` equivalent): no decision prompts.
+    The optional per-job settings (`quiet`, `logpath`, `group_albums`, `flat`, `set_fields`) default to the
+    corresponding beets config values when left unspecified.
     """
-    return await store.create(body.paths, quiet=body.quiet)
+    return await store.create(
+        body.paths,
+        quiet=body.quiet,
+        logpath=str(body.logpath) if body.logpath is not None else None,
+        group_albums=body.group_albums,
+        flat=body.flat,
+        set_fields=body.set_fields,
+    )
 
 
 @import_router.get("")

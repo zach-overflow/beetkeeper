@@ -4,14 +4,17 @@ The fastest way to explore beetkeeper is to run it under Docker with a minimal d
 the web UI. This gets you a running instance in two commands — no existing beets library required (you can
 point it at a real one later; see [Configuration](../configuration.md) and [Deployment](deployment.md)).
 
-!!! info "Prerequisite"
-    [Docker](https://docs.docker.com/get-docker/) installed and running.
+!!! info "Recommended"
+    We recommend using [Docker](https://docs.docker.com/get-docker/) to run beetkeeper.
+	
+	However, for anyone wishing to run beetkeeper without Docker, you may use the standalone [PyPI package](https://pypi.org/project/beetkeeper/) instead.
 
 ## 1. Create a demo config
 
 beetkeeper reads its settings from the optional `beetkeeper` section of a beets config. In an empty working
 directory, save the following as `config.yaml` — a minimal demo config using in-container paths. It must be
 named `config.yaml`, since `BEETSDIR` (below) points at the *directory* holding it:
+
 
 ```yaml title="config.yaml"
 directory: /data/music
@@ -31,24 +34,44 @@ beetkeeper:
 
 beetkeeper does not auto-migrate. Create its tables once into a named volume (`beetkeeper-demo`):
 
-```bash
-docker run --rm \
-  -e BEETSDIR=/config \
-  -v "$(pwd)/config.yaml:/config/config.yaml:ro" \
-  -v beetkeeper-demo:/data \
-  ghcr.io/zach-overflow/beetkeeper:latest db upgrade
-```
+=== "Docker"
+
+    ```bash
+	docker run --rm \
+		-e BEETSDIR=/config \
+		-v "$(pwd)/beetsdir:/beets:ro" \
+		-v beetkeeper-demo:/data \
+		ghcr.io/zach-overflow/beetkeeper:latest db upgrade
+	```
+
+=== "Python Standalone"
+
+    ```shell
+	pip install beetkeeper
+	export BEETSDIR=<path to folder holding beets config.yaml>
+    beetkeeper db upgrade
+    ```
 
 ## 3. Run the server
 
-```bash
-docker run -d --name beetkeeper-demo \
-  -e BEETSDIR=/config \
-  -v "$(pwd)/config.yaml:/config/config.yaml:ro" \
-  -v beetkeeper-demo:/data \
-  -p 8337:8337 \
-  ghcr.io/zach-overflow/beetkeeper:latest
-```
+=== "Docker"
+
+	```bash
+	docker run -d --name beetkeeper \
+		-e BEETSDIR=/config \
+		-v /host/path/to/beetsdir:/beets:ro" \
+		-v /host/path/to/music/downloads:/downloads \
+		-v /host/path/to/music/library:/music \
+		-p 8337:8337 \
+		ghcr.io/zach-overflow/beetkeeper:latest
+	```
+
+=== "Python Standalone"
+
+    ```shell
+	export BEETSDIR=<path to folder holding beets config.yaml>
+    beetkeeper run
+    ```
 
 ## 4. Explore
 

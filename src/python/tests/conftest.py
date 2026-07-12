@@ -1,5 +1,6 @@
 """Shared fixtures: anyio backend selection, temp-file SQLite URLs, an alembic Config, and a migrated DB."""
 
+import os
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -8,6 +9,14 @@ from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from beetkeeper.db import make_engine, make_sessionmaker, migrations
+
+
+@pytest.fixture(autouse=True, scope="session")
+def isolated_beets_config_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Point beets' global (lazily-read) config at an empty per-session dir, never a developer's real one."""
+    beets_dir = tmp_path_factory.mktemp("beets-config")
+    os.environ["BEETSDIR"] = str(beets_dir)
+    return beets_dir
 
 
 @pytest.fixture

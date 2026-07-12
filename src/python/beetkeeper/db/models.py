@@ -100,6 +100,12 @@ class ImportJobRecord(SQLModel, table=True):
     abort_requested: bool = Field(default=False)
     # Non-interactive (`beet import -q`) mode: the worker auto-decides matches instead of prompting.
     quiet: bool = Field(default=False)
+    # Per-job import settings mirroring `beet import` flags (`-l`, `--group-albums`, `--flat`, `--set`);
+    # captured at submit time so each ad-hoc import keeps its own values. `set_fields_json` is a JSON object.
+    logpath: str | None = Field(default=None)
+    group_albums: bool = Field(default=False)
+    flat: bool = Field(default=False)
+    set_fields_json: str | None = Field(default=None)
     # Serialized `DecisionRequest` the worker is parked on; serialized `ImportDecision` the UI posted back.
     pending_decision_json: str | None = Field(default=None)
     submitted_decision_json: str | None = Field(default=None)

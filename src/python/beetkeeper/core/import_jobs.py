@@ -132,6 +132,11 @@ class ImportJob(BaseModel):
     output: str | None = None
     # Non-interactive (`beet import -q`) mode: the worker auto-decides matches instead of prompting.
     quiet: bool = False
+    # Per-job import settings mirroring `beet import` flags (`-l`, `--group-albums`, `--flat`, `--set`).
+    logpath: str | None = None
+    group_albums: bool = False
+    flat: bool = False
+    set_fields: dict[str, str] = Field(default_factory=dict)
 
     @computed_field  # type: ignore[prop-decorator]  # mypy limitation: @computed_field stacks on @property
     @property

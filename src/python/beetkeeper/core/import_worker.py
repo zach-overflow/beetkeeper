@@ -167,6 +167,34 @@ def _build_album_diff(task: Any, match: Any) -> list[str]:
     return lines
 
 
+def _apply_job_import_config(job: ImportJob) -> None:
+    """Overlay the job's persisted per-job settings onto beets' global `import` config.
+
+    beets reads these keys from the global config while the session runs (`ImportSession.set_config` copies
+    `group_albums`/`flat` at `run()`, and `ImportTask.set_fields` reads the `--set` values mid-pipeline), so
+    per-job values are applied by mutating it. Safe because imports run one at a time node-wide (the leased
+    leader is a single consumer) and every job sets ALL of these keys, so nothing leaks between jobs.
+    """
+    # Imported lazily, like the rest of beets in `core`.
+    from beets import config as beets_config
+
+    beets_config["import"]["group_albums"] = job.group_albums
+    beets_config["import"]["flat"] = job.flat
+    beets_config["import"]["set_fields"] = dict(job.set_fields)
+
+
+def _job_loghandler(job: ImportJob) -> logging.FileHandler | None:
+    """A handler appending beets' import log lines to the job's `logpath` (`beet import -l`), or None.
+
+    Mirrors beets' own CLI wiring: the handler is passed to `ImportSession`, whose logger records the
+    session narrative (import started, skipped/as-is paths, duplicates). The caller must `close()` it after
+    the run. An unwritable path raises `OSError`, failing the job with that error.
+    """
+    if not job.logpath:
+        return None
+    return logging.FileHandler(job.logpath, encoding="utf-8")
+
+
 def _metadata_source_warning() -> str | None:
     """Return a hint line if autotag is on but no metadata-source plugins are loaded (else None).
 
@@ -216,10 +244,14 @@ class WebImportSession(ImportSession):  # beets is untyped; base resolves to Any
         store: ImportStore,
         output: _OutputBuffer,
         quiet: bool = False,
+        loghandler: logging.Handler | None = None,
     ) -> None:
-        """Construct the beets session and stash the async-bridge handles used by the decision hooks."""
+        """Construct the beets session and stash the async-bridge handles used by the decision hooks.
+
+        `loghandler`, when given, becomes the session logger's handler — beets' `-l` import log.
+        """
         # beets stores paths as bytes; `ImportSession.__init__(lib, loghandler, paths, query)`.
-        super().__init__(library, None, [bytestring_path(p) for p in paths], None)
+        super().__init__(library, loghandler, [bytestring_path(p) for p in paths], None)
         self._job_id = job_id
         self._portal = portal
         self._bridge = bridge
@@ -443,6 +475,8 @@ class ImportWorker:
                 output.append(warning)
             existing_album_ids = {album.id for album in library.albums()}
             existing_item_ids = {item.id for item in library.items()}
+            _apply_job_import_config(job)
+            loghandler = _job_loghandler(job)
             session = WebImportSession(
                 library,
                 job.paths,
@@ -452,8 +486,13 @@ class ImportWorker:
                 store=self._store,
                 output=output,
                 quiet=job.quiet,
+                loghandler=loghandler,
             )
-            session.run()  # blocks until beets' pipeline finishes (or drains via cooperative SKIP on abort)
+            try:
+                session.run()  # blocks until beets' pipeline finishes (or drains via cooperative SKIP on abort)
+            finally:
+                if loghandler is not None:
+                    loghandler.close()
             return self._collect_imported(library, existing_album_ids, existing_item_ids, output)
         finally:
             beets_logger.removeHandler(handler)

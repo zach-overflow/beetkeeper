@@ -7,6 +7,7 @@ in the candidate-table markup.
 
 import importlib
 from pathlib import Path
+from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -117,6 +118,80 @@ async def test_import_submit_creates_single_path_job(client: AsyncClient, import
     jobs = await import_store.list()
     assert len(jobs) == 1
     assert jobs[0].paths == ["/downloads/Album Y"]
+
+
+@pytest.mark.anyio
+async def test_import_submit_records_options(client: AsyncClient, import_store: ImportStore) -> None:
+    response = await client.post(
+        "/fragment/import",
+        data={
+            "path": "/downloads/Album Z",
+            "quiet": "on",
+            "group_albums": "on",
+            "flat": "on",
+            "logpath": "  /logs/import.log  ",
+            "set_fields": "genre=Jazz\n\n comments = late night ",
+        },
+    )
+    assert response.status_code == 200
+    assert "options:" in response.text
+    for label in ("quiet", "group albums", "flat", "log: /logs/import.log", "genre=Jazz", "comments=late night"):
+        assert label in response.text
+    (job,) = await import_store.list()
+    assert job.quiet is True and job.group_albums is True and job.flat is True
+    assert job.logpath == "/logs/import.log"
+    assert job.set_fields == {"genre": "Jazz", "comments": "late night"}
+
+
+@pytest.mark.anyio
+async def test_import_submit_without_options_leaves_settings_unset(
+    client: AsyncClient, import_store: ImportStore
+) -> None:
+    response = await client.post("/fragment/import", data={"path": "/downloads/Album Y"})
+    assert response.status_code == 200
+    assert "options:" not in response.text
+    (job,) = await import_store.list()
+    assert job.quiet is False and job.group_albums is False and job.flat is False
+    assert job.logpath is None
+    assert job.set_fields == {}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("bad_set_fields", ["genre Jazz", "=Jazz", "genre=Jazz\nnot a pair"])
+async def test_import_submit_rejects_malformed_set_fields(
+    client: AsyncClient, import_store: ImportStore, bad_set_fields: str
+) -> None:
+    response = await client.post("/fragment/import", data={"path": "/downloads/Album", "set_fields": bad_set_fields})
+    assert response.status_code == 422
+    assert await import_store.list() == []
+
+
+@pytest.mark.anyio
+async def test_import_page_prefills_options_from_beets_config(
+    client: AsyncClient, beets_import_config: Any, tmp_path: Path
+) -> None:
+    beets_import_config["quiet"] = True
+    beets_import_config["group_albums"] = True
+    beets_import_config["log"] = str(tmp_path / "import.log")
+    beets_import_config["set_fields"] = {"genre": "Jazz"}
+
+    html = (await client.get("/import")).text
+
+    assert 'name="quiet" checked' in html
+    assert 'name="group_albums" checked' in html
+    assert 'name="flat"' in html and 'name="flat" checked' not in html
+    assert f'value="{tmp_path}/import.log"' in html
+    assert "genre=Jazz</textarea>" in html
+
+
+@pytest.mark.anyio
+async def test_import_page_defaults_to_unchecked_options(client: AsyncClient) -> None:
+    html = (await client.get("/import")).text
+    for name in ("quiet", "group_albums", "flat"):
+        assert f'name="{name}"' in html
+        assert f'name="{name}" checked' not in html
+    assert 'name="logpath"' in html and 'value=""' in html
+    assert 'name="set_fields"' in html
 
 
 @pytest.mark.anyio

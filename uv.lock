@@ -19,6 +19,7 @@ dev = [
     { name = "bandit", specifier = ">=1.9" },
     { name = "fastapi", extras = ["standard"], specifier = "==0.138.0" },
     { name = "ipython", specifier = ">=9.3.0" },
+    { name = "mutagen", specifier = ">=1.47.0" },
     { name = "mypy", specifier = ">=2.1.0" },
     { name = "pytest", specifier = ">=9.1" },
     { name = "pytest-mock", specifier = ">=3.15.1" },

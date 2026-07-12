@@ -8,7 +8,7 @@ You tell beetkeeper which beets config to read via either:
 
 - the `BEETSDIR` environment variable — the **directory** holding your beets `config.yaml` (beets' own
   convention), or
-- the `--config-path` CLI flag — the path to the config file itself (see [the CLI](usage/cli.md)).
+- the `--config-path` CLI flag — the path to the config file itself (see [the CLI](quickstart/cli.md)).
 
 ## Example
 
@@ -43,4 +43,4 @@ beetkeeper:
 
 !!! warning "Separate database"
     `database.sqlite_path` is beetkeeper's own bookkeeping database — **not** your beets library database.
-    It is created when you first run `beetkeeper db upgrade` (see [the CLI](usage/cli.md)).
+    It is created when you first run `beetkeeper db upgrade` (see [the CLI](quickstart/cli.md)).
