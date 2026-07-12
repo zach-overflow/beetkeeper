@@ -8,6 +8,7 @@ from starlette.responses import Response as StarletteResponse
 API_USERNAME = "admin"
 API_PASSWORD = "supersecretpassword"
 
+
 class BasicAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Allow internal FastAPI documentation to bypass authentication if desired
