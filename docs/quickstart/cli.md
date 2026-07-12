@@ -14,10 +14,16 @@ beetkeeper run --config-path /path/to/beets/config.yaml
 
 Once running, open the web UI at `http://<hostname>:<port>/` (defaults to port `8337`).
 
+Before serving, `run` automatically creates the beetkeeper database (first run) or applies any pending
+schema migrations (after a version upgrade), backing up the db file alongside itself first. Set
+`database.auto_upgrade: false` to require manual migrations instead — see
+[Configuration](../configuration.md).
+
 ## `beetkeeper db upgrade`
 
-Applies database migrations up to a target revision (default: `head`). beetkeeper does **not** auto-migrate
-on startup, so run this once before first use and again after upgrading to a version with new migrations.
+Applies database migrations up to a target revision (default: `head`). With the default
+`database.auto_upgrade: true` you normally never need this — `beetkeeper run` migrates on startup. Use it
+when `auto_upgrade` is disabled, or with `--sql` to review the DDL offline.
 
 ```shell
 beetkeeper db upgrade --config-path /path/to/beets/config.yaml

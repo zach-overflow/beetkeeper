@@ -117,7 +117,7 @@ beetkeeper:
     port: 8337
     server_workers: 2
   database:
-    # beetkeeper's own SQLite db (separate from the beets library); created on first `beetkeeper db upgrade`.
+    # beetkeeper's own SQLite db (separate from the beets library); created automatically on first run.
     sqlite_path: /beets/beetkeeper.db
 ```
 

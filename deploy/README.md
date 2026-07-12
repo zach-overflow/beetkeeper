@@ -12,22 +12,10 @@ Files here:
 pants package //:beetkeeper-server-image  # produces the image  ghcr.io/zach-overflow/beetkeeper:latest
 ```
 
-## 1. Create the schema (one-time, and after any new migration)
+## 1. Run the server
 
-The app does **not** auto-migrate on startup, so apply migrations once into a persistent named
-volume (`beetkeeper-data`). The entrypoint is `beetkeeper`, so the trailing args run `beetkeeper db upgrade`:
-
-```bash
-DEPLOY="$(pwd)/deploy"
-
-docker run --rm \
-  -e BEETSDIR=/config \
-  -v "$DEPLOY/config.yaml:/config/config.yaml:ro" \
-  -v beetkeeper-data:/data \
-  ghcr.io/zach-overflow/beetkeeper:latest db upgrade
-```
-
-## 2. Run the server
+The app creates its database schema (and applies any pending migrations, after backing up the db file)
+automatically at startup, into the persistent named volume (`beetkeeper-data`):
 
 ```bash
 DEPLOY="$(pwd)/deploy"
@@ -40,7 +28,7 @@ docker run -d --name beetkeeper \
   ghcr.io/zach-overflow/beetkeeper:latest          # default CMD is `run`
 ```
 
-## 3. Verify
+## 2. Verify
 
 ```bash
 docker logs -f beetkeeper                       # watch startup
@@ -62,8 +50,8 @@ docker volume rm beetkeeper-data    # only if you want to discard the DB
 - **Config:** beetkeeper's settings live under the `beetkeeper` section of `config.yaml`; the same file is
   the beets config (`directory`, `library`, …). `BEETSDIR` points at the directory holding it.
 - **Volumes:** the config file is mounted read-only (`:ro`); the DB (and, in this smoke-test config, the
-  beets library/music) lives on the read-write `beetkeeper-data` volume so it persists across restarts.
-  Both the migrate step and the server must use the same volume (they do above).
+  beets library/music) lives on the read-write `beetkeeper-data` volume so it persists across restarts
+  (and holds the automatic pre-migration `.bak` backups).
 - **Host paths:** the `$DEPLOY/...:/config/...` mounts assume you run these from the repo root. Adjust
   the left-hand (host) side to wherever your real config lives.
 - **Workers/SQLite:** `server_workers` is 1 in the config — raising it risks SQLite "database is
