@@ -7,6 +7,7 @@ from starlette.templating import Jinja2Templates
 
 from beetkeeper._version import __version__
 from beetkeeper.api.constants import STATIC_DIRPATH
+from beetkeeper.api.security import SESSION_COOKIE_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class _TemplatesSingleton:
             if "+" in current_version:
                 current_version = current_version.split("+")[0]
             tpls.env.globals["current_app_version"] = current_version
+            tpls.env.globals["session_cookie_name"] = SESSION_COOKIE_NAME
             tpls.env.globals["latest_available_app_version"] = _get_latest_available_version_semver()
             cls._instance = tpls
         return cls._instance

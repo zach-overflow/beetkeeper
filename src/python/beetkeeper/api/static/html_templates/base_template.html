@@ -26,6 +26,11 @@
 		<a href="/events" role="button">Beets Events</a>
 		<a href="/import" role="button">Import</a>
 		<a href="/search" role="button">Search</a>
+		{% if request.cookies.get(session_cookie_name) %}
+		<form method="post" action="/logout">
+			<button type="submit">Log out</button>
+		</form>
+		{% endif %}
 		<div class="version-info-box">
 			<a href="">version: {{ current_app_version }}</a>
 			{% if latest_available_app_version != current_app_version %}

@@ -108,8 +108,14 @@ Inline `TODO[Claude]:` comments now mark each open question in the relevant file
   `BUILD` file, so Pants infers it and it ships in the wheel).
 - **templating engine.** `jinja2-fragments` is a dep but `constants.TEMPLATES` is plain `Jinja2Templates`;
   full-page vs. HTMX-fragment rendering is undecided. See `api/constants.py`.
-- **auth scope** is unspecified — beetkeeper has no auth/users yet. Decide whether it's in scope
-  (single-user self-hosted vs. multi-user) and document the choice.
+- **auth scope — DECIDED + implemented.** Single-user, opt-in via `beetkeeper.auth.enable_login_protection`
+  (with `username`/`password` in the config's `auth` subsection). `POST /api/auth/login` exchanges those
+  credentials for an opaque bearer token; browsers use the `/login` page instead (`ui_routes/auth_ui_router.py`),
+  which stores the same token in an HttpOnly `beetkeeper_session` cookie. `api/security/` enforces both
+  app-wide via `LoginProtectionMiddleware` (exempt: login endpoints, docs, health, static; unauthenticated
+  failures are 401 JSON for `/api/*`, `HX-Redirect` for HTMX, and a `/login` redirect for pages). Sessions are stored hashed in the DB
+  (`auth_session` table) so tokens work across `server_workers > 1` and survive restarts. No multi-user
+  identities and no per-route authorization — an authenticated client can do everything.
 - **`beetkeeper run` / uvicorn.** `reload=True` + `workers>1` conflict, nonexistent/CWD-relative
   `reload_dirs`, wrong `--config-path` help, `None` config-path crash. See `main.py`.
 - **`UserConfig`** still needs its real schema. See `settings/user_config.py`.

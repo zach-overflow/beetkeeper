@@ -3137,6 +3137,14 @@ table {
   gap: 0.5rem;
   margin-bottom: var(--pico-spacing);
 }
+/* The logout control is a <form><button> (a POST, unlike the <a role=button> links); strip the default
+   button/form block margins so it sits flush in the flex row like its sibling links. */
+#nav-links form {
+  margin: 0;
+}
+#nav-links form button {
+  margin-bottom: 0;
+}
 /* A square exactly as tall as a Pico button: 1rem text * line-height + vertical padding + borders. */
 .logo-main {
   height: calc(1rem * var(--pico-line-height) + var(--pico-form-element-spacing-vertical) * 3 + var(--pico-border-width) * 2);

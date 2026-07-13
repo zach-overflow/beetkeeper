@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any, Final, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, FilePath, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, FilePath, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
 # beets' own convention: `BEETSDIR` names the *directory* holding the beets config, and the config file
@@ -27,6 +27,36 @@ class ServerConfSection(BaseModel):
     hostname: str
     port: int = Field(default=8337, gt=0)
     server_workers: int = Field(default=2, gt=0)
+
+
+class AuthConfSection(BaseModel):
+    """
+    Model for the optional `auth` subsection of the beets config's `beetkeeper` section.
+
+    Beetkeeper is single-user: when `enable_login_protection` is on, every request (outside a small exempt
+    set — see `beetkeeper.api.security`) must carry a bearer token obtained from `POST /api/auth/login`
+    using the `username`/`password` configured here.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="ignore")
+    enable_login_protection: bool = Field(
+        default=False,
+        description="Opt-in: when true, all routes require a bearer token from a successful `/api/auth/login`.",
+    )
+    username: SecretStr | None = Field(default=None)
+    password: SecretStr | None = Field(default=None)
+    session_ttl_hours: int = Field(
+        default=24 * 7, gt=0, description="How long a login token stays valid before a new login is required."
+    )
+
+    @model_validator(mode="after")
+    def credentials_required_when_protected(self) -> Self:
+        if self.enable_login_protection and (self.username is None or self.password is None):
+            raise BeetKeeperConfigError(
+                "`beetkeeper.auth.enable_login_protection` is on, so `beetkeeper.auth.username` and "
+                "`beetkeeper.auth.password` must both be set."
+            )
+        return self
 
 
 class DatabaseConfSection(BaseModel):
@@ -77,6 +107,7 @@ class UserConfig(BaseSettings):
     log_level: Literal["CRITICAL", "DEBUG", "ERROR", "INFO", "NOTSET", "WARNING"]
     server: ServerConfSection
     database: DatabaseConfSection
+    auth: AuthConfSection = AuthConfSection()
 
     @model_validator(mode="after")
     def final_config_checks(self) -> Self:

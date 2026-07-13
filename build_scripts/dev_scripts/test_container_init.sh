@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Container entrypoint for the manual test server (see build_scripts/run-test-server.sh). Generates a
-# self-contained beets/beetkeeper config under /test_dirs and fake importable FLAC albums under
+# Container entrypoint for the manual test server (see build_scripts/run-test-server.sh). Installs the
+# checked-in test config (test_beets_conf.yaml) under /test_dirs and generates fake importable FLAC albums under
 # /test_dirs/downloads (in-container only, so no host mount needs cleanup), then (if /host_static is
 # mounted) swaps the PEX's extracted `beetkeeper/api/static` directory for a symlink to it so host edits
 # render live. The whole build_scripts/dev_scripts directory is mounted read-only at /dev_scripts.
@@ -9,19 +9,9 @@ set -exuo pipefail
 
 mkdir -p /test_dirs/{beets,downloads,music}
 
-cat >"/test_dirs/beets/config.yaml" <<'EOF'
-directory: /test_dirs/music
-library: /test_dirs/beets/library.blb
-
-beetkeeper:
-  log_level: INFO
-  server:
-    hostname: 0.0.0.0
-    port: 8337
-    server_workers: 1
-  database:
-    sqlite_path: /test_dirs/beets/beetkeeper.db
-EOF
+# beets expects the file to be named `config.yaml` inside $BEETSDIR; /dev_scripts is mounted read-only,
+# so copy rather than symlink.
+cp /dev_scripts/test_beets_conf.yaml /test_dirs/beets/config.yaml
 
 export BEETSDIR=/test_dirs/beets
 

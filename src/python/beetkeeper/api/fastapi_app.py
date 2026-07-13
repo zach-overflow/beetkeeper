@@ -22,6 +22,7 @@ from beetkeeper.settings import BEETS_CONFIG_FILENAME, BEETS_DIR_ENVVAR, load_co
 def create_app() -> FastAPI:
     """Creates and returns the beetkeeper FastAPI app instance."""
     from beetkeeper.api.api_routes import api_router
+    from beetkeeper.api.security import LoginProtectionMiddleware
     from beetkeeper.api.ui_routes import ui_router
 
     beetkeeper_app = FastAPI(
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
     beetkeeper_app.mount("/static", StaticFiles(directory=STATIC_DIRPATH, html=True), name="static")
     beetkeeper_app.include_router(api_router)
     beetkeeper_app.include_router(ui_router)
+    beetkeeper_app.add_middleware(LoginProtectionMiddleware)
     return beetkeeper_app
 
 

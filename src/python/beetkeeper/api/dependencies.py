@@ -4,17 +4,24 @@ from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import Depends, Request
 
+from beetkeeper.api.security import AuthSessionStore
 from beetkeeper.core import BeetsLibrary, ImportStore
+from beetkeeper.settings import UserConfig
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-    from beetkeeper.settings import UserConfig
+
+def get_user_config(request: Request) -> UserConfig:
+    """Return the `UserConfig` loaded at startup (see `beetkeeper.api.fastapi_app`)."""
+    return cast("UserConfig", request.app.state.user_config)
 
 
-def get_beets_library(request: Request) -> BeetsLibrary:
+UserConfigDep = Annotated[UserConfig, Depends(get_user_config)]
+
+
+def get_beets_library(user_config: UserConfigDep) -> BeetsLibrary:
     """Return a `BeetsLibrary` adapter bound to the configured beets library (read from `UserConfig`)."""
-    user_config = cast("UserConfig", request.app.state.user_config)
     return BeetsLibrary(user_config.beets_config_filepath)
 
 
@@ -32,3 +39,12 @@ def get_import_store(request: Request) -> ImportStore:
 
 
 ImportStoreDep = Annotated[ImportStore, Depends(get_import_store)]
+
+
+def get_auth_session_store(request: Request) -> AuthSessionStore:
+    """Return a DB-backed `AuthSessionStore` over the app's sessionmaker (login sessions are cross-worker)."""
+    sessionmaker = cast("async_sessionmaker[AsyncSession]", request.app.state.db_sessionmaker)
+    return AuthSessionStore(sessionmaker)
+
+
+AuthSessionStoreDep = Annotated[AuthSessionStore, Depends(get_auth_session_store)]

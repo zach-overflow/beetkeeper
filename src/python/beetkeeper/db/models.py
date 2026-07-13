@@ -80,6 +80,21 @@ class TrackEvent(SQLModel, table=True):
 #     import_job_id: int | None = Field(default=None, foreign_key="import_job.event_id", ondelete="CASCADE")
 
 
+class AuthSessionRecord(SQLModel, table=True):
+    """
+    One logged-in session created by `POST /api/auth/login` (see `beetkeeper.api.security`).
+
+    Sessions live in the DB (not process memory) so a token issued by one uvicorn worker validates on all
+    of them and survives restarts. Only a SHA-256 hex digest of the bearer token is stored — the raw token
+    is returned once to the client and never persisted.
+    """
+
+    __tablename__ = "auth_session"
+    token_hash: str = Field(primary_key=True)
+    created_at: datetime = Field(sa_type=DateTime)
+    expires_at: datetime = Field(sa_type=DateTime)
+
+
 class ImportJobRecord(SQLModel, table=True):
     """
     Persisted state of one interactive import job (see `beetkeeper.core.import_store`).

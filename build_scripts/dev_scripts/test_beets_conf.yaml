@@ -1,3 +1,6 @@
+directory: /test_dirs/music
+library: /test_dirs/beets/library.blb
+
 beetkeeper:
   log_level: INFO
   server:
@@ -5,4 +8,8 @@ beetkeeper:
     port: 8337
     server_workers: 1
   database:
-    sqlite_path: /beets/beetkeeper.db
+    sqlite_path: /test_dirs/beets/beetkeeper.db
+  auth:
+    enable_login_protection: true
+    username: Bob
+    password: my-fake-password-123
