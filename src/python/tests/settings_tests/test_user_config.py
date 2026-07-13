@@ -46,6 +46,38 @@ def test_beets_config_filepath_is_the_loaded_path_overriding_any_in_section(tmp_
     assert load_config(config_path).beets_config_filepath == config_path.resolve()
 
 
+def test_auth_defaults_to_disabled_when_section_absent(tmp_path: Path) -> None:
+    """No `auth` subsection means login protection is off (it is strictly opt-in)."""
+    config_path = _write_config(tmp_path, _BEETS_PREAMBLE + _BEETKEEPER_SECTION)
+    config = load_config(config_path)
+    assert config.auth.enable_login_protection is False
+    assert config.auth.username is None
+    assert config.auth.password is None
+
+
+def test_auth_section_parses_with_masked_credentials(tmp_path: Path) -> None:
+    """Credentials load as `SecretStr` (masked in reprs/logs) alongside the enable flag and TTL."""
+    body = (
+        _BEETS_PREAMBLE
+        + _BEETKEEPER_SECTION
+        + "  auth:\n    enable_login_protection: true\n    username: admin\n    password: hunter2\n"
+        + "    session_ttl_hours: 12\n"
+    )
+    config = load_config(_write_config(tmp_path, body))
+    assert config.auth.enable_login_protection is True
+    assert config.auth.username is not None and config.auth.username.get_secret_value() == "admin"
+    assert config.auth.password is not None and config.auth.password.get_secret_value() == "hunter2"
+    assert "hunter2" not in repr(config.auth)
+    assert config.auth.session_ttl_hours == 12
+
+
+def test_auth_enabled_without_credentials_raises(tmp_path: Path) -> None:
+    """Turning on login protection without a username+password is a config error, caught at startup."""
+    body = _BEETS_PREAMBLE + _BEETKEEPER_SECTION + "  auth:\n    enable_login_protection: true\n"
+    with pytest.raises(BeetKeeperConfigError):
+        load_config(_write_config(tmp_path, body))
+
+
 def test_missing_beetkeeper_section_raises(tmp_path: Path) -> None:
     """The `beetkeeper` key is optional for beets, but beetkeeper needs its settings -> config error."""
     config_path = _write_config(tmp_path, _BEETS_PREAMBLE)

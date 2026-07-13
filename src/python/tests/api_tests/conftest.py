@@ -17,10 +17,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from beetkeeper.api import create_app
 from beetkeeper.core import BeetsLibrary, ImportStore
+from beetkeeper.db.session import get_session
+from beetkeeper.settings import UserConfig, load_config
 
 SessionOverride = Callable[[], AsyncIterator[AsyncSession]]
 
 DependencyOverrides = dict[Callable[..., object], Callable[..., object]]
+
+AUTH_TEST_USERNAME = "admin"
+AUTH_TEST_PASSWORD = "correct-horse-battery-staple"
 
 
 @pytest.fixture
@@ -41,6 +46,51 @@ def app(app_dependency_overrides: DependencyOverrides) -> FastAPI:
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testclient") as http_client:
         yield http_client
+
+
+@pytest.fixture
+def enable_login_protection(request: pytest.FixtureRequest) -> bool:
+    """Enabled by default; auth tests opt out via indirect parametrization."""
+    return bool(getattr(request, "param", True))
+
+
+@pytest.fixture
+def auth_user_config(tmp_path: Path, db_file: Path, enable_login_protection: bool) -> UserConfig:
+    """A `UserConfig` whose `auth` section carries the test credentials (protection on unless opted out)."""
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        "directory: /music\n"
+        "library: /lib.db\n"
+        "beetkeeper:\n"
+        "  log_level: INFO\n"
+        "  server:\n"
+        "    hostname: 127.0.0.1\n"
+        f"  database:\n    sqlite_path: {db_file}\n"
+        "  auth:\n"
+        f"    enable_login_protection: {str(enable_login_protection).lower()}\n"
+        f"    username: {AUTH_TEST_USERNAME}\n"
+        f"    password: {AUTH_TEST_PASSWORD}\n",
+        encoding="utf-8",
+    )
+    return load_config(config_path)
+
+
+@pytest.fixture
+async def auth_app(
+    auth_user_config: UserConfig,
+    session_factory: async_sessionmaker[AsyncSession],
+    get_session_override: SessionOverride,
+) -> FastAPI:
+    """A fresh app with the state the lifespan would normally set (config + sessionmaker on `app.state`).
+
+    The auth middleware and session store read straight off `app.state` (no dependency-override seam), so
+    auth test modules alias their `app` fixture to this instead of the plain `app` above.
+    """
+    application = create_app()
+    application.state.user_config = auth_user_config
+    application.state.db_sessionmaker = session_factory
+    application.dependency_overrides[get_session] = get_session_override
+    return application
 
 
 @pytest.fixture

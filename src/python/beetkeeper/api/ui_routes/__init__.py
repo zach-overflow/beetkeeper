@@ -22,6 +22,7 @@ needs the request in the template context — omitting it raises at render time.
 
 from fastapi import APIRouter
 
+from beetkeeper.api.ui_routes.auth_ui_router import auth_ui_router
 from beetkeeper.api.ui_routes.events_ui_fragments_router import events_ui_fragments_router
 from beetkeeper.api.ui_routes.import_ui_fragments_router import import_ui_fragments_router
 from beetkeeper.api.ui_routes.pages_ui_router import pages_ui_router
@@ -30,6 +31,7 @@ from beetkeeper.api.ui_routes.search_ui_fragments_router import search_ui_fragme
 # No prefix: pages are served at the site root (`/home`, `/events`, `/import`, `/search`) and fragments
 # under `/fragment`. (`prefix="/"` is invalid — an APIRouter prefix must not end with `/`.)
 ui_router = APIRouter(include_in_schema=False)
+ui_router.include_router(auth_ui_router)
 ui_router.include_router(pages_ui_router)
 ui_router.include_router(events_ui_fragments_router)
 ui_router.include_router(import_ui_fragments_router)

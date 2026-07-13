@@ -11,6 +11,7 @@ STATIC_DIRPATH: Final[Path] = Path(__file__).resolve().parent / "static"
 class RouteTag(StrEnum):
     """Collection of all possible tag names we add to the `APIRouter` instances."""
 
+    AUTH = "authentication"
     EVENT = "events"
     MONITOR = "monitoring"
     IMPORT = "imports"
@@ -25,6 +26,15 @@ class _OpenApiTagMetadata(TypedDict):
 
 
 OPENAPI_TAG_METADATA: Final[Iterable[_OpenApiTagMetadata]] = (
+    {
+        "name": RouteTag.AUTH,
+        "description": dedent(
+            """\
+            Routes for simple login / logout flows. Beetkeeper does not support multiple user identities.
+            Only handles authentication, with implicit authorization to everything for an authenticated client.
+            """
+        ),
+    },
     {
         "name": RouteTag.IMPORT,
         "description": dedent(

@@ -1,3 +1,4 @@
+from beetkeeper.api.api_models.auth_api_models import LoginRequestBody, LoginResponseBody, LogoutResponseBody
 from beetkeeper.api.api_models.events_api_models import (
     AlbumEventBody,
     APIAlbum,
@@ -22,6 +23,9 @@ __all__ = [
     "ImportSubmitRequest",
     "ImportTaskFilesEventBody",
     "ListenerEventRecord",
+    "LoginRequestBody",
+    "LoginResponseBody",
+    "LogoutResponseBody",
     "MultiItemEventIngestResponse",
     "TrackEventBody",
 ]

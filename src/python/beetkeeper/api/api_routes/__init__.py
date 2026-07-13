@@ -7,12 +7,14 @@ The HTML-serving `ui_routes` router is aggregated separately and mounted (not un
 
 from fastapi import APIRouter
 
+from beetkeeper.api.api_routes.auth_router import auth_router
 from beetkeeper.api.api_routes.events_router import events_router
 from beetkeeper.api.api_routes.health_router import health_router
 from beetkeeper.api.api_routes.import_router import import_router
 from beetkeeper.api.api_routes.query_router import query_router
 
 api_router = APIRouter(prefix="/api", include_in_schema=True)
+api_router.include_router(auth_router)
 api_router.include_router(events_router)
 api_router.include_router(health_router)
 api_router.include_router(import_router)

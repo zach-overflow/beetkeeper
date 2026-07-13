@@ -1,54 +1,78 @@
-import base64
-import secrets
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response as StarletteResponse
+"""ASGI middleware enforcing beetkeeper's opt-in bearer-token login protection.
 
-# Configuration constants
-API_USERNAME = "admin"
-API_PASSWORD = "supersecretpassword"
+Enforcement lives at the middleware level so every router (JSON API, HTMX fragments, pages) is covered
+without per-route dependencies. The check is a no-op unless `beetkeeper.auth.enable_login_protection` is
+set in the user's config (read off `app.state`, which the lifespan populates).
+
+The session token is accepted from either the `Authorization: Bearer` header (API clients) or the
+`SESSION_COOKIE_NAME` HttpOnly cookie set by the `/login` browser flow. Unauthenticated failures are
+shaped per caller: JSON 401 for `/api/*`, an `HX-Redirect` for in-flight HTMX fragment swaps, and a plain
+redirect to `/login` for full-page browser navigation.
+"""
+
+from typing import TYPE_CHECKING, Final, cast
+from urllib.parse import urlencode, urlsplit
+
+from fastapi import Request, status
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import JSONResponse, RedirectResponse, Response
+
+from beetkeeper.api.security.auth_sessions import SESSION_COOKIE_NAME, AuthSessionStore, extract_bearer_token
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    from beetkeeper.settings import UserConfig
+
+# Reachable without a token: the login endpoints (there is no other way to get a token), the OpenAPI
+# docs, container/uptime health checks, and the non-sensitive static assets those pages load.
+_EXEMPT_PATHS: Final[frozenset[str]] = frozenset(
+    {"/api/auth/login", "/login", "/api/health", "/docs", "/redoc", "/openapi.json"}
+)
+_EXEMPT_PATH_PREFIXES: Final[tuple[str, ...]] = ("/static/",)
 
 
-class BasicAuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # Allow internal FastAPI documentation to bypass authentication if desired
-        if request.url.path in ["/docs", "/openapi.json", "/redoc"]:
+class LoginProtectionMiddleware(BaseHTTPMiddleware):
+    """Rejects requests lacking a valid session token when login protection is enabled."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        user_config = cast("UserConfig | None", getattr(request.app.state, "user_config", None))
+        if user_config is None or not user_config.auth.enable_login_protection:
+            return await call_next(request)
+        if request.url.path in _EXEMPT_PATHS or request.url.path.startswith(_EXEMPT_PATH_PREFIXES):
             return await call_next(request)
 
-        auth_header = request.headers.get("Authorization")
-        
-        if not auth_header or not auth_header.startswith("Basic "):
-            return self._unauthorized_response()
+        token = extract_bearer_token(request.headers.get("Authorization")) or request.cookies.get(SESSION_COOKIE_NAME)
+        if token is not None:
+            sessionmaker = cast("async_sessionmaker[AsyncSession]", request.app.state.db_sessionmaker)
+            if await AuthSessionStore(sessionmaker).is_token_valid(token):
+                return await call_next(request)
+        return _unauthenticated_response(request)
 
-        try:  # TODO[Claude]: See if there's a cleaner, more accepted way of extracting the username and password
-            encoded_credentials = auth_header.split(" ")[1]
-            decoded_bytes = base64.b64decode(encoded_credentials)
-            decoded_str = decoded_bytes.decode("utf-8")
-            username, password = decoded_str.split(":", 1)
-        except Exception:
-            return self._unauthorized_response()
 
-        # 4. Use secrets.compare_digest to prevent timing attacks
-        is_valid_username = secrets.compare_digest(username, API_USERNAME)
-        is_valid_password = secrets.compare_digest(password, API_PASSWORD)
-
-        if not (is_valid_username and is_valid_password):
-            return self._unauthorized_response()
-
-        # 5. Credentials match, proceed to the application logic
-        return await call_next(request)
-
-    def _unauthorized_response(self) -> StarletteResponse:
-        """Helper to return an HTTP 401 response prompting for basic auth."""
-        return StarletteResponse(
-            content="Unauthorized",
-            status_code=401,
-            headers={"WWW-Authenticate": 'Basic realm="Restricted Area"'}
+def _unauthenticated_response(request: Request) -> Response:
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            content={"detail": "Not authenticated. Obtain a bearer token via POST /api/auth/login."},
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={"WWW-Authenticate": "Bearer"},
         )
+    if request.headers.get("HX-Request") == "true":
+        # Swapping a redirect's login-page HTML into a fragment target would corrupt the page; HTMX honors
+        # `HX-Redirect` by navigating the whole browser window instead: https://htmx.org/reference/#response_headers
+        # The request URL here is the fragment endpoint, not a renderable page, so the post-login
+        # destination comes from the page the browser was on (HTMX's `HX-Current-URL` header).
+        current_url = urlsplit(request.headers.get("HX-Current-URL", ""))
+        return Response(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={"HX-Redirect": _login_url(current_url.path, current_url.query)},
+        )
+    return RedirectResponse(url=_login_url(request.url.path, request.url.query), status_code=status.HTTP_302_FOUND)
 
-# # Register the custom middleware to the application context
-# app
 
-# @app.get("/")
-# async def read_root():
-#     return {"message": "Welcome to the secure section!"}
+def _login_url(next_path: str, next_query: str) -> str:
+    """The `/login` URL, carrying the original destination in `?next=` so the login flow can return to it."""
+    destination = next_path + (f"?{next_query}" if next_query else "")
+    if not destination or destination == "/":
+        return "/login"
+    return "/login?" + urlencode({"next": destination})

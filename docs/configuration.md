@@ -24,6 +24,11 @@ beetkeeper:
   database:
     # beetkeeper's own SQLite db (separate from the beets library db); created automatically on first run.
     sqlite_path: /beets/beetkeeper.db
+  # Optional: require a login for all access (off by default).
+  auth:
+    enable_login_protection: true
+    username: admin
+    password: change-me
 ```
 
 ## Settings
@@ -36,6 +41,25 @@ beetkeeper:
 | `server.server_workers`   | int     | `2`     | Number of server worker processes (must be `> 0`).             |
 | `database.sqlite_path`    | path    | —       | Path to beetkeeper's own SQLite db (created automatically on first run). |
 | `database.auto_upgrade`   | bool    | `true`  | Apply pending schema migrations automatically when the server starts (the db file is backed up first). When `false`, a stale schema fails startup until you run `beetkeeper db upgrade`. |
+| `auth.enable_login_protection` | bool | `false` | Opt-in login protection: when `true`, every page and API route requires a logged-in session. |
+| `auth.username`           | string  | —       | Login username. Required when `enable_login_protection` is `true`. |
+| `auth.password`           | string  | —       | Login password. Required when `enable_login_protection` is `true`. |
+| `auth.session_ttl_hours`  | int     | `168`   | How long a login session stays valid before a new login is required. |
+
+## Login protection
+
+beetkeeper is single-user: enabling `auth.enable_login_protection` gates the whole app behind the one
+configured `username`/`password` pair (there are no per-route permissions — a logged-in client can do
+everything).
+
+- **Browsers** are redirected to a `/login` page; a successful login stores the session in an
+  `HttpOnly` cookie, and a **Log out** button appears in the navigation bar.
+- **API clients** exchange the credentials for a bearer token via `POST /api/auth/login`, then send it as
+  an `Authorization: Bearer <token>` header (revoke it with `POST /api/auth/logout`).
+- The login endpoints, API docs, `/api/health`, and static assets stay reachable without a session.
+
+Sessions are stored (hashed) in beetkeeper's database, so they survive restarts and work across all
+`server_workers`.
 
 !!! tip "Authoritative source"
     The table above is a friendly summary. For the exact field definitions, validation, and defaults, see the

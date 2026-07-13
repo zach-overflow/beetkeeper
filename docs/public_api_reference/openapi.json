@@ -9,6 +9,75 @@
     "version": ""
   },
   "paths": {
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Login",
+        "description": "Exchange the configured `beetkeeper.auth` credentials for a bearer token.",
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponseBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Logout",
+        "description": "Revoke the bearer token this request authenticated with (identified by the `Authorization` header).",
+        "operationId": "logout_api_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponseBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/events": {
       "get": {
         "tags": [
@@ -992,6 +1061,59 @@
         "title": "ListenerEventRecord",
         "description": "One ingested beets listener event, with the beets album/track ids of its child rows."
       },
+      "LoginRequestBody": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "format": "password",
+            "title": "Username",
+            "writeOnly": true
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password",
+            "writeOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequestBody"
+      },
+      "LoginResponseBody": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "token_type": {
+            "type": "string",
+            "const": "bearer",
+            "title": "Token Type",
+            "default": "bearer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "LoginResponseBody",
+        "description": "The raw bearer token the client must send back as `Authorization: Bearer <token>` (`str`, not\n`SecretStr` \u2014 this response is the one place the token is intentionally revealed)."
+      },
+      "LogoutResponseBody": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": "Logged out."
+          }
+        },
+        "type": "object",
+        "title": "LogoutResponseBody"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -1032,9 +1154,19 @@
         ],
         "title": "ValidationError"
       }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
     }
   },
   "tags": [
+    {
+      "name": "authentication",
+      "description": "Routes for simple login / logout flows. Beetkeeper does not support multiple user identities.\nOnly handles authentication, with implicit authorization to everything for an authenticated client.\n"
+    },
     {
       "name": "imports",
       "description": "Routes for managing [beets imports](https://beets.readthedocs.io/en/stable/reference/cli.html#import).\nOffer API-based import execution, import history, import choice selection, and more.\nFor automated beets setups, you will typically rely on these endpoints the most. \nThese endpoints also power the frontend import management web UI page.\n"
