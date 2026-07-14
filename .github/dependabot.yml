@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://json.schemastore.org/dependabot-2.0.json
+# for info on above comment: https://github.com/dependabot/dependabot-core/issues/4605#issuecomment-2435660718
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+    groups:  # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/optimizing-pr-creation-version-updates
+      app-deps:
+        dependency-type: "production"
+        applies-to: version-updates
+        exclude-patterns:
+          - "bandit"
+          - "mypy*"
+          - "pytest*"
+          - "ruff"
+      dev-deps:
+        dependency-type: "development"
+        applies-to: version-updates
+        patterns:
+          - "bandit"
+          - "mypy*"
+          - "pytest*"
+          - "ruff"
+          - "coverage-badge"
