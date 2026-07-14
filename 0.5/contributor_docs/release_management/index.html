@@ -1,0 +1,1354 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Self-hosted web app for managing and monitoring your beets music library.">
+      
+      
+        <meta name="author" content="Zach Gottesman">
+      
+      
+        <link rel="canonical" href="https://beetkeeper.dadbodaudio.com/0.5/contributor_docs/release_management/">
+      
+      
+        <link rel="prev" href="../building_artifacts/">
+      
+      
+        <link rel="next" href="../../public_api_reference/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/logo/favicon-16.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Release management - beetkeeper</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/css/beetkeeper.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#release-management" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You're not viewing the latest version of the beetkeeper docs.
+  <a href="../../..">
+    <strong>Click here to go to the latest version.</strong>
+  </a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="beetkeeper" class="md-header__button md-logo" aria-label="beetkeeper" data-md-component="logo">
+      
+  <img src="../../assets/images/logo/logo-CRT-green.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            beetkeeper
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Release management
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-hidden="true"  type="radio" name="__palette" id="__palette_1">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/zach-overflow/beetkeeper" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zach-overflow/beetkeeper
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../installation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Installation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../quickstart/quickstart/" class="md-tabs__link">
+          
+  
+  
+  Quickstart
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../public_api_reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Public API Reference
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="beetkeeper" class="md-nav__button md-logo" aria-label="beetkeeper" data-md-component="logo">
+      
+  <img src="../../assets/images/logo/logo-CRT-green.svg" alt="logo">
+
+    </a>
+    beetkeeper
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/zach-overflow/beetkeeper" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zach-overflow/beetkeeper
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Quickstart
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/web-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using the Web Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/rest-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using the REST API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using the CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing_and_development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing & development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../building_artifacts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building artifacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release management
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-gets-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets published
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versioning-model-the-git-tag-is-the-source-of-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versioning model — the git tag is the source of truth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cutting-a-release-runbook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cutting a release (runbook)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-release-workflow-does-githubworkflowsreleaseyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Release workflow does (.github/workflows/release.yml)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-publish-workflow-does-githubworkflowspublishyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Publish workflow does (.github/workflows/publish.yml)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#required-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../public_api_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Public API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-gets-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What gets published
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versioning-model-the-git-tag-is-the-source-of-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versioning model — the git tag is the source of truth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cutting-a-release-runbook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cutting a release (runbook)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-release-workflow-does-githubworkflowsreleaseyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Release workflow does (.github/workflows/release.yml)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-publish-workflow-does-githubworkflowspublishyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Publish workflow does (.github/workflows/publish.yml)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#required-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/zach-overflow/beetkeeper/edit/main/docs/contributor_docs/release_management.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="release-management">Release Management<a class="headerlink" href="#release-management" title="Permanent link">&para;</a></h1>
+<p>How beetkeeper versions and publishes its release artifacts. All commands run from the repo root.</p>
+<h2 id="what-gets-published">What gets published<a class="headerlink" href="#what-gets-published" title="Permanent link">&para;</a></h2>
+<p>A release publishes three artifacts, all carrying the <strong>same</strong> semver:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Artifact</th>
+<th style="text-align: left;">Pants target</th>
+<th style="text-align: left;">Destination</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>beetkeeper</code> wheel</td>
+<td style="text-align: left;"><code>src/python:beetkeeper-whl</code></td>
+<td style="text-align: left;">PyPI (<code>beetkeeper</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>beetkeeper-plugin</code> wheel</td>
+<td style="text-align: left;"><code>src/beetsplug:plugin-whl</code></td>
+<td style="text-align: left;">PyPI (<code>beetkeeper-plugin</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>beetkeeper-server</code> image</td>
+<td style="text-align: left;"><code>//:beetkeeper-server-image</code></td>
+<td style="text-align: left;">GHCR <code>ghcr.io/zach-overflow/beetkeeper</code> (<code>:latest</code> + <code>:&lt;version&gt;</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The docs site (GitHub Pages) is also rebuilt and redeployed as part of every release: mike publishes
+the release's <code>MAJOR.MINOR</code> docs version to the <code>gh-pages</code> branch and points the <code>latest</code> alias at it.</p>
+<h2 id="versioning-model-the-git-tag-is-the-source-of-truth">Versioning model — the git tag is the source of truth<a class="headerlink" href="#versioning-model-the-git-tag-is-the-source-of-truth" title="Permanent link">&para;</a></h2>
+<p>Both wheels are versioned from the <code>vMAJOR.MINOR.PATCH</code> git tag via Pants'
+<a href="https://www.pantsbuild.org/stable/reference/targets/vcs_version"><code>vcs_version</code></a> target (setuptools-scm
+under the hood); <strong>no version string is committed anywhere</strong>. The moving parts:</p>
+<ul>
+<li>Each distribution has a <code>vcs_version</code> target (<code>src/python/beetkeeper/BUILD</code>,
+  <code>src/beetsplug/beetkeeper_plugin/BUILD</code>) that runs setuptools-scm against the real repo and generates a
+  <code>_scm_version.py</code> module into every consuming Pants sandbox (dependency inference picks it up from the
+  import in <code>_version.py</code>).</li>
+<li>Each package's committed <code>_version.py</code> re-exports the generated module, falling back to <code>0.0.0.dev0</code>
+  where it doesn't exist — i.e. any build/run outside Pants, such as the uv dev venv.</li>
+<li>Each <code>pyproject.toml</code> resolves <code>dynamic = ["version"]</code> via
+  <code>[tool.setuptools.dynamic] version = {attr = "&lt;pkg&gt;._version.__version__"}</code>, so the wheel metadata gets
+  the generated version inside Pants and the dev placeholder under uv.</li>
+<li>On a checkout of the release tag (what the Publish workflow does), setuptools-scm yields the exact
+  <code>MAJOR.MINOR.PATCH</code>; on any other commit it yields a dev version (<code>X.Y.Z.devN+g&lt;hash&gt;</code>), which is what
+  local <code>pants package</code> produces.</li>
+</ul>
+<blockquote>
+<p>The git tag carries a leading <code>v</code> (GitHub release convention); every published <em>version id</em> (wheel
+versions + the <code>:&lt;version&gt;</code> image tag) is the <code>v</code>-stripped semver. They can no longer disagree — the
+version is derived from the tag.</p>
+</blockquote>
+<h2 id="cutting-a-release-runbook">Cutting a release (runbook)<a class="headerlink" href="#cutting-a-release-runbook" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Draft the release on GitHub</strong>: use the "Draft a new release" button on the
+   <a href="https://github.com/zach-overflow/beetkeeper/releases">releases page</a>. Set the <strong>title to the bare
+   semver</strong> (<code>MAJOR.MINOR.PATCH</code>, no leading <code>v</code>), write the notes (see
+   <code>.github/release_notes_template.md</code>), and click <strong>Save draft</strong> — do <em>not</em> publish, and the tag field is
+   ignored (a draft creates no tag).</li>
+<li><strong>Run the Release workflow</strong>: Actions → <em>Release</em> → <em>Run workflow</em> (from <code>main</code>). It locates the draft,
+   validates the repo, and builds every artifact without publishing anything.</li>
+<li><strong>Approve the <code>release</code> environment prompt</strong> once validation is green. The workflow then tags the
+   validated commit <code>vX.Y.Z</code>, publishes the GitHub release, and hands off to the <em>Publish</em> workflow, which
+   builds and publishes the wheels, the multi-arch image, and the docs site (PyPI and Pages keep their own
+   environment approvals).</li>
+</ol>
+<h2 id="what-the-release-workflow-does-githubworkflowsreleaseyml">What the Release workflow does (<code>.github/workflows/release.yml</code>)<a class="headerlink" href="#what-the-release-workflow-does-githubworkflowsreleaseyml" title="Permanent link">&para;</a></h2>
+<p>Triggered manually via <code>workflow_dispatch</code> (must be run from the default branch):</p>
+<ol>
+<li><strong><code>prepare</code></strong> — finds the repo's single draft release, validates its title is <code>MAJOR.MINOR.PATCH</code>, and
+   checks <code>v&lt;title&gt;</code> isn't already tagged.</li>
+<li><strong>Validation, all in parallel and publishing nothing</strong>:</li>
+<li><code>validate</code> — actionlint, <code>pants update-build-files --check ::</code>, <code>pants lint check test ::</code>, and a
+     wheel build (versioned as a dev build — the tag doesn't exist yet).</li>
+<li><code>build-image</code> — the Docker image on native amd64 + arm64 runners (built, not pushed).</li>
+<li><code>docs-build</code> — <code>mkdocs build --strict</code>.</li>
+<li><strong><code>approve-and-tag</code></strong> — pauses on the <strong><code>release</code></strong> environment (the one manual gate). On approval, one
+   API call flips the draft to published with <code>tag_name: vX.Y.Z</code>, which creates the tag on the validated
+   commit.</li>
+<li><strong><code>publish</code></strong> — dispatches the Publish workflow (<code>gh workflow run publish.yml</code>) on the new tag's
+   ref. Dispatch is the only viable hand-off: a tag created with the built-in <code>GITHUB_TOKEN</code> can never
+   fire another workflow's <code>push</code> trigger (GitHub's recursive-workflow guard, from which
+   <code>workflow_dispatch</code> is exempt), and a <code>workflow_call</code> hand-off breaks PyPI trusted publishing, which
+   rejects reusable workflows.</li>
+</ol>
+<h2 id="what-the-publish-workflow-does-githubworkflowspublishyml">What the Publish workflow does (<code>.github/workflows/publish.yml</code>)<a class="headerlink" href="#what-the-publish-workflow-does-githubworkflowspublishyml" title="Permanent link">&para;</a></h2>
+<p>Dispatched by Release (or triggered by a manually pushed <code>vMAJOR.MINOR.PATCH</code> tag; it can also be run
+by hand via Actions → Publish → Run workflow for an existing tag). Three build
+jobs run in parallel from the tag's commit, then three publication jobs run in parallel once <strong>all</strong>
+builds succeed:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Build (parallel)</th>
+<th style="text-align: left;">Publication (parallel, after all builds)</th>
+<th style="text-align: left;">Approval gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>build-wheels</code> — both wheels, versioned from the tag checkout</td>
+<td style="text-align: left;"><code>publish-pypi</code> — OIDC trusted publishing, one upload per project</td>
+<td style="text-align: left;"><code>pypi</code> environment</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>build-image</code> — native per-arch builds, exported as tarball artifacts</td>
+<td style="text-align: left;"><code>publish-image</code> — push per-arch tags, stitch the <code>:&lt;version&gt;</code> + <code>:latest</code> manifest list with <code>buildx imagetools</code></td>
+<td style="text-align: left;">none (GHCR, <code>GITHUB_TOKEN</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>build-docs</code> — <code>mkdocs build --strict</code> (validation only)</td>
+<td style="text-align: left;"><code>docs-deploy</code> — mike deploys the <code>MAJOR.MINOR</code> docs version (+ <code>latest</code> alias) to <code>gh-pages</code></td>
+<td style="text-align: left;"><code>github-pages</code> environment</td>
+</tr>
+</tbody>
+</table>
+<h2 id="required-configuration">Required configuration<a class="headerlink" href="#required-configuration" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><code>release</code> environment</strong> — must exist with a <strong>required reviewer</strong> (repo Settings → Environments);
+  this is the single "proceed with the release?" prompt.</li>
+<li><strong>Tag ruleset</strong> — no ruleset may have <strong>Restrict creations</strong> enabled for <code>v*</code> tags: <code>approve-and-tag</code>
+  creates the release tag with the built-in <code>GITHUB_TOKEN</code>, which is rejected with "Cannot create ref due
+  to creations being restricted" and <em>cannot</em> be added to a ruleset bypass list (only roles, teams, deploy
+  keys, and installed GitHub Apps can). Restricting tag <em>updates/deletions</em> is fine. Note the trade-off:
+  any write-access collaborator can then push a <code>v*</code> tag, which triggers the Publish workflow directly
+  (PyPI/Pages publication stays environment-gated; the GHCR image push is not).</li>
+<li><strong>GHCR</strong> — uses the built-in <code>GITHUB_TOKEN</code> (<code>packages: write</code>); no extra secret.</li>
+<li><strong>PyPI</strong> — OIDC trusted publishing; no stored token. Each PyPI project (<code>beetkeeper</code>,
+  <code>beetkeeper-plugin</code>) needs a Trusted Publisher registered for owner/repo <code>zach-overflow/beetkeeper</code>,
+  workflow <strong><code>publish.yml</code></strong>, environment <strong><code>pypi</code></strong>. Publish always runs as its own top-level workflow
+  (dispatched, never <code>workflow_call</code>ed) precisely because PyPI rejects reusable workflows.</li>
+<li><strong>GitHub Pages</strong> — repo Pages source set to <strong>"Deploy from a branch"</strong> (<code>gh-pages</code>, root); mike creates
+  the branch on the first release deploy. The <code>github-pages</code> environment holds any deploy approval rule
+  (it gates the workflow's mike push, which is the publish event).</li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><code>prepare</code> fails: "Expected exactly one draft release"</strong> — either no draft exists yet (create one via
+  the release form and <em>Save draft</em>), several drafts are lying around (delete the stale ones), or — if a
+  draft definitely exists — the job's token can't see it: GitHub omits drafts from the list endpoint for
+  tokens without push access, which is why the <code>prepare</code> job must keep <code>contents: write</code>.</li>
+<li><strong><code>prepare</code> fails: title not <code>MAJOR.MINOR.PATCH</code></strong> — the draft's <em>title</em> is the version. Fix the title
+  (bare semver, no <code>v</code>) and re-run the workflow.</li>
+<li><strong><code>uv.lock is out of sync</code></strong> — run <code>uv lock</code> and commit the result.</li>
+<li><strong>Publish ran but wheels carry a dev version</strong> — the build didn't see the release tag; the
+  <code>build-wheels</code> job must check out <code>v&lt;version&gt;</code> with <code>fetch-depth: 0</code> (setuptools-scm needs the tag in
+  the checkout).</li>
+<li><strong>PyPI publish fails with a trusted-publisher / OIDC error</strong> — the registered Trusted Publisher must
+  match exactly: owner/repo <code>zach-overflow/beetkeeper</code>, workflow <code>publish.yml</code>, environment <code>pypi</code>. Also
+  note PyPI rejects reusable workflows outright, so Publish must never be converted to <code>workflow_call</code>.</li>
+<li><strong>PyPI upload rejected as already existing</strong> — the publish steps use <code>skip-existing</code>, so a re-run is
+  safe; publishing a <em>new</em> release requires a <em>new</em> version (PyPI forbids overwriting an existing one).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Zach Gottesman — AGPL-3.0-or-later
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
