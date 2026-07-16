@@ -5,7 +5,7 @@ from **PyPI** alongside an existing beets install.
 
 Both methods point beetkeeper at your **beets** config: `BEETSDIR` (env var — the **directory** holding your
 beets `config.yaml`) or `--config-path` (CLI flag — the config file itself). See
-[Configuration](configuration.md) for what beetkeeper reads from that file.
+[Configuration](../configuration.md) for what beetkeeper reads from that file.
 
 ## Docker
 
@@ -17,17 +17,6 @@ Map your host directories to the container's volume paths:
 | `/music`       | Music library (beets-tagged and imported)    |
 | `/downloads`   | Raw downloaded music, unprocessed by beets   |
 
-=== "docker run"
-
-    ```shell
-    docker run \
-      -v /host/path/to/beets_app_directory:/beets \
-      -v /host/path/to/downloads:/data/raw \
-      -v /host/path/to/music_library:/data/music \
-      -e BEETSDIR=/beets \
-      -p 8337:8337 \
-      ghcr.io/zach-overflow/beetkeeper
-    ```
 
 === "docker compose"
 
@@ -36,6 +25,7 @@ Map your host directories to the container's volume paths:
       beetkeeper:
         image: ghcr.io/zach-overflow/beetkeeper
         restart: unless-stopped
+        stop_grace_period: 30s
         ports:
           - "8337:8337"
         environment:
@@ -46,7 +36,20 @@ Map your host directories to the container's volume paths:
           - /host/path/to/music_library:/data/music
     ```
 
-See [Deployment](quickstart/deployment.md) for the full Docker workflow, including the one-time database migration step.
+=== "docker run"
+
+    ```shell
+    docker run \
+      -v /host/path/to/beets_app_directory:/beets \
+      -v /host/path/to/downloads:/data/raw \
+      -v /host/path/to/music_library:/data/music \
+      -e BEETSDIR=/beets \
+      -p 8337:8337 \
+	  --stop-timeout 30 \
+	  ghcr.io/zach-overflow/beetkeeper
+    ```
+
+See [Deployment](./deployment.md) for the full Docker workflow, including the one-time database migration step.
 
 ## PyPI
 

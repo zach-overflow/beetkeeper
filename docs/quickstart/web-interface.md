@@ -1,6 +1,6 @@
 # Using the Web Interface
 
-Once the server is running (see the [Quick Start Demo](quickstart.md)), open it in your browser at
+Once the server is running (see the [Quick Start Demo](demo.md)), open it in your browser at
 `http://<hostname>:<port>/` (port `8337` by default). The web UI exposes the same functionality as the
 [REST API](rest-api.md).
 
@@ -19,7 +19,7 @@ Multiple imports can run and be monitored simultaneously.
 
 Browse the full history of beets events — album/track import completion, file modifications, and removals.
 The history stays complete whether an event originated in the UI, the API, or from beets operations run
-elsewhere (via the [beets plugin](../installation.md)).
+elsewhere (via the [beets plugin](./installation.md)).
 
 ![Event tracking](../assets/images/events_example_0-0-3rc1.png){ width="80%" }
 
