@@ -1,7 +1,7 @@
 # Contributing
 
 Documentation for working on beetkeeper itself. If you just want to run beetkeeper, start with
-[Installation](../installation.md).
+[Installation](../quickstart/installation.md).
 
 - **[Testing & development](testing_and_development.md)** — local dev setup, running the test suite, and
   the Pants-based build workflow.

@@ -5,7 +5,7 @@ This page covers running beetkeeper under Docker for real use. It mirrors the se
 example `config.yaml` (with container paths). beetkeeper reads its settings from that file's optional
 top-level `beetkeeper` section; the rest is an ordinary beets config — see [Configuration](../configuration.md).
 
-For a throwaway try-it-out run, start with the [Quick Start Demo](quickstart.md) instead.
+For a throwaway try-it-out run, start with the [Quick Start Demo](demo.md) instead.
 
 ## First-time setup
 
@@ -29,6 +29,7 @@ beetkeeper creates its database schema automatically at startup, into the persis
       beetkeeper:
         image: ghcr.io/zach-overflow/beetkeeper:latest
         restart: unless-stopped
+        stop_grace_period: 30s
         ports:
           - "8337:8337"
         environment:
@@ -57,6 +58,7 @@ beetkeeper creates its database schema automatically at startup, into the persis
 		-v /host/path/to/music/downloads:/downloads \
 		-v /host/path/to/music/library:/music \
 		-p 8337:8337 \
+		--stop-timeout 30 \
 		ghcr.io/zach-overflow/beetkeeper:latest     # default CMD is `run`
     ```
 

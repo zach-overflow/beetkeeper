@@ -42,6 +42,7 @@ initialization step.
 		-v "$(pwd):/config:ro" \
 		-v beetkeeper-demo:/data \
 		-p 8337:8337 \
+		--stop-timeout 30 \
 		ghcr.io/zach-overflow/beetkeeper:latest
 	```
 

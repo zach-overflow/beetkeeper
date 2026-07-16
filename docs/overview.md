@@ -9,23 +9,16 @@ beetkeeper offers the following out of the box:
 | Feature                                                     | **beetkeeper** | `beets[web]` |
 | :---------------------------------------------------------- | :---: | :---: |
 | Explore current and past beets imports                      | :white_check_mark: | :x: |
-| Automated REST API-based imports                            | :white_check_mark: | :x: |
+| Supports automated REST API-based import workflows          | :white_check_mark: | :x: |
 | Manually run imports from the UI                            | :white_check_mark: | :x: |
 | Advanced search UI, all [query types](https://beets.readthedocs.io/en/stable/reference/query.html) | :white_check_mark: | :x: |
-| All UI functionality available via REST API                 | :white_check_mark: | :x: |
+| Automated beets event tracking and history preservation     | :white_check_mark: | :x: |
 | Async API support                                           | :white_check_mark: | :x: |
 | Play library audio files in the browser                     | :x: | :white_check_mark: |
 
 ## Get started
 
-<div class="grid cards" markdown>
-
-- :material-download: **[Install](installation.md)** — via Docker or PyPI.
-- :material-cog: **[Configure](configuration.md)** — the optional `beetkeeper` section of your beets config.
-- :material-play: **[Use it](quickstart/quickstart.md)** — the CLI and the web UI.
-- :material-server: **[Deploy](quickstart/deployment.md)** — run it under Docker.
-
-</div>
+Follow the instructions in the [quickstart section](./quickstart/index.md).
 
 ## Web interface
 
