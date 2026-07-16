@@ -54,5 +54,6 @@ docker volume rm beetkeeper-data    # only if you want to discard the DB
   (and holds the automatic pre-migration `.bak` backups).
 - **Host paths:** the `$DEPLOY/...:/config/...` mounts assume you run these from the repo root. Adjust
   the left-hand (host) side to wherever your real config lives.
-- **Workers/SQLite:** `server_workers` is 1 in the config — raising it risks SQLite "database is
-  locked" errors under concurrent writes.
+- **Workers/SQLite:** beetkeeper always runs a single server worker process (SQLite is effectively
+  single-writer); the old `server_workers` setting was removed and is ignored, with a warning, if
+  still present.

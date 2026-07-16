@@ -94,11 +94,12 @@ Inline `TODO[Claude]:` comments now mark each open question in the relevant file
   subclass whose interactive hooks bridge from beets' pipeline threads to the event loop via an anyio
   `BlockingPortal`; cooperative abort). **Wired into the app:** lifespan background worker, JSON
   `api/api_routes/import_router.py`, HTMX `api/ui_routes/import_ui_fragments_router.py` + `/import` page,
-  injected via `api/dependencies.py`. **Multi-worker + persistent:** job state lives in the DB
-  (`core/import_store.py`, tables `import_job`/`import_lock`); imports are serialized node-wide by a leased
-  lock (leader election) and decisions are delivered through the DB, so it's correct across
-  `server_workers > 1` and survives restarts (orphan recovery on takeover). beets internals are
-  version-pinned; mypy `beets.*` override in root pyproject.
+  injected via `api/dependencies.py`. **Single-worker + persistent:** the server is strictly one uvicorn
+  worker process (see the `beetkeeper run` bullet below), but job state lives in the DB
+  (`core/import_store.py`, tables `import_job`/`import_lock`) so it survives restarts. The leased lock
+  (leader election) is retained as restart bookkeeping: a fresh process takes over the lease and fails
+  jobs left active by the previous one (orphan recovery). beets internals are version-pinned; mypy
+  `beets.*` override in root pyproject.
 - **persistence layer — DONE.** Async SQLAlchemy/SQLModel engine + `get_session`/`SessionDep`
   (`db/session.py`), a `database` section in `UserConfig`, and a programmatic alembic setup
   (`db/migrations.py`, `db/alembic/`) with an initial migration. DB is constructible via `beetkeeper db
@@ -114,10 +115,12 @@ Inline `TODO[Claude]:` comments now mark each open question in the relevant file
   which stores the same token in an HttpOnly `beetkeeper_session` cookie. `api/security/` enforces both
   app-wide via `LoginProtectionMiddleware` (exempt: login endpoints, docs, health, static; unauthenticated
   failures are 401 JSON for `/api/*`, `HX-Redirect` for HTMX, and a `/login` redirect for pages). Sessions are stored hashed in the DB
-  (`auth_session` table) so tokens work across `server_workers > 1` and survive restarts. No multi-user
+  (`auth_session` table) so tokens survive restarts. No multi-user
   identities and no per-route authorization — an authenticated client can do everything.
-- **`beetkeeper run` / uvicorn.** `reload=True` + `workers>1` conflict, nonexistent/CWD-relative
-  `reload_dirs`, wrong `--config-path` help, `None` config-path crash. See `main.py`.
+- **`beetkeeper run` / uvicorn — single-worker enforced.** `uvicorn.run` hard-codes `workers=1` (SQLite
+  is effectively single-writer, and in-process coordination like `library_write_limiter` assumes one
+  process). The removed `server.server_workers` config key is tolerated with a deprecation warning. See
+  `main.py` and `settings/user_config.py`.
 - **`UserConfig`** still needs its real schema. See `settings/user_config.py`.
 - **test scaffolding — partially done.** `src/python/tests/conftest.py` now provides the `anyio_backend`
   fixture (asyncio); `tests/db_tests/` has real fixtures + tests. A shared FastAPI `TestClient`/async-client

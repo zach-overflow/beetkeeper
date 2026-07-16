@@ -102,5 +102,9 @@ docker volume rm beetkeeper-data    # only if you want to discard the DB
   own convention), and the file inside must be named `config.yaml`.
 - **Volumes:** mount the config read-only (`:ro`); the DB lives on the read-write `beetkeeper-data` volume
   so it persists across restarts (and holds the automatic pre-migration `.bak` backups).
-- **Workers / SQLite:** keep `server.server_workers` low — raising it risks SQLite "database is locked"
-  errors under concurrent writes.
+- **Workers / SQLite:** beetkeeper always runs a single server worker process — SQLite is effectively
+  single-writer, so this is enforced rather than configurable (the old `server.server_workers` setting
+  is ignored, with a warning, if still present).
+- **Local disk only:** beetkeeper's database runs in SQLite's [WAL mode](https://sqlite.org/wal.html),
+  which does not work over network filesystems — keep the data volume holding `database.sqlite_path` on
+  local disk (expect `-wal`/`-shm` companion files next to the db file).
