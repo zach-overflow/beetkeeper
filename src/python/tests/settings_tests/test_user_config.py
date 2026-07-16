@@ -1,5 +1,6 @@
 """Tests for `load_config`: beetkeeper settings come from the beets config's optional `beetkeeper` section."""
 
+import logging
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,6 @@ beetkeeper:
   server:
     hostname: 0.0.0.0
     port: 9999
-    server_workers: 3
   database:
     sqlite_path: /var/lib/beetkeeper/bk.db
 """
@@ -34,9 +34,17 @@ def test_loads_settings_from_beetkeeper_section(tmp_path: Path) -> None:
     assert config.log_level == "DEBUG"
     assert config.server.hostname == "0.0.0.0"
     assert config.server.port == 9999
-    assert config.server.server_workers == 3
     assert config.database.sqlite_path == Path("/var/lib/beetkeeper/bk.db")
     assert config.beets_config_filepath == config_path.resolve()
+
+
+def test_removed_server_workers_key_is_ignored_with_warning(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    """The removed `server.server_workers` key still loads (ignored) and emits a deprecation warning."""
+    body = (_BEETS_PREAMBLE + _BEETKEEPER_SECTION).replace("port: 9999", "port: 9999\n    server_workers: 3")
+    with caplog.at_level(logging.WARNING):
+        config = load_config(_write_config(tmp_path, body))
+    assert not hasattr(config.server, "server_workers")
+    assert any("server_workers" in record.message for record in caplog.records)
 
 
 def test_beets_config_filepath_is_the_loaded_path_overriding_any_in_section(tmp_path: Path) -> None:

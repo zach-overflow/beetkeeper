@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlmodel import col
 
 from beetkeeper.db.models import AuthSessionRecord
+from beetkeeper.db.session import shielded_session
 from beetkeeper.settings import AuthConfSection
 
 _TOKEN_NUM_BYTES = 32
@@ -65,7 +66,7 @@ class AuthSessionStore:
         """Persist a new session valid for `ttl` and return its raw bearer token (never stored)."""
         token = secrets.token_urlsafe(_TOKEN_NUM_BYTES)
         now = _utcnow()
-        async with self._sessionmaker() as session:
+        async with shielded_session(self._sessionmaker) as session:
             await session.execute(delete(AuthSessionRecord).where(col(AuthSessionRecord.expires_at) <= now))
             session.add(AuthSessionRecord(token_hash=hash_token(token), created_at=now, expires_at=now + ttl))
             await session.commit()
@@ -73,13 +74,13 @@ class AuthSessionStore:
 
     async def is_token_valid(self, token: str) -> bool:
         """True if `token` matches an unexpired session."""
-        async with self._sessionmaker() as session:
+        async with shielded_session(self._sessionmaker) as session:
             record = await session.get(AuthSessionRecord, hash_token(token))
         return record is not None and record.expires_at > _utcnow()
 
     async def revoke_token(self, token: str) -> bool:
         """Delete the session for `token` (logout). Returns whether a session existed."""
-        async with self._sessionmaker() as session:
+        async with shielded_session(self._sessionmaker) as session:
             result: Any = await session.execute(
                 delete(AuthSessionRecord).where(col(AuthSessionRecord.token_hash) == hash_token(token))
             )

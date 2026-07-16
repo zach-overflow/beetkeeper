@@ -12,9 +12,10 @@ importer. See `beetkeeper.core.library` for the rationale and concurrency rules.
 
 beets dev docs: https://beets.readthedocs.io/en/v2.12.0/dev/
 
-Wiring: each process runs `ImportWorker.run()` (started in `api.fastapi_app.lifespan`), but only the
-lease holder runs imports. Job state lives in the DB (`ImportStore`), so submit/status/decision/abort
-work across `server_workers > 1` and survive restarts. The JSON API is `api.api_routes.import_router` and
+Wiring: the server process runs `ImportWorker.run()` (started in `api.fastapi_app.lifespan`); the
+lease holder runs imports. The server is strictly single-worker, but job state lives in the DB
+(`ImportStore`), so submit/status/decision/abort survive restarts (the leader lease doubles as
+orphan-recovery bookkeeping across restarts). The JSON API is `api.api_routes.import_router` and
 the HTMX UI is `api.ui_routes.import_ui_fragments_router` (+ the `/import` page); routes use the store via
 `api.dependencies.ImportStoreDep`.
 

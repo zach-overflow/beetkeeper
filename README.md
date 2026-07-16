@@ -115,7 +115,6 @@ beetkeeper:
   server:
     hostname: 0.0.0.0
     port: 8337
-    server_workers: 2
   database:
     # beetkeeper's own SQLite db (separate from the beets library); created automatically on first run.
     sqlite_path: /beets/beetkeeper.db

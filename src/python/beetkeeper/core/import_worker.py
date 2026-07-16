@@ -55,6 +55,9 @@ _IDLE_POLL = 1.5
 _DECISION_POLL = 1.0
 # How often the leader flushes a running job's accumulated output to the DB (so pollers see progress).
 _OUTPUT_FLUSH_INTERVAL = 1.0
+# Terminal-status writes are retried (a lost one would leave the job RUNNING forever — see _finalize_job).
+_FINALIZE_ATTEMPTS = 5
+_FINALIZE_RETRY_INTERVAL = 1.0
 
 
 class _OutputBuffer:
@@ -395,65 +398,138 @@ class ImportWorker:
         self._was_leader = False
 
     async def run(self) -> None:
-        """Leader loop: acquire/renew the lease, recover orphans on election, then claim + run jobs."""
+        """Leader loop: acquire/renew the lease, recover orphans on election, then claim + run jobs.
+
+        The lock row is ensured once up front, unguarded: migrations have just run, so a failure there is
+        a real misconfiguration that should fail startup loudly. After that, each cycle is guarded against
+        any `Exception` (transient SQLite contention, aiosqlite surfacing cancellation as "no active
+        connection", driver errors that are not `OperationalError`, or child-task errors wrapped by anyio
+        in an `ExceptionGroup`): the error is logged and the cycle retried, so a DB hiccup never kills the
+        worker for the process's lifetime. Cancellation derives from `BaseException` and still exits
+        promptly via the `anyio.sleep` checkpoint.
+        """
         await self._store.ensure_lock_row()
         async with BlockingPortal() as portal:
             while True:
-                if not await self._store.acquire_lock(self._worker_id, _LEASE_SECONDS):
-                    self._was_leader = False
+                try:
+                    await self._run_one_cycle(portal)
+                except Exception:
+                    _LOGGER.warning("Import worker cycle failed; retrying.", exc_info=True)
                     await anyio.sleep(_IDLE_POLL)
-                    continue
-                if not self._was_leader:
-                    self._was_leader = True
-                    recovered = await self._store.recover_orphans(self._worker_id)
-                    if recovered:
-                        _LOGGER.warning(f"Failed {recovered} orphaned import job(s) on becoming import leader.")
-                job = await self._store.claim_next(self._worker_id)
-                if job is None:
-                    await anyio.sleep(_IDLE_POLL)
-                    continue
-                await self._run_job(job, portal)
+
+    async def _run_one_cycle(self, portal: BlockingPortal) -> None:
+        """One leader-loop cycle: try for the lease, recover orphans on election, claim + run one job."""
+        if not await self._store.acquire_lock(self._worker_id, _LEASE_SECONDS):
+            self._was_leader = False
+            await anyio.sleep(_IDLE_POLL)
+            return
+        if not self._was_leader:
+            recovered = await self._store.recover_orphans(self._worker_id)
+            if recovered:
+                _LOGGER.warning(f"Failed {recovered} orphaned import job(s) on becoming import leader.")
+            # Flipped only AFTER recovery succeeds, so a recovery interrupted by a transient DB error
+            # (absorbed by run()'s retry guard) is re-attempted on the next cycle instead of skipped.
+            self._was_leader = True
+        job = await self._store.claim_next(self._worker_id)
+        if job is None:
+            await anyio.sleep(_IDLE_POLL)
+            return
+        await self._run_job(job, portal)
 
     async def _run_job(self, job: ImportJob, portal: BlockingPortal) -> None:
         output = _OutputBuffer()
+        imported = ImportedEntities()
+        failure: Exception | None = None
         async with anyio.create_task_group() as task_group:
             task_group.start_soon(self._renew_lease_until_cancelled)
-            # Flush the growing output to the DB so any process polling the job renders progress live.
+            # Flush the growing output to the DB so anyone polling the job renders progress live.
             task_group.start_soon(self._flush_output_until_cancelled, job.id, output)
             try:
                 # Run the multi-threaded beets pipeline on one worker thread; the lease is renewed
                 # concurrently so we keep leadership across long imports / decision waits.
                 imported = await to_thread.run_sync(self._run_import_blocking, job, portal, output)
+            except Exception as exc:  # keep the worker alive; the failure lands on the job below
+                failure = exc
+            finally:
+                # Stop the renew/flush tasks BEFORE the terminal writes below: a flush holding a
+                # pre-append snapshot could otherwise land after (and clobber) the final output.
+                task_group.cancel_scope.cancel()
+        status = ImportJobStatus.FAILED
+        if failure is None:
+            try:
                 aborted = await self._store.is_abort_requested(job.id)
                 if not aborted:
                     # Record what we imported so the events page reflects beetkeeper's own imports (the
                     # external listener plugin only covers imports run outside beetkeeper).
                     await self._store.record_import_events(imported)
                 output.append("Import aborted." if aborted else "Import completed.")
-                await self._store.set_output(job.id, output.snapshot()[1])  # final flush before terminal status
-                await self._store.set_status(job.id, ImportJobStatus.ABORTED if aborted else ImportJobStatus.COMPLETED)
-            except Exception as exc:  # keep the worker alive; record the failure on the job
-                _LOGGER.exception(f"Import job {job.id} failed.")
-                output.append(f"Import failed: {exc}")
-                await self._store.set_output(job.id, output.snapshot()[1])
-                await self._store.set_status(job.id, ImportJobStatus.FAILED, error=str(exc))
-            finally:
-                task_group.cancel_scope.cancel()
+                status = ImportJobStatus.ABORTED if aborted else ImportJobStatus.COMPLETED
+            except Exception as exc:  # bookkeeping failed — the job must still reach a terminal state
+                failure = exc
+        if failure is not None:
+            _LOGGER.error(f"Import job {job.id} failed.", exc_info=failure)
+            output.append(f"Import failed: {failure}")
+        await self._finalize_job(job.id, output, status, error=str(failure) if failure is not None else None)
+
+    async def _finalize_job(
+        self, job_id: str, output: _OutputBuffer, status: ImportJobStatus, *, error: str | None
+    ) -> None:
+        """Persist the job's final output and terminal status, retrying transient DB errors.
+
+        Losing the terminal write would leave the job RUNNING forever: `claim_next` only claims PENDING
+        jobs and `recover_orphans` spares this worker's own claims, so nothing else could repair it while
+        this process lives.
+        """
+        for attempt in range(1, _FINALIZE_ATTEMPTS + 1):
+            try:
+                await self._store.set_output(job_id, output.snapshot()[1])
+                await self._store.set_status(job_id, status, error=error)
+                return
+            except Exception:
+                _LOGGER.warning(
+                    f"Persisting terminal state for import job {job_id} failed "
+                    f"(attempt {attempt}/{_FINALIZE_ATTEMPTS}).",
+                    exc_info=True,
+                )
+                if attempt < _FINALIZE_ATTEMPTS:
+                    await anyio.sleep(_FINALIZE_RETRY_INTERVAL)
+        _LOGGER.error(
+            f"Import job {job_id} could not be marked {status.value}; it stays RUNNING until orphan "
+            "recovery fails it after a restart."
+        )
 
     async def _renew_lease_until_cancelled(self) -> None:
+        """Renew the leader lease periodically; any error skips one renewal, never the running import.
+
+        Guarded with a broad `except Exception`: an escaping exception would cancel `_run_job`'s task
+        group (anyio wraps it in an `ExceptionGroup`), aborting the import over a background renewal blip.
+        """
         while True:
             await anyio.sleep(_RENEW_INTERVAL)
-            await self._store.acquire_lock(self._worker_id, _LEASE_SECONDS)
+            try:
+                await self._store.acquire_lock(self._worker_id, _LEASE_SECONDS)
+            except Exception:
+                _LOGGER.warning("Import lease renewal failed; retrying on the next interval.", exc_info=True)
 
     async def _flush_output_until_cancelled(self, job_id: str, output: _OutputBuffer) -> None:
-        """Persist the job's output to the DB whenever it grows (so pollers see incremental progress)."""
+        """Persist the job's output to the DB whenever it grows (so pollers see incremental progress).
+
+        Any error skips this flush (without advancing the version, so the same text is retried next
+        interval) rather than aborting the running import — see `_renew_lease_until_cancelled` on why the
+        guard is broad.
+        """
         last_version = -1
         while True:
             await anyio.sleep(_OUTPUT_FLUSH_INTERVAL)
             version, text = output.snapshot()
-            if version != last_version:
-                last_version = version
+            if version == last_version:
+                continue
+            try:
                 await self._store.set_output(job_id, text)
+            except Exception:
+                _LOGGER.warning("Import output flush failed; retrying on the next interval.", exc_info=True)
+                continue
+            last_version = version
 
     def _run_import_blocking(self, job: ImportJob, portal: BlockingPortal, output: _OutputBuffer) -> ImportedEntities:
         """Open the library, run the beets import to completion, and report what it added.

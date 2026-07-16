@@ -8,6 +8,7 @@ import pytest
 from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from beetkeeper.core import ImportStore
 from beetkeeper.db import make_engine, make_sessionmaker, migrations
 
 
@@ -52,6 +53,12 @@ def migrated_db(alembic_cfg: Config, async_url: str) -> str:
     """Applies all migrations to a fresh temp DB and returns its async (aiosqlite) URL."""
     migrations.upgrade(alembic_cfg, "head")
     return async_url
+
+
+@pytest.fixture
+def import_store(session_factory: async_sessionmaker[AsyncSession]) -> ImportStore:
+    """An `ImportStore` bound to the migrated temp DB (no worker runs unless the test starts one)."""
+    return ImportStore(session_factory)
 
 
 @pytest.fixture

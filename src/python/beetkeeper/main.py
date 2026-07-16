@@ -55,8 +55,7 @@ def run(cli_state: CliState) -> None:
     user_config = cli_state.user_config
     # Required for uvicorn logging to be at all configurable: https://github.com/Kludex/uvicorn/issues/945#issuecomment-819692145
     logging.basicConfig(level=user_config.log_level, handlers=[logging.StreamHandler()])
-    # Migrate before uvicorn forks its workers: a single process runs the upgrade, so `server_workers > 1`
-    # can't race on it, and every worker's lifespan sees a current schema.
+    # Migrate before uvicorn starts the app process, so its lifespan sees a current schema.
     try:
         startup_upgrade(
             alembic_config_from_user_config(user_config),
@@ -65,15 +64,15 @@ def run(cli_state: CliState) -> None:
         )
     except MigrationStateError as e:
         raise click.ClickException(str(e)) from e
-    # Production/container run: multi-worker, no autoreload (reload is incompatible with workers>1, and
-    # `--reload` is a dev-only concern). uvicorn wants a lowercase log level string.
+    # Strictly single-worker by design: SQLite (beets' library and beetkeeper's own db) plus in-process
+    # write serialization assume exactly one server process. uvicorn wants a lowercase log level string.
     uvicorn.run(
         app="beetkeeper.api:create_app",
         factory=True,
         host=user_config.server.hostname,
         port=user_config.server.port,
         log_level=user_config.log_level.lower(),
-        workers=user_config.server.server_workers,
+        workers=1,
     )
 
 

@@ -16,7 +16,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from beetkeeper.api import create_app
-from beetkeeper.core import BeetsLibrary, ImportStore
+from beetkeeper.core import BeetsLibrary
 from beetkeeper.db.session import get_session
 from beetkeeper.settings import UserConfig, load_config
 
@@ -102,12 +102,6 @@ def get_session_override(session_factory: async_sessionmaker[AsyncSession]) -> S
             yield session
 
     return _override_get_session
-
-
-@pytest.fixture
-def import_store(session_factory: async_sessionmaker[AsyncSession]) -> ImportStore:
-    """An `ImportStore` bound to the migrated temp DB (no import worker runs)."""
-    return ImportStore(session_factory)
 
 
 @pytest.fixture

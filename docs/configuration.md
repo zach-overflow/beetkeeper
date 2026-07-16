@@ -20,7 +20,6 @@ beetkeeper:
   server:
     hostname: 0.0.0.0
     port: 8337
-    server_workers: 2
   database:
     # beetkeeper's own SQLite db (separate from the beets library db); created automatically on first run.
     sqlite_path: /beets/beetkeeper.db
@@ -38,7 +37,6 @@ beetkeeper:
 | `log_level`               | string  | —       | One of `CRITICAL`, `DEBUG`, `ERROR`, `INFO`, `NOTSET`, `WARNING`. |
 | `server.hostname`         | string  | —       | Interface to bind (e.g. `0.0.0.0` to listen on all interfaces). |
 | `server.port`             | int     | `8337`  | Port the server listens on (must be `> 0`).                     |
-| `server.server_workers`   | int     | `2`     | Number of server worker processes (must be `> 0`).             |
 | `database.sqlite_path`    | path    | —       | Path to beetkeeper's own SQLite db (created automatically on first run). |
 | `database.auto_upgrade`   | bool    | `true`  | Apply pending schema migrations automatically when the server starts (the db file is backed up first). When `false`, a stale schema fails startup until you run `beetkeeper db upgrade`. |
 | `auth.enable_login_protection` | bool | `false` | Opt-in login protection: when `true`, every page and API route requires a logged-in session. |
@@ -58,8 +56,7 @@ everything).
   an `Authorization: Bearer <token>` header (revoke it with `POST /api/auth/logout`).
 - The login endpoints, API docs, `/api/health`, and static assets stay reachable without a session.
 
-Sessions are stored (hashed) in beetkeeper's database, so they survive restarts and work across all
-`server_workers`.
+Sessions are stored (hashed) in beetkeeper's database, so they survive restarts.
 
 !!! tip "Authoritative source"
     The table above is a friendly summary. For the exact field definitions, validation, and defaults, see the

@@ -1,9 +1,9 @@
 """
 Health / diagnostics endpoint.
 
-Reports the serving process's pid and the current import-leader (the `import_lock` holder). With
-`server_workers > 1` this makes the multi-worker behaviour observable: requests are served by different
-pids, but exactly one process is the import leader, and all share the same DB-backed job state.
+Reports the serving process's pid and the current import-leader (the `import_lock` holder). The server
+runs as a single worker process, so the serving pid and the leader normally coincide; the lease fields
+remain observable because job state and the lock are DB-backed (and survive restarts).
 """
 
 import logging

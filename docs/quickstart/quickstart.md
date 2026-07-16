@@ -25,7 +25,6 @@ beetkeeper:
   server:
     hostname: 0.0.0.0   # bind all interfaces so the published port is reachable from the host
     port: 8337
-    server_workers: 1   # single worker keeps the demo's SQLite simple
   database:
     sqlite_path: /data/beetkeeper.db   # on the persistent volume
 ```

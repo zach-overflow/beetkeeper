@@ -21,12 +21,27 @@ class BeetKeeperConfigError(ValueError):
 
 
 class ServerConfSection(BaseModel):
-    """Model for the `server` subsection of the beets config's `beetkeeper` section."""
+    """Model for the `server` subsection of the beets config's `beetkeeper` section.
+
+    beetkeeper always runs as a single server worker process: both its own SQLite database and the beets
+    library are effectively single-writer, and in-process coordination (e.g. the beets write limiter)
+    depends on there being exactly one process. The former `server_workers` setting was removed; a config
+    still carrying it loads fine (the key is ignored) with a deprecation warning.
+    """
 
     model_config = ConfigDict(frozen=True, extra="ignore")
     hostname: str
     port: int = Field(default=8337, gt=0)
-    server_workers: int = Field(default=2, gt=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _warn_on_removed_server_workers(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "server_workers" in data:
+            _LOGGER.warning(
+                "`beetkeeper.server.server_workers` has been removed and is ignored: beetkeeper always "
+                "runs a single server worker process. Remove the key from your config."
+            )
+        return data
 
 
 class AuthConfSection(BaseModel):
