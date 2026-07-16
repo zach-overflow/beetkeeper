@@ -1221,8 +1221,12 @@ downgrade the schema. Restore the matching <code>.bak</code> file (or upgrade be
   own convention), and the file inside must be named <code>config.yaml</code>.</li>
 <li><strong>Volumes:</strong> mount the config read-only (<code>:ro</code>); the DB lives on the read-write <code>beetkeeper-data</code> volume
   so it persists across restarts (and holds the automatic pre-migration <code>.bak</code> backups).</li>
-<li><strong>Workers / SQLite:</strong> keep <code>server.server_workers</code> low — raising it risks SQLite "database is locked"
-  errors under concurrent writes.</li>
+<li><strong>Workers / SQLite:</strong> beetkeeper always runs a single server worker process — SQLite is effectively
+  single-writer, so this is enforced rather than configurable (the old <code>server.server_workers</code> setting
+  is ignored, with a warning, if still present).</li>
+<li><strong>Local disk only:</strong> beetkeeper's database runs in SQLite's <a href="https://sqlite.org/wal.html">WAL mode</a>,
+  which does not work over network filesystems — keep the data volume holding <code>database.sqlite_path</code> on
+  local disk (expect <code>-wal</code>/<code>-shm</code> companion files next to the db file).</li>
 </ul>
 
 
