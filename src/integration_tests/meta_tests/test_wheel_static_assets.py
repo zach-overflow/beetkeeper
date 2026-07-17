@@ -11,44 +11,32 @@ This asserts every on-disk static file is matched by at least one `package-data`
 ships them. `PurePosixPath.full_match` (3.13+) applies the same `**`-recursive glob semantics setuptools uses.
 """
 
-import tomllib
 from pathlib import Path, PurePosixPath
-from typing import Final
+from typing import Final, TYPE_CHECKING
 
-_PYPROJECT_RELPATH: Final[str] = "src/python/pyproject.toml"
+
+if TYPE_CHECKING:
+    import tomlkit
+
+
 # package-data globs are relative to the top-level package directory (`beetkeeper/`).
 _PACKAGE_RELPATH: Final[str] = "src/python/beetkeeper"
 _STATIC_RELPATH: Final[str] = "src/python/beetkeeper/api/static"
-_ROOT_MARKER: Final[str] = _PYPROJECT_RELPATH
 
 
-def _repo_root() -> Path:
-    """The repo (or sandbox) root, located by walking up to the directory containing `_ROOT_MARKER`."""
-    for parent in Path(__file__).resolve().parents:
-        if (parent / _ROOT_MARKER).is_file():
-            return parent
-    raise RuntimeError(f"Could not locate the root (no `{_ROOT_MARKER}` found above this test).")
-
-
-def _package_data_globs() -> list[str]:
-    """The `[tool.setuptools.package-data]` glob patterns keyed to the `beetkeeper` package."""
-    pyproject = tomllib.loads((_repo_root() / _PYPROJECT_RELPATH).read_text(encoding="utf-8"))
-    return pyproject["tool"]["setuptools"]["package-data"]["beetkeeper"]
-
-
-def _static_files() -> list[Path]:
-    """Every committed static asset, excluding Pants `BUILD` files and caches."""
-    static_root = _repo_root() / _STATIC_RELPATH
-    return sorted(
-        p for p in static_root.rglob("*") if p.is_file() and p.name != "BUILD" and "__pycache__" not in p.parts
-    )
-
-
-def test_all_static_assets_are_covered_by_package_data() -> None:
+def test_all_static_assets_are_covered_by_package_data(
+    repo_root: Path, bk_pyproject_data: tomlkit.TOMLDocument
+) -> None:
     """Every file under `beetkeeper/api/static/` must match a `package-data` glob, or it won't ship."""
-    package_dir = _repo_root() / _PACKAGE_RELPATH
-    globs = _package_data_globs()
-    static_files = _static_files()
+    package_dir = repo_root / _PACKAGE_RELPATH
+    globs = bk_pyproject_data["tool"]["setuptools"]["package-data"]["beetkeeper"]
+    static_files = sorted(
+        [
+            p
+            for p in (repo_root / _STATIC_RELPATH).rglob("*")
+            if p.is_file() and p.name != "BUILD" and "__pycache__" not in p.parts
+        ]
+    )
     assert static_files, f"Found no static assets under `{_STATIC_RELPATH}` — the test cannot validate anything."
 
     uncovered = [

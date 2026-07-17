@@ -20,7 +20,7 @@ RUN set -eux; \
         arm64) btbn_arch="linuxarm64";; \
         *) echo "unsupported TARGETARCH='${TARGETARCH:-unset}' (need a BuildKit builder)" >&2; exit 1 ;; \
     esac; \
-    url="http://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-${btbn_arch}-gpl-8.1.tar.xz"; \
+    url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-${btbn_arch}-gpl-8.1.tar.xz"; \
     curl -fsSL "${url}" -o /tmp/ffmpeg.tar.xz; \
     mkdir -p /tmp/ff; \
     tar -xJf /tmp/ffmpeg.tar.xz -C /tmp/ff --strip-components=1; \
