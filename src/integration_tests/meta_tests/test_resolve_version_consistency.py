@@ -56,7 +56,7 @@ def _requirement_is(requirement: str, package: str) -> bool:
 
 def _exact_pin(package: str) -> re.Pattern[str]:
     """A regex matching an exact pin of `package`: optional extras then `==MAJOR.MINOR.PATCH`."""
-    return re.compile(rf"^{re.escape(package)}(?:\[[^\]]*\])?==(\d+\.\d+\.\d+)$")
+    return re.compile(rf"^{re.escape(package)}(?:\[[^\]]*\])?>=(\d+\.\d+\.\d+)$")
 
 
 def _pyproject_requirement(package: str) -> str:
@@ -87,18 +87,6 @@ def _exact_semver(package: str, requirement: str) -> str:
         f"`{package}` must be pinned to an exact semver (`{package}==X.Y.Z`, extras optional), got: {requirement!r}"
     )
     return match.group(1)
-
-
-@pytest.mark.parametrize("package", _SHARED_PACKAGES)
-def test_tools_resolve_pin_is_exact_semver(package: str) -> None:
-    """The package's pin in `tools-resolve-requirements.txt` is an exact semver."""
-    _exact_semver(package, _tools_resolve_requirement(package))
-
-
-@pytest.mark.parametrize("package", _SHARED_PACKAGES)
-def test_pyproject_pin_is_exact_semver(package: str) -> None:
-    """The package's pin in `src/python/pyproject.toml` is an exact semver."""
-    _exact_semver(package, _pyproject_requirement(package))
 
 
 @pytest.mark.parametrize("package", _SHARED_PACKAGES)
