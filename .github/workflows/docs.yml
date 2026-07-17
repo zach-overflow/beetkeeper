@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # mike commits + pushes the version subdirectory to `gh-pages`
+      pages: read # the smoke test polls the Pages build status of the pushed commit
     # The push only happens after this environment's approval gate.
     environment: github-pages
     steps:
@@ -47,14 +48,23 @@ jobs:
         with:
           gha-cache-key: docs-v0
           named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
+      # The `test` guards the site entry point: a missing docs/index.md still builds --strict-clean but
+      # 404s `/` and `/latest/` once deployed.
       - name: Build docs site (validation)
-        run: pants run docs:mkdocs-pex -- build --strict
+        run: |
+          pants run docs:mkdocs-pex -- build --strict
+          test -f site/index.html
       # A between-release docs fix re-deploys the newest released MAJOR.MINOR (still aliased `latest`).
       - name: Deploy latest version's docs to gh-pages with mike
         run: |
           version="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
           docs_version="$(echo "${version#v}" | cut -d. -f1-2)"
+          echo "docs_version=${docs_version}" >> "$GITHUB_ENV"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           pants run docs:mike-pex -- deploy --push --update-aliases "${docs_version}" latest
           pants run docs:mike-pex -- set-default --push latest
+      - name: Smoke test the published docs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./build_scripts/docs-smoke-test.sh "$(git rev-parse gh-pages)" "${docs_version}"
