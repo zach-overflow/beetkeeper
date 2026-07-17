@@ -84,20 +84,35 @@
           "events"
         ],
         "summary": "Events",
-        "description": "Lists the most recently ingested beets listener events (newest first), each with the beets album/track\nids of its child rows (the ones the beetkeeper event-listener plugin pushed to the POST endpoints).",
+        "description": "Lists the requested page of ingested beets listener events (newest first), each with the beets album/track\nids of its child rows (the ones the beetkeeper event-listener plugin pushed to the POST endpoints).",
         "operationId": "events_api_events_get",
         "parameters": [
           {
-            "name": "limit",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 500,
               "minimum": 1,
-              "default": 50,
-              "title": "Limit"
-            }
+              "description": "1-based page number.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "1-based page number."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
           }
         ],
         "responses": {
@@ -147,30 +162,6 @@
       }
     },
     "/api/import": {
-      "get": {
-        "tags": [
-          "imports"
-        ],
-        "summary": "List Imports",
-        "description": "List all known import jobs.",
-        "operationId": "list_imports_api_import_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ImportJob"
-                  },
-                  "type": "array",
-                  "title": "Response List Imports Api Import Get"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "tags": [
           "imports"
@@ -179,14 +170,14 @@
         "description": "Enqueue an import of the given paths and return the created (PENDING) job.\n\nSet `quiet=true` to import non-interactively (the `beet import -q` equivalent): no decision prompts.\nThe optional per-job settings (`quiet`, `logpath`, `group_albums`, `flat`, `set_fields`) default to the\ncorresponding beets config values when left unspecified.",
         "operationId": "start_import_api_import_post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ImportSubmitRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -195,6 +186,69 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "List Imports",
+        "description": "List one page of known import jobs, newest first (so page 1 shows the most recent submissions).",
+        "operationId": "list_imports_api_import_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "1-based page number.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "1-based page number."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportJob"
+                  },
+                  "title": "Response List Imports Api Import Get"
                 }
               }
             }
@@ -357,7 +411,7 @@
           "query"
         ],
         "summary": "List ",
-        "description": "Execute `beet list ...`: return matching tracks (or albums) as JSON objects.\n\nArgs:\n    library: injected beets library adapter.\n    albums: like `-a`; return albums instead of individual tracks.\n    keyword: repeatable bare-keyword query parts (substring match across default fields).\n    field: repeatable `field:value` parts (exact `=`, regex `::`, numeric/date ranges all supported).\n    phrase: a single multi-word phrase part.\n    filepath: a path within the beets library (becomes a path query).\n    sort_by: a beets sort token, e.g. `year+` or `artist-`.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#list",
+        "description": "Execute `beet list ...`: return one page of matching tracks (or albums) as JSON objects.\n\nArgs:\n    library: injected beets library adapter.\n    page: pagination query params (`page`, `page_size`).\n    albums: like `-a`; return albums instead of individual tracks.\n    keyword: repeatable bare-keyword query parts (substring match across default fields).\n    field: repeatable `field:value` parts (exact `=`, regex `::`, numeric/date ranges all supported).\n    phrase: a single multi-word phrase part.\n    filepath: a path within the beets library (becomes a path query).\n    sort_by: a beets sort token, e.g. `year+` or `artist-`.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#list",
         "operationId": "list__api_query_list_get",
         "parameters": [
           {
@@ -456,6 +510,33 @@
               ],
               "title": "Sort By"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "1-based page number.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "1-based page number."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
           }
         ],
         "responses": {
@@ -1165,7 +1246,7 @@
   "tags": [
     {
       "name": "authentication",
-      "description": "Routes for simple login / logout flows. Beetkeeper does not support multiple user identities.\nOnly handles authentication, with implicit authorization to everything for an authenticated client.\n"
+      "description": "Used only when optional \"beetkeeper.auth.enable_login_protection\" is \"true\". \nRoutes for simple login / logout flows. Beetkeeper does not support multiple user identities.\nOnly handles authentication, with implicit authorization to everything for an authenticated client.\n"
     },
     {
       "name": "imports",

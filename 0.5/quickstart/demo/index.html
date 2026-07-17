@@ -12,11 +12,13 @@
         <meta name="author" content="Zach Gottesman">
       
       
-        <link rel="canonical" href="https://beetkeeper.dadbodaudio.com/0.5/contributor_docs/release_management/">
+        <link rel="canonical" href="https://beetkeeper.dadbodaudio.com/0.5/quickstart/demo/">
       
       
-        <link rel="prev" href="../building_artifacts/">
+        <link rel="prev" href="../installation/">
       
+      
+        <link rel="next" href="../web-interface/">
       
       
         
@@ -27,7 +29,7 @@
     
     
       
-        <title>Release management - beetkeeper</title>
+        <title>Demo - beetkeeper</title>
       
     
     
@@ -80,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#release-management" class="md-skip">
+        <a href="#quick-start-demo" class="md-skip">
           Skip to content
         </a>
       
@@ -129,7 +131,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Release management
+              Demo
             
           </span>
         </div>
@@ -251,11 +253,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../quickstart/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -309,13 +313,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../contributor_docs/" class="md-tabs__link">
           
   
   
@@ -402,26 +404,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
             
   
   
@@ -439,7 +446,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -457,7 +464,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -485,7 +492,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/installation/" class="md-nav__link">
+      <a href="../installation/" class="md-nav__link">
         
   
   
@@ -510,10 +517,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../quickstart/demo/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -529,6 +563,70 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-create-a-demo-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Create a demo config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-run-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Run the server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-explore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Explore
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tear-down-the-demo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tear down the demo
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -541,7 +639,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/web-interface/" class="md-nav__link">
+      <a href="../web-interface/" class="md-nav__link">
         
   
   
@@ -569,7 +667,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/rest-api/" class="md-nav__link">
+      <a href="../rest-api/" class="md-nav__link">
         
   
   
@@ -597,7 +695,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/cli/" class="md-nav__link">
+      <a href="../cli/" class="md-nav__link">
         
   
   
@@ -625,7 +723,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/deployment/" class="md-nav__link">
+      <a href="../deployment/" class="md-nav__link">
         
   
   
@@ -711,31 +809,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -753,7 +846,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -771,7 +864,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../../contributor_docs/" class="md-nav__link">
         
   
   
@@ -799,7 +892,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testing_and_development/" class="md-nav__link">
+      <a href="../../contributor_docs/testing_and_development/" class="md-nav__link">
         
   
   
@@ -827,7 +920,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../building_artifacts/" class="md-nav__link">
+      <a href="../../contributor_docs/building_artifacts/" class="md-nav__link">
         
   
   
@@ -852,37 +945,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Release management
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../contributor_docs/release_management/" class="md-nav__link">
         
   
   
@@ -898,103 +964,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-gets-published" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What gets published
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#versioning-model-the-git-tag-is-the-source-of-truth" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Versioning model — the git tag is the source of truth
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cutting-a-release-runbook" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cutting a release (runbook)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-the-release-workflow-does-githubworkflowsreleaseyml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What the Release workflow does (.github/workflows/release.yml)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-the-publish-workflow-does-githubworkflowspublishyml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What the Publish workflow does (.github/workflows/publish.yml)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#required-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Required configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1034,10 +1003,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-gets-published" class="md-nav__link">
+  <a href="#1-create-a-demo-config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What gets published
+        1. Create a demo config
       
     </span>
   </a>
@@ -1045,10 +1014,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#versioning-model-the-git-tag-is-the-source-of-truth" class="md-nav__link">
+  <a href="#2-run-the-server" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Versioning model — the git tag is the source of truth
+        2. Run the server
       
     </span>
   </a>
@@ -1056,10 +1025,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#cutting-a-release-runbook" class="md-nav__link">
+  <a href="#3-explore" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Cutting a release (runbook)
+        3. Explore
       
     </span>
   </a>
@@ -1067,43 +1036,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-the-release-workflow-does-githubworkflowsreleaseyml" class="md-nav__link">
+  <a href="#tear-down-the-demo" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What the Release workflow does (.github/workflows/release.yml)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-the-publish-workflow-does-githubworkflowspublishyml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What the Publish workflow does (.github/workflows/publish.yml)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#required-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Required configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
+        Tear down the demo
       
     </span>
   </a>
@@ -1127,7 +1063,7 @@
 
 
   
-    <a href="https://github.com/zach-overflow/beetkeeper/edit/main/docs/contributor_docs/release_management.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/zach-overflow/beetkeeper/edit/main/docs/quickstart/demo.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1135,162 +1071,65 @@
   
 
 
-<h1 id="release-management">Release Management<a class="headerlink" href="#release-management" title="Permanent link">&para;</a></h1>
-<p>How beetkeeper versions and publishes its release artifacts. All commands run from the repo root.</p>
-<h2 id="what-gets-published">What gets published<a class="headerlink" href="#what-gets-published" title="Permanent link">&para;</a></h2>
-<p>A release publishes three artifacts, all carrying the <strong>same</strong> semver:</p>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">Artifact</th>
-<th style="text-align: left;">Pants target</th>
-<th style="text-align: left;">Destination</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;"><code>beetkeeper</code> wheel</td>
-<td style="text-align: left;"><code>src/python:beetkeeper-whl</code></td>
-<td style="text-align: left;">PyPI (<code>beetkeeper</code>)</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>beetkeeper-plugin</code> wheel</td>
-<td style="text-align: left;"><code>src/beetsplug:plugin-whl</code></td>
-<td style="text-align: left;">PyPI (<code>beetkeeper-plugin</code>)</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>beetkeeper-server</code> image</td>
-<td style="text-align: left;"><code>//:beetkeeper-server-image</code></td>
-<td style="text-align: left;">GHCR <code>ghcr.io/zach-overflow/beetkeeper</code> (<code>:latest</code> + <code>:&lt;version&gt;</code>)</td>
-</tr>
-</tbody>
-</table>
-<p>The docs site (GitHub Pages) is also rebuilt and redeployed as part of every release: mike publishes
-the release's <code>MAJOR.MINOR</code> docs version to the <code>gh-pages</code> branch and points the <code>latest</code> alias at it.</p>
-<h2 id="versioning-model-the-git-tag-is-the-source-of-truth">Versioning model — the git tag is the source of truth<a class="headerlink" href="#versioning-model-the-git-tag-is-the-source-of-truth" title="Permanent link">&para;</a></h2>
-<p>Both wheels are versioned from the <code>vMAJOR.MINOR.PATCH</code> git tag via Pants'
-<a href="https://www.pantsbuild.org/stable/reference/targets/vcs_version"><code>vcs_version</code></a> target (setuptools-scm
-under the hood); <strong>no version string is committed anywhere</strong>. The moving parts:</p>
+<h1 id="quick-start-demo">Quick Start Demo<a class="headerlink" href="#quick-start-demo" title="Permanent link">&para;</a></h1>
+<p>The fastest way to explore beetkeeper is to run it under Docker with a minimal demo config and click around
+the web UI. This gets you a running instance in a single command — no existing beets library required (you can
+point it at a real one later; see <a href="../../configuration/">Configuration</a> and <a href="../deployment/">Deployment</a>).</p>
+<div class="admonition info">
+<p class="admonition-title">Recommended</p>
+<p>We recommend using <a href="https://docs.docker.com/get-docker/">Docker</a> to run beetkeeper.</p>
+<p>However, for anyone wishing to run beetkeeper without Docker, you may use the standalone <a href="https://pypi.org/project/beetkeeper/">PyPI package</a> instead.</p>
+</div>
+<h2 id="1-create-a-demo-config">1. Create a demo config<a class="headerlink" href="#1-create-a-demo-config" title="Permanent link">&para;</a></h2>
+<p>beetkeeper reads its settings from the optional <code>beetkeeper</code> section of a beets config. In an empty working
+directory, save the following as <code>config.yaml</code> — a minimal demo config using in-container paths. It must be
+named <code>config.yaml</code>, since <code>BEETSDIR</code> (below) points at the <em>directory</em> holding it:</p>
+<div class="highlight"><span class="filename">config.yaml</span><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">directory</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/music</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">library</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/library.db</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nt">beetkeeper</span><span class="p">:</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">log_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">INFO</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">server</span><span class="p">:</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0.0.0</span><span class="w">   </span><span class="c1"># bind all interfaces so the published port is reachable from the host</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8337</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="nt">database</span><span class="p">:</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="nt">sqlite_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/beetkeeper.db</span><span class="w">   </span><span class="c1"># on the persistent volume</span>
+</code></pre></div>
+<h2 id="2-run-the-server">2. Run the server<a class="headerlink" href="#2-run-the-server" title="Permanent link">&para;</a></h2>
+<p>beetkeeper creates its database (and applies any schema migrations) automatically at startup — no separate
+initialization step.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Docker</label><label for="__tabbed_1_2">Python Standalone</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>--name<span class="w"> </span>beetkeeper-demo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span>-e<span class="w"> </span><span class="nv">BEETSDIR</span><span class="o">=</span>/config<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">:/config:ro&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span>-v<span class="w"> </span>beetkeeper-demo:/data<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span>-p<span class="w"> </span><span class="m">8337</span>:8337<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span>--stop-timeout<span class="w"> </span><span class="m">30</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span>ghcr.io/zach-overflow/beetkeeper:latest
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span>beetkeeper
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">BEETSDIR</span><span class="o">=</span>&lt;path<span class="w"> </span>to<span class="w"> </span>folder<span class="w"> </span>holding<span class="w"> </span>beets<span class="w"> </span>config.yaml&gt;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>beetkeeper<span class="w"> </span>run
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="3-explore">3. Explore<a class="headerlink" href="#3-explore" title="Permanent link">&para;</a></h2>
+<p>Open <strong><a href="http://localhost:8337/">http://localhost:8337/</a></strong> and try:</p>
 <ul>
-<li>Each distribution has a <code>vcs_version</code> target (<code>src/python/beetkeeper/BUILD</code>,
-  <code>src/beetsplug/beetkeeper_plugin/BUILD</code>) that runs setuptools-scm against the real repo and generates a
-  <code>_scm_version.py</code> module into every consuming Pants sandbox (dependency inference picks it up from the
-  import in <code>_version.py</code>).</li>
-<li>Each package's committed <code>_version.py</code> re-exports the generated module, falling back to <code>0.0.0.dev0</code>
-  where it doesn't exist — i.e. any build/run outside Pants, such as the uv dev venv.</li>
-<li>Each <code>pyproject.toml</code> resolves <code>dynamic = ["version"]</code> via
-  <code>[tool.setuptools.dynamic] version = {attr = "&lt;pkg&gt;._version.__version__"}</code>, so the wheel metadata gets
-  the generated version inside Pants and the dev placeholder under uv.</li>
-<li>On a checkout of the release tag (what the Publish workflow does), setuptools-scm yields the exact
-  <code>MAJOR.MINOR.PATCH</code>; on any other commit it yields a dev version (<code>X.Y.Z.devN+g&lt;hash&gt;</code>), which is what
-  local <code>pants package</code> produces.</li>
+<li><strong><a href="../web-interface/">The web interface</a></strong> — run imports, browse the event history, and search your library.</li>
+<li><strong><a href="../rest-api/">The REST API</a></strong> — the same functionality for automation, with interactive docs at
+  <a href="http://localhost:8337/docs">http://localhost:8337/docs</a>.</li>
 </ul>
-<blockquote>
-<p>The git tag carries a leading <code>v</code> (GitHub release convention); every published <em>version id</em> (wheel
-versions + the <code>:&lt;version&gt;</code> image tag) is the <code>v</code>-stripped semver. They can no longer disagree — the
-version is derived from the tag.</p>
-</blockquote>
-<h2 id="cutting-a-release-runbook">Cutting a release (runbook)<a class="headerlink" href="#cutting-a-release-runbook" title="Permanent link">&para;</a></h2>
-<ol>
-<li><strong>Draft the release on GitHub</strong>: use the "Draft a new release" button on the
-   <a href="https://github.com/zach-overflow/beetkeeper/releases">releases page</a>. Set the <strong>title to the bare
-   semver</strong> (<code>MAJOR.MINOR.PATCH</code>, no leading <code>v</code>), write the notes (see
-   <code>.github/release_notes_template.md</code>), and click <strong>Save draft</strong> — do <em>not</em> publish, and the tag field is
-   ignored (a draft creates no tag).</li>
-<li><strong>Run the Release workflow</strong>: Actions → <em>Release</em> → <em>Run workflow</em> (from <code>main</code>). It locates the draft,
-   validates the repo, and builds every artifact without publishing anything.</li>
-<li><strong>Approve the <code>release</code> environment prompt</strong> once validation is green. The workflow then tags the
-   validated commit <code>vX.Y.Z</code>, publishes the GitHub release, and hands off to the <em>Publish</em> workflow, which
-   builds and publishes the wheels, the multi-arch image, and the docs site (PyPI and Pages keep their own
-   environment approvals).</li>
-</ol>
-<h2 id="what-the-release-workflow-does-githubworkflowsreleaseyml">What the Release workflow does (<code>.github/workflows/release.yml</code>)<a class="headerlink" href="#what-the-release-workflow-does-githubworkflowsreleaseyml" title="Permanent link">&para;</a></h2>
-<p>Triggered manually via <code>workflow_dispatch</code> (must be run from the default branch):</p>
-<ol>
-<li><strong><code>prepare</code></strong> — finds the repo's single draft release, validates its title is <code>MAJOR.MINOR.PATCH</code>, and
-   checks <code>v&lt;title&gt;</code> isn't already tagged.</li>
-<li><strong>Validation, all in parallel and publishing nothing</strong>:</li>
-<li><code>validate</code> — actionlint, <code>pants update-build-files --check ::</code>, <code>pants lint check test ::</code>, and a
-     wheel build (versioned as a dev build — the tag doesn't exist yet).</li>
-<li><code>build-image</code> — the Docker image on native amd64 + arm64 runners (built, not pushed).</li>
-<li><code>docs-build</code> — <code>mkdocs build --strict</code>.</li>
-<li><strong><code>approve-and-tag</code></strong> — pauses on the <strong><code>release</code></strong> environment (the one manual gate). On approval, one
-   API call flips the draft to published with <code>tag_name: vX.Y.Z</code>, which creates the tag on the validated
-   commit.</li>
-<li><strong><code>publish</code></strong> — dispatches the Publish workflow (<code>gh workflow run publish.yml</code>) on the new tag's
-   ref. Dispatch is the only viable hand-off: a tag created with the built-in <code>GITHUB_TOKEN</code> can never
-   fire another workflow's <code>push</code> trigger (GitHub's recursive-workflow guard, from which
-   <code>workflow_dispatch</code> is exempt), and a <code>workflow_call</code> hand-off breaks PyPI trusted publishing, which
-   rejects reusable workflows.</li>
-</ol>
-<h2 id="what-the-publish-workflow-does-githubworkflowspublishyml">What the Publish workflow does (<code>.github/workflows/publish.yml</code>)<a class="headerlink" href="#what-the-publish-workflow-does-githubworkflowspublishyml" title="Permanent link">&para;</a></h2>
-<p>Dispatched by Release (or triggered by a manually pushed <code>vMAJOR.MINOR.PATCH</code> tag; it can also be run
-by hand via Actions → Publish → Run workflow for an existing tag). Three build
-jobs run in parallel from the tag's commit, then three publication jobs run in parallel once <strong>all</strong>
-builds succeed:</p>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">Build (parallel)</th>
-<th style="text-align: left;">Publication (parallel, after all builds)</th>
-<th style="text-align: left;">Approval gate</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;"><code>build-wheels</code> — both wheels, versioned from the tag checkout</td>
-<td style="text-align: left;"><code>publish-pypi</code> — OIDC trusted publishing, one upload per project</td>
-<td style="text-align: left;"><code>pypi</code> environment</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>build-image</code> — native per-arch builds, exported as tarball artifacts</td>
-<td style="text-align: left;"><code>publish-image</code> — push per-arch tags, stitch the <code>:&lt;version&gt;</code> + <code>:latest</code> manifest list with <code>buildx imagetools</code></td>
-<td style="text-align: left;">none (GHCR, <code>GITHUB_TOKEN</code>)</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>build-docs</code> — <code>mkdocs build --strict</code> (validation only)</td>
-<td style="text-align: left;"><code>docs-deploy</code> — mike deploys the <code>MAJOR.MINOR</code> docs version (+ <code>latest</code> alias) to <code>gh-pages</code></td>
-<td style="text-align: left;"><code>github-pages</code> environment</td>
-</tr>
-</tbody>
-</table>
-<h2 id="required-configuration">Required configuration<a class="headerlink" href="#required-configuration" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong><code>release</code> environment</strong> — must exist with a <strong>required reviewer</strong> (repo Settings → Environments);
-  this is the single "proceed with the release?" prompt.</li>
-<li><strong>Tag ruleset</strong> — no ruleset may have <strong>Restrict creations</strong> enabled for <code>v*</code> tags: <code>approve-and-tag</code>
-  creates the release tag with the built-in <code>GITHUB_TOKEN</code>, which is rejected with "Cannot create ref due
-  to creations being restricted" and <em>cannot</em> be added to a ruleset bypass list (only roles, teams, deploy
-  keys, and installed GitHub Apps can). Restricting tag <em>updates/deletions</em> is fine. Note the trade-off:
-  any write-access collaborator can then push a <code>v*</code> tag, which triggers the Publish workflow directly
-  (PyPI/Pages publication stays environment-gated; the GHCR image push is not).</li>
-<li><strong>GHCR</strong> — uses the built-in <code>GITHUB_TOKEN</code> (<code>packages: write</code>); no extra secret.</li>
-<li><strong>PyPI</strong> — OIDC trusted publishing; no stored token. Each PyPI project (<code>beetkeeper</code>,
-  <code>beetkeeper-plugin</code>) needs a Trusted Publisher registered for owner/repo <code>zach-overflow/beetkeeper</code>,
-  workflow <strong><code>publish.yml</code></strong>, environment <strong><code>pypi</code></strong>. Publish always runs as its own top-level workflow
-  (dispatched, never <code>workflow_call</code>ed) precisely because PyPI rejects reusable workflows.</li>
-<li><strong>GitHub Pages</strong> — repo Pages source set to <strong>"Deploy from a branch"</strong> (<code>gh-pages</code>, root); mike creates
-  the branch on the first release deploy. The <code>github-pages</code> environment holds any deploy approval rule
-  (it gates the workflow's mike push, which is the publish event).</li>
-</ul>
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong><code>prepare</code> fails: "Expected exactly one draft release"</strong> — either no draft exists yet (create one via
-  the release form and <em>Save draft</em>), several drafts are lying around (delete the stale ones), or — if a
-  draft definitely exists — the job's token can't see it: GitHub omits drafts from the list endpoint for
-  tokens without push access, which is why the <code>prepare</code> job must keep <code>contents: write</code>.</li>
-<li><strong><code>prepare</code> fails: title not <code>MAJOR.MINOR.PATCH</code></strong> — the draft's <em>title</em> is the version. Fix the title
-  (bare semver, no <code>v</code>) and re-run the workflow.</li>
-<li><strong><code>uv.lock is out of sync</code></strong> — run <code>uv lock</code> and commit the result.</li>
-<li><strong>Publish ran but wheels carry a dev version</strong> — the build didn't see the release tag; the
-  <code>build-wheels</code> job must check out <code>v&lt;version&gt;</code> with <code>fetch-depth: 0</code> (setuptools-scm needs the tag in
-  the checkout).</li>
-<li><strong>PyPI publish fails with a trusted-publisher / OIDC error</strong> — the registered Trusted Publisher must
-  match exactly: owner/repo <code>zach-overflow/beetkeeper</code>, workflow <code>publish.yml</code>, environment <code>pypi</code>. Also
-  note PyPI rejects reusable workflows outright, so Publish must never be converted to <code>workflow_call</code>.</li>
-<li><strong>PyPI upload rejected as already existing</strong> — the publish steps use <code>skip-existing</code>, so a re-run is
-  safe; publishing a <em>new</em> release requires a <em>new</em> version (PyPI forbids overwriting an existing one).</li>
-</ul>
+<h2 id="tear-down-the-demo">Tear down the demo<a class="headerlink" href="#tear-down-the-demo" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>rm<span class="w"> </span>-f<span class="w"> </span>beetkeeper-demo
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>docker<span class="w"> </span>volume<span class="w"> </span>rm<span class="w"> </span>beetkeeper-demo<span class="w">    </span><span class="c1"># discard the demo database</span>
+</code></pre></div>
+<p>When you're ready to run beetkeeper for real, see <a href="../deployment/">Deployment</a>.</p>
 
 
 
