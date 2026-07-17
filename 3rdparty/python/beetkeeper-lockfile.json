@@ -106,13 +106,13 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "dd9b7a2a9799ed6552fde617b2c5df02b7fdd7d88392fc48101e51bae46164d9",
-              "url": "https://files.pythonhosted.org/packages/ba/16/9826f089383c593cdfc4a6e5aca94d9e91ae1692c57af82c3b2aa5e810f7/anyio-4.14.0-py3-none-any.whl"
+              "hash": "9f505dda5ac9f0c8309b5e8bd445a8c2bf7246f3ce950121e45ea15bc41d1494",
+              "url": "https://files.pythonhosted.org/packages/da/35/f2287558c17e29fafc8ef3daf819bb9834061cfa43bff8014f7df7f63bdc/anyio-4.14.2-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "b47c1f9ccf73e67021df785332508f99379c68fa7d0684e8e3492cb1d4b23f89",
-              "url": "https://files.pythonhosted.org/packages/1c/b5/001890774a9552aff22502b8da382593109ce0c95314abaebbb116567545/anyio-4.14.0.tar.gz"
+              "hash": "cfa139f3ed1a23ee8f88a145ddb5ac7605b8bbfd8592baacd7ce3d8bb4313c7f",
+              "url": "https://files.pythonhosted.org/packages/61/cc/a381afa6efea9f496eff839d4a6a1aed3bfafc7b3ab4b0d1b243a12573dd/anyio-4.14.2.tar.gz"
             }
           ],
           "project_name": "anyio",
@@ -123,14 +123,14 @@
             "typing_extensions>=4.5; python_version < \"3.13\""
           ],
           "requires_python": ">=3.10",
-          "version": "4.14.0"
+          "version": "4.14.2"
         },
         {
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "7656216e930f7d3e5c21d20a3f551a1b347faed55a90142a833169b3476d2ac1",
-              "url": "https://files.pythonhosted.org/packages/81/2f/a25f00c08480c3f07b8da2b0c9e604bc22e4c84c1043687d91967436198a/beetkeeper_plugin-0.2.0-py3-none-any.whl"
+              "hash": "289795dc6feb7d4f4a6a1f1d6e4016342c4e82b919a77e9938a1a5e4ec9f6c73",
+              "url": "https://files.pythonhosted.org/packages/bf/d0/2d0e37bafc90fef3f768105e4b5e87289ef7da97b2312c74db0fe9b3c471/beetkeeper_plugin-0.5.1-py3-none-any.whl"
             }
           ],
           "project_name": "beetkeeper-plugin",
@@ -138,8 +138,8 @@
             "beets>=2.11.0",
             "requests>=2.34"
           ],
-          "requires_python": "<3.15,>=3.14",
-          "version": "0.2.0"
+          "requires_python": "<3.16,>=3.14",
+          "version": "0.5.1"
         },
         {
           "artifacts": [
@@ -345,13 +345,13 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "482be17c6991b8c19c5429a1e995d9b0efdbb63172824c41f99965dc0ade8ec2",
-              "url": "https://files.pythonhosted.org/packages/c7/0d/67e5b4109ea4a837e80daa87c2c696711955e40449a97e8926672534def2/click-8.4.1-py3-none-any.whl"
+              "hash": "e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76",
+              "url": "https://files.pythonhosted.org/packages/fb/e2/79c688af8b210d232694e31e59da9f6ec747bae31c3f5946e4e9b98860d5/click-8.4.2-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "918b5633eddf6b41c32d4f454bf0de810065c74e3f7dbf8ee5452f8be88d3e96",
-              "url": "https://files.pythonhosted.org/packages/9b/98/518d8e5081007684232226f475082b30087d0f585e8457db087298259f49/click-8.4.1.tar.gz"
+              "hash": "9a6cea6e60b17ebe0a44c5cc636d94f09bd66142c1cd7d8b4cd731c4917a15f6",
+              "url": "https://files.pythonhosted.org/packages/76/d4/81420972a676e8ffea40450d8c8c92943e7218a78fe9b64359836cc9876b/click-8.4.2.tar.gz"
             }
           ],
           "project_name": "click",
@@ -359,7 +359,7 @@
             "colorama; platform_system == \"Windows\""
           ],
           "requires_python": ">=3.10",
-          "version": "8.4.1"
+          "version": "8.4.2"
         },
         {
           "artifacts": [
@@ -410,13 +410,13 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "b6f54fd1bd72c80b0f899f172c61a600f6f7af9b43d4d772a018f35624048cb0",
-              "url": "https://files.pythonhosted.org/packages/6c/ff/8496d9847a5fedae775eb49460722d3efaa80487854273e9647ae876218c/fastapi-0.138.0-py3-none-any.whl"
+              "hash": "b9ad015a835173d59865e2f5d8296fbc2b317bf56a2ba1a5bfbdd03de2fd4b1c",
+              "url": "https://files.pythonhosted.org/packages/5f/c7/cb03251d9dfb177246a9809a76f189d21df32dbd4a845951881d11323b7f/fastapi-0.139.2-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "d445a4877636ad191e7053e08c9bf98cb921a6756776848400bb773d1740c061",
-              "url": "https://files.pythonhosted.org/packages/5b/58/ff455d9fe47c60abadb34b9e05a304b1f05f5ab8000ac01565156b6f5e43/fastapi-0.138.0.tar.gz"
+              "hash": "333145a6891e9b5b3cfceb69baf817e8240cde4d4588ae5a10bf56ffacb6255e",
+              "url": "https://files.pythonhosted.org/packages/cd/95/d3f0ae10836324a2eab98a52b61210ac609f08200bf4bb0dc8132d32f78a/fastapi-0.139.2.tar.gz"
             }
           ],
           "project_name": "fastapi",
@@ -455,7 +455,7 @@
             "uvicorn[standard]>=0.12.0; extra == \"standard-no-fastapi-cloud-cli\""
           ],
           "requires_python": ">=3.10",
-          "version": "0.138.0"
+          "version": "0.139.2"
         },
         {
           "artifacts": [
@@ -1977,13 +1977,13 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "84e3fa990a77395461ded72a6c73173438ce8449d5c1c4d97fbff1b1df692649",
-              "url": "https://files.pythonhosted.org/packages/72/c7/10c60af0607ab6fa136264f7f39d205932218516226d38585324ffda705d/sqlmodel-0.0.38-py3-none-any.whl"
+              "hash": "90ebe92ce5cc11d7fff8dc7cb594790a102333c8fe7c14865254f6fc5c939795",
+              "url": "https://files.pythonhosted.org/packages/cf/7d/b9813a582d4eb310be35e1fc7dfaae71207d7b62e9e53be314ebd251b53b/sqlmodel-0.0.39-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "d583ec237b14103809f74e8630032bc40ab68cd6b754a610f0813c56911a547b",
-              "url": "https://files.pythonhosted.org/packages/64/0d/26ec1329960ea9430131fe63f63a95ea4cb8971d49c891ff7e1f3255421c/sqlmodel-0.0.38.tar.gz"
+              "hash": "23d8e50a8d8ee936032ed79c55023a5d618dd6bc3c510bbf4909d1a7a605a570",
+              "url": "https://files.pythonhosted.org/packages/68/ee/22a0559283c3cf6048678e787ed5d4959dcd00dedd8ba4567eeae684eeb1/sqlmodel-0.0.39.tar.gz"
             }
           ],
           "project_name": "sqlmodel",
@@ -1993,7 +1993,7 @@
             "typing-extensions>=4.5.0"
           ],
           "requires_python": ">=3.10",
-          "version": "0.0.38"
+          "version": "0.0.39"
         },
         {
           "artifacts": [
@@ -2124,19 +2124,18 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "ba3d14c3ee7e41c6c654c46c9eb489d33213cdd30aa1696eab1374337c13f68f",
-              "url": "https://files.pythonhosted.org/packages/88/fa/e1388bbcf24ef3274f45c0c1c7b501fd14971037c1b6ee23610553307497/uvicorn-0.49.0-py3-none-any.whl"
+              "hash": "5d38af6cd620f2ae3849fb44fd4879e0890aa1febe8d47eb355fb45d93fe6a5b",
+              "url": "https://files.pythonhosted.org/packages/45/ec/dbb7e5a6b91f86bfb9eb7d2988a2730907b6a729875b949c7f022e8b88fa/uvicorn-0.51.0-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "ebf4271aa580d9de97f93192d4595176df6e91f9aae919ca73e4fc07df1e66a3",
-              "url": "https://files.pythonhosted.org/packages/c4/1f/fa18009dea8469069cca78a4e877a008ab78f08b064bfc9ab891579077ff/uvicorn-0.49.0.tar.gz"
+              "hash": "f6f4b69b657c312f516dd2d268ab9ae6f254b11e4bac504f37b2ab58b24dd0b0",
+              "url": "https://files.pythonhosted.org/packages/a2/65/b7c6c443ccc58678c91e1e973bbe2a878591538655d6e1d47f24ba1c51f3/uvicorn-0.51.0.tar.gz"
             }
           ],
           "project_name": "uvicorn",
           "requires_dists": [
             "click>=7.0",
-            "colorama>=0.4; sys_platform == \"win32\" and extra == \"standard\"",
             "h11>=0.8",
             "httptools>=0.8.0; extra == \"standard\"",
             "python-dotenv>=0.13; extra == \"standard\"",
@@ -2144,10 +2143,10 @@
             "typing-extensions>=4.0; python_version < \"3.11\"",
             "uvloop>=0.15.1; (sys_platform != \"win32\" and (sys_platform != \"cygwin\" and platform_python_implementation != \"PyPy\")) and extra == \"standard\"",
             "watchfiles>=0.20; extra == \"standard\"",
-            "websockets>=10.4; extra == \"standard\""
+            "websockets>=13.0; extra == \"standard\""
           ],
           "requires_python": ">=3.10",
-          "version": "0.49.0"
+          "version": "0.51.0"
         }
       ],
       "marker": null,
@@ -2162,20 +2161,20 @@
   "pip_version": "26.1.1",
   "prefer_older_binary": false,
   "requirements": [
-    "PyYAML==6.0.3",
+    "PyYAML>=6.0.3",
     "aiosqlite>=0.21",
     "alembic>=1.16",
-    "anyio==4.14",
+    "anyio>=4.14.2",
     "beetkeeper-plugin",
     "beets>=2.11.0",
-    "click==8.4.1",
-    "fastapi==0.138.0",
+    "click>=8.4.1",
+    "fastapi>=0.138.0",
     "greenlet>=3.1",
     "httpx",
     "httpx>=0.28.1",
-    "jinja2-fragments==1.12.0",
-    "pydantic-settings==2.14.2",
-    "pydantic==2.13.4",
+    "jinja2-fragments>=1.12.0",
+    "pydantic-settings>=2.14.2",
+    "pydantic>=2.13.4",
     "pytest-mock>=3.15.1",
     "pytest-socket>=0.8.0",
     "pytest-xdist>=3.8.0",
@@ -2184,10 +2183,10 @@
     "requests>=2.34",
     "ruamel.yaml>=0.19.1",
     "sqlalchemy",
-    "sqlmodel==0.0.38",
+    "sqlmodel>=0.0.38",
     "starlette",
     "tomlkit",
-    "uvicorn==0.49.0"
+    "uvicorn>=0.49.0"
   ],
   "requires_python": [
     "CPython<3.15,>=3.14"
