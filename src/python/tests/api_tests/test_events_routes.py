@@ -143,14 +143,21 @@ async def test_events_listing_returns_recent_events_with_child_ids(client: Async
 
 
 @pytest.mark.anyio
-async def test_events_listing_respects_limit(client: AsyncClient, pushed_at: str) -> None:
+async def test_events_listing_is_paginated(client: AsyncClient, pushed_at: str) -> None:
     for beets_album_id in (1, 2, 3):
         payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": beets_album_id}}
         assert (await client.post("/api/events/album", json=payload)).status_code == 201
 
-    response = await client.get("/api/events", params={"limit": 2})
+    response = await client.get("/api/events", params={"page_size": 2})
     assert response.status_code == 200
-    events = response.json()["events"]
-    assert [e["album_ids"] for e in events] == [[3], [2]]
+    assert [e["album_ids"] for e in response.json()["events"]] == [[3], [2]]
 
-    assert (await client.get("/api/events", params={"limit": 0})).status_code == 422
+    response = await client.get("/api/events", params={"page": 2, "page_size": 2})
+    assert response.status_code == 200
+    assert [e["album_ids"] for e in response.json()["events"]] == [[1]]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("params", [{"page_size": 0}, {"page_size": 101}, {"page": 0}])
+async def test_events_listing_rejects_out_of_range_page_params(client: AsyncClient, params: dict[str, int]) -> None:
+    assert (await client.get("/api/events", params=params)).status_code == 422

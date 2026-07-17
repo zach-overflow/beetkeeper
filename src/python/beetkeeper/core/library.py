@@ -44,12 +44,23 @@ library_write_limiter: Final[CapacityLimiter] = CapacityLimiter(1)
 # `_loaded` key is flipped in place — see the concurrency notes in the module docstring).
 _plugins_lock = threading.Lock()
 _plugins_state: dict[str, bool] = {"loaded": False}
+_failed_plugin_names: list[str] = []
 
 _T = TypeVar("_T")
 
 
-def _load_plugins_once(beets_config: Any) -> None:
-    """Load the plugins listed in the (already-set) beets config, exactly once per process.
+def failed_plugin_names() -> tuple[str, ...]:
+    """Configured beets plugin names that failed to load (empty until the first `open_library`).
+
+    A failed plugin (missing package, missing dependency, init error) silently changes import behavior —
+    e.g. losing the only metadata-source plugin makes every autotag find 0 candidates — so callers surface
+    this list to users instead of leaving the failures buried in the server log.
+    """
+    return tuple(_failed_plugin_names)
+
+
+def _load_plugins_once() -> None:
+    """Load the plugins listed in the (already-set) global beets config, exactly once per process.
 
     beets' `load_plugins()` reads the global config itself, instantiates each plugin — registering its
     event listeners (e.g. the importer's `album_imported`/`item_imported` hooks), DB field types, and
@@ -67,11 +78,20 @@ def _load_plugins_once(beets_config: Any) -> None:
     with _plugins_lock:
         if _plugins_state["loaded"]:  # another thread won the race while we waited on the lock
             return
-        plugin_names = list(beets_config["plugins"].as_str_seq())
+        # The resolved set (honors `disabled_plugins` etc.), not the raw `plugins:` list — diffing the raw
+        # list against what loaded would report intentionally-skipped plugins as load failures.
+        plugin_names = plugins.get_plugin_names()
         plugins.load_plugins()  # reads the global config set just above; instantiates + fires 'pluginload'
+        loaded_names = {plugin.name for plugin in plugins.find_plugins()}
+        _failed_plugin_names.extend(name for name in plugin_names if name not in loaded_names)
         _plugins_state["loaded"] = True
-        if plugin_names:
-            _LOGGER.info(f"Loaded beets plugins: {', '.join(plugin_names)}")
+        if _failed_plugin_names:
+            _LOGGER.warning(
+                f"{len(_failed_plugin_names)} configured beets plugin(s) failed to load: "
+                f"{', '.join(_failed_plugin_names)} (beets logged each failure's traceback above)."
+            )
+        if loaded := [name for name in plugin_names if name in loaded_names]:
+            _LOGGER.info(f"Loaded beets plugins: {', '.join(loaded)}")
 
 
 def _jsonify(model: Any) -> dict[str, Any]:
@@ -95,7 +115,7 @@ def open_library(beets_config_filepath: Path) -> Any:
     # opening the Library so plugin-provided field types/queries are registered), then open the Library at
     # the configured db path + music directory.
     beets_config.set_file(str(beets_config_filepath))
-    _load_plugins_once(beets_config)
+    _load_plugins_once()
     db_path = beets_config["library"].as_filename()
     directory = beets_config["directory"].as_filename()
     return Library(db_path, directory)

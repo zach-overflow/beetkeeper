@@ -12,11 +12,12 @@ The `/search` page lets the user dispatch the same form inputs to either `result
 import logging
 import shlex
 from typing import Any
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from beetkeeper.api.dependencies import BeetsLibraryDep
+from beetkeeper.api.dependencies import BeetsLibraryDep, PageParamsDep
 from beetkeeper.api.jinja_driver import get_templates
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,12 +41,13 @@ def _build_query_parts(query: str, filepath: str | None, sort_by: str | None = N
 async def search_results_fragment(
     request: Request,
     library: BeetsLibraryDep,
+    page: PageParamsDep,
     query: str = "",
     albums: bool = False,
     filepath: str | None = None,
     sort_by: str | None = None,
 ) -> HTMLResponse:
-    """`beet list`-style query: render the matching tracks/albums as a table."""
+    """`beet list`-style query: render one page of the matching tracks/albums as a table."""
     parts = _build_query_parts(query, filepath, sort_by)
     error: str | None = None
     results: list[dict[str, Any]] = []
@@ -55,10 +57,29 @@ async def search_results_fragment(
         _LOGGER.debug(f"Search query failed: {exc}")
         error = str(exc)
 
+    page_results = page.slice(results)
+    base_params = urlencode(
+        {
+            "query": query,
+            "albums": "true" if albums else "false",
+            "filepath": filepath or "",
+            "sort_by": sort_by or "",
+            "page_size": page.page_size,
+        }
+    )
     return get_templates().TemplateResponse(
         request=request,
         name="fragment_templates/search_results.html",
-        context={"results": results, "albums": albums, "error": error},
+        context={
+            "results": page_results,
+            "albums": albums,
+            "error": error,
+            "total": len(results),
+            "page": page.page,
+            "start_index": page.offset + 1,
+            "end_index": page.offset + len(page_results),
+            "base_params": base_params,
+        },
     )
 
 

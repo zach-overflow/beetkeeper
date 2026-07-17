@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from beetkeeper.api.api_routes.events_router import events
+from beetkeeper.api.dependencies import PageParams
 from beetkeeper.api.jinja_driver import get_templates
 from beetkeeper.db.session import SessionDep
 
@@ -21,7 +22,7 @@ async def event_fragment(request: Request, session: SessionDep) -> HTMLResponse:
     Delegates the event lookup to the JSON `GET /api/events` route coroutine, so the fragment and the
     public API always agree on the events payload.
     """
-    events_response = await events(session=session, limit=_RECENT_EVENT_LIMIT)
+    events_response = await events(session=session, page=PageParams(page_size=_RECENT_EVENT_LIMIT))
     return get_templates().TemplateResponse(
         request=request,
         name="fragment_templates/event_fragment.html",

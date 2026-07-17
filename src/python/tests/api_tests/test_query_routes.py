@@ -35,6 +35,16 @@ async def test_list_accepts_repeatable_and_field_query_params(client: AsyncClien
 
 
 @pytest.mark.anyio
+async def test_list_accepts_page_params_and_rejects_out_of_range(client: AsyncClient) -> None:
+    response = await client.get("/api/query/list", params={"page": 2, "page_size": 100})
+    assert response.status_code == 200
+    assert response.json() == []
+
+    assert (await client.get("/api/query/list", params={"page_size": 101})).status_code == 422
+    assert (await client.get("/api/query/list", params={"page": 0})).status_code == 422
+
+
+@pytest.mark.anyio
 async def test_stats_shape_on_empty_library(client: AsyncClient) -> None:
     body = (await client.get("/api/query/stats")).json()
     assert body["tracks"] == 0

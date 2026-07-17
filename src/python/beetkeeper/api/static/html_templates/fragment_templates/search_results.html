@@ -1,8 +1,8 @@
-{# Renders /api/query/list-style results (or a query error) for the search page. #}
+{# Renders one page of /fragment/search/results (or a query error) for the search page. #}
 {% if error %}
 <p><strong>Query error:</strong> {{ error }}</p>
 {% elif results %}
-<p>{{ results | length }} {{ "albums" if albums else "tracks" }} found.</p>
+<p>Showing {{ start_index }}–{{ end_index }} of {{ total }} {{ "albums" if albums else "tracks" }}.</p>
 <table>
     <thead>
         {% if albums %}
@@ -21,6 +21,24 @@
         {% endfor %}
     </tbody>
 </table>
+{% if page > 1 or end_index < total %}
+<p>
+    {% if page > 1 %}
+    <button type="button" hx-get="{{ url_for('search_results_fragment') }}?{{ base_params }}&page={{ page - 1 }}"
+            hx-target="#search-results" hx-swap="innerHTML">Previous</button>
+    {% endif %}
+    {% if end_index < total %}
+    <button type="button" hx-get="{{ url_for('search_results_fragment') }}?{{ base_params }}&page={{ page + 1 }}"
+            hx-target="#search-results" hx-swap="innerHTML">Next</button>
+    {% endif %}
+</p>
+{% endif %}
+{% elif total %}
+<p>No results on this page — {{ total }} {{ "albums" if albums else "tracks" }} match.</p>
+<p>
+    <button type="button" hx-get="{{ url_for('search_results_fragment') }}?{{ base_params }}&page=1"
+            hx-target="#search-results" hx-swap="innerHTML">Back to first page</button>
+</p>
 {% else %}
 <p>No matches.</p>
 {% endif %}

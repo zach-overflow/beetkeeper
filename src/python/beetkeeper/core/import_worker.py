@@ -19,7 +19,7 @@ import socket
 import threading
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 from uuid import uuid4
 
 import anyio
@@ -27,7 +27,7 @@ from anyio import to_thread
 from anyio.from_thread import BlockingPortal
 
 # Subclassing requires the class at definition time; beets is a hard dependency.
-from beets.importer import Action, ImportSession
+from beets.importer import Action, DuplicateAction, ImportSession
 from beets.util import bytestring_path
 
 from beetkeeper.core.import_jobs import (  # pants: no-infer-dep
@@ -40,12 +40,19 @@ from beetkeeper.core.import_jobs import (  # pants: no-infer-dep
     ImportJob,
     ImportJobStatus,
 )
-from beetkeeper.core.library import open_library
+from beetkeeper.core.library import failed_plugin_names, open_library
 
 if TYPE_CHECKING:
     from beetkeeper.core.import_store import ImportStore
 
 _LOGGER = logging.getLogger(__name__)
+
+_DUPLICATE_NARRATIVES: Final[dict[DuplicateAction, str]] = {
+    DuplicateAction.SKIP: "skipping the new import",
+    DuplicateAction.KEEP: "keeping both",
+    DuplicateAction.REMOVE: "replacing the existing entry",
+    DuplicateAction.MERGE: "merging them",
+}
 
 # Leader lease length and how often the holder renews it (renew well within the lease).
 _LEASE_SECONDS = 30.0
@@ -170,6 +177,11 @@ def _build_album_diff(task: Any, match: Any) -> list[str]:
     return lines
 
 
+def _album_label(task: Any) -> str:
+    """Human-readable `artist - album` label for a task (beets leaves both None on singleton/asis tasks)."""
+    return f"{getattr(task, 'cur_artist', None) or '?'} - {getattr(task, 'cur_album', None) or '?'}"
+
+
 def _apply_job_import_config(job: ImportJob) -> None:
     """Overlay the job's persisted per-job settings onto beets' global `import` config.
 
@@ -196,6 +208,22 @@ def _job_loghandler(job: ImportJob) -> logging.FileHandler | None:
     if not job.logpath:
         return None
     return logging.FileHandler(job.logpath, encoding="utf-8")
+
+
+def _failed_plugins_warning() -> str | None:
+    """Return a hint line if any configured beets plugins failed to load (else None).
+
+    Plugins load once per process (see `core.library._load_plugins_once`) and the failure tracebacks land
+    only in the server log — usually during some earlier request, not this job — so every job repeats the
+    summary: a missing plugin silently changes import behavior, and the job output is where users look.
+    """
+    failed = failed_plugin_names()
+    if not failed:
+        return None
+    return (
+        f"Warning: {len(failed)} configured beets plugin(s) failed to load: {', '.join(failed)}. "
+        "Install the missing plugin packages in beetkeeper's environment (tracebacks are in the server log)."
+    )
 
 
 def _metadata_source_warning() -> str | None:
@@ -266,7 +294,7 @@ class WebImportSession(ImportSession):  # beets is untyped; base resolves to Any
 
     def choose_match(self, task: Any) -> Any:
         """Ask the UI which candidate to apply for an album `task` (or to skip / import as-is)."""
-        album_label = f"{getattr(task, 'cur_artist', '?')} - {getattr(task, 'cur_album', '?')}"
+        album_label = _album_label(task)
         if self._portal.call(self._store.is_abort_requested, self._job_id):
             self._output.append(f"Skipping '{album_label}' (abort requested).")
             return Action.SKIP
@@ -330,13 +358,23 @@ class WebImportSession(ImportSession):  # beets is untyped; base resolves to Any
             choice = "skip"
         return Action.ASIS if choice == "asis" else Action.SKIP
 
-    def resolve_duplicate(self, task: Any, found_duplicates: Any) -> None:
-        """Decide what to do when an import duplicates existing library entries."""
-        # TODO[Claude]: bridge a duplicate-resolution DecisionRequest (keep both / remove old / skip).
-        #     Scaffold default is the safe choice: skip the duplicate import.
-        _LOGGER.warning(f"resolve_duplicate not yet implemented for job {self._job_id}; skipping duplicate.")
-        self._output.append("Duplicate of an existing library entry detected — skipping it.")
-        task.set_choice(Action.SKIP)
+    def get_duplicate_action(self, task: Any, found_duplicates: Any) -> Any:
+        """Resolve an import that duplicates existing library entries per beets' `import.duplicate_action`.
+
+        The base class returns the configured action (`skip`/`keep`/`remove`/`merge`/`ask`). There is no
+        interactive duplicate prompt here yet, so `ask` (beets' default) degrades to the same safe choice
+        as `beet import -q`: skip the new import.
+        """
+        # TODO[Claude]: bridge `ask` to the UI as a DecisionRequest (skip / keep / remove / merge).
+        action = super().get_duplicate_action(task, found_duplicates)
+        suffix = ""
+        if action is DuplicateAction.ASK:
+            action = DuplicateAction.SKIP
+            suffix = " ('ask' is not supported in web imports yet)"
+        self._output.append(
+            f"'{_album_label(task)}' duplicates an existing library entry — {_DUPLICATE_NARRATIVES[action]}{suffix}."
+        )
+        return action
 
     def should_resume(self, path: Any) -> bool:
         """Whether to resume a previously-interrupted import for `path` (scaffold: never)."""
@@ -547,8 +585,9 @@ class ImportWorker:
         beets_logger.addHandler(handler)
         try:
             library = open_library(self._beets_config_filepath)
-            if (warning := _metadata_source_warning()) is not None:
-                output.append(warning)
+            for warning in (_failed_plugins_warning(), _metadata_source_warning()):
+                if warning is not None:
+                    output.append(warning)
             existing_album_ids = {album.id for album in library.albums()}
             existing_item_ids = {item.id for item in library.items()}
             _apply_job_import_config(job)

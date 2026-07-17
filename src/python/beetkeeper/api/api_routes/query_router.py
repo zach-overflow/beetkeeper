@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query
 
 from beetkeeper.api.constants import RouteTag
-from beetkeeper.api.dependencies import BeetsLibraryDep
+from beetkeeper.api.dependencies import BeetsLibraryDep, PageParamsDep
 
 _LOGGER = logging.getLogger(__name__)
 query_router = APIRouter(prefix="/query", tags=[RouteTag.QUERY])
@@ -20,6 +20,7 @@ query_router = APIRouter(prefix="/query", tags=[RouteTag.QUERY])
 @query_router.get("/list")
 async def list_(  # trailing underscore: avoid shadowing the builtin `list` (used in annotations below).
     library: BeetsLibraryDep,
+    page: PageParamsDep,
     albums: bool = False,
     keyword: Annotated[list[str] | None, Query()] = None,
     field: Annotated[list[str] | None, Query()] = None,
@@ -27,10 +28,11 @@ async def list_(  # trailing underscore: avoid shadowing the builtin `list` (use
     filepath: Path | None = None,
     sort_by: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Execute `beet list ...`: return matching tracks (or albums) as JSON objects.
+    """Execute `beet list ...`: return one page of matching tracks (or albums) as JSON objects.
 
     Args:
         library: injected beets library adapter.
+        page: pagination query params (`page`, `page_size`).
         albums: like `-a`; return albums instead of individual tracks.
         keyword: repeatable bare-keyword query parts (substring match across default fields).
         field: repeatable `field:value` parts (exact `=`, regex `::`, numeric/date ranges all supported).
@@ -51,7 +53,8 @@ async def list_(  # trailing underscore: avoid shadowing the builtin `list` (use
         query_parts.append(str(filepath))
     if sort_by:
         query_parts.append(sort_by)
-    return await library.query_albums(query_parts) if albums else await library.query_items(query_parts)
+    results = await (library.query_albums(query_parts) if albums else library.query_items(query_parts))
+    return page.slice(results)
 
 
 @query_router.get("/stats")

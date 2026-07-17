@@ -5,6 +5,8 @@ package's `conftest.py`), so the fragments exercise the actual beets query/stats
 their templates.
 """
 
+from pathlib import Path
+
 import pytest
 from httpx import AsyncClient
 
@@ -19,6 +21,29 @@ def app_dependency_overrides(beets_library: BeetsLibrary) -> DependencyOverrides
     return {get_beets_library: lambda: beets_library}
 
 
+@pytest.fixture
+def populated_beets_library(tmp_path: Path) -> BeetsLibrary:
+    """A `BeetsLibrary` over a throwaway beets config whose library holds 30 synthetic tracks."""
+    from beets.library import Item, Library
+
+    beets_config = tmp_path / "beets.yaml"
+    beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n")
+    library = Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
+    for index in range(30):
+        library.add(
+            Item(
+                artist=f"Artist {index:02d}",
+                albumartist=f"Artist {index:02d}",
+                album="Album",
+                title=f"Song {index:02d}",
+                track=index + 1,
+                year=2000,
+                path=f"/music/song{index:02d}.mp3".encode(),
+            )
+        )
+    return BeetsLibrary(beets_config)
+
+
 @pytest.mark.anyio
 async def test_search_page_renders(client: AsyncClient) -> None:
     response = await client.get("/search")
@@ -31,6 +56,16 @@ async def test_search_page_renders(client: AsyncClient) -> None:
     assert "/fragment/search/results" in body
     assert "/fragment/search/stats" in body
     assert "/fragment/search/fields" in body
+
+
+@pytest.mark.anyio
+async def test_search_page_does_not_autoload_stats(client: AsyncClient) -> None:
+    """The unbounded stats query must only run when the user clicks the Stats button, never on page open."""
+    body = (await client.get("/search")).text
+    assert "library-stats" not in body
+    stats_elements = [line for line in body.splitlines() if "/fragment/search/stats" in line]
+    assert stats_elements, "the Stats button should still reference the stats fragment"
+    assert all("hx-trigger" not in line for line in stats_elements)
 
 
 @pytest.mark.anyio
@@ -56,6 +91,57 @@ async def test_results_fragment_filepath_param(client: AsyncClient) -> None:
     pathed = await client.get("/fragment/search/results", params={"filepath": "/music/nobody"})
     assert pathed.status_code == 200
     assert "No matches." in pathed.text
+
+
+class TestResultsFragmentPagination:
+    """The results fragment must render bounded pages, never the full (potentially huge) match list."""
+
+    @pytest.fixture
+    def app_dependency_overrides(self, populated_beets_library: BeetsLibrary) -> DependencyOverrides:
+        return {get_beets_library: lambda: populated_beets_library}
+
+    @pytest.mark.anyio
+    async def test_first_page_is_default_size_with_next_control(self, client: AsyncClient) -> None:
+        response = await client.get("/fragment/search/results")
+        assert response.status_code == 200
+        body = response.text
+        assert "Showing 1–25 of 30 tracks." in body
+        assert "Song 00" in body and "Song 24" in body and "Song 25" not in body
+        assert ">Next</button>" in body
+        assert ">Previous</button>" not in body
+
+    @pytest.mark.anyio
+    async def test_second_page_holds_the_remainder(self, client: AsyncClient) -> None:
+        response = await client.get("/fragment/search/results", params={"page": 2})
+        assert response.status_code == 200
+        body = response.text
+        assert "Showing 26–30 of 30 tracks." in body
+        assert "Song 25" in body and "Song 29" in body and "Song 24" not in body
+        assert ">Previous</button>" in body
+        assert ">Next</button>" not in body
+
+    @pytest.mark.anyio
+    async def test_page_size_is_capped(self, client: AsyncClient) -> None:
+        assert (await client.get("/fragment/search/results", params={"page_size": 101})).status_code == 422
+        response = await client.get("/fragment/search/results", params={"page_size": 5, "page": 2})
+        assert "Showing 6–10 of 30 tracks." in response.text
+
+    @pytest.mark.anyio
+    async def test_past_the_end_page_offers_a_way_back(self, client: AsyncClient) -> None:
+        response = await client.get("/fragment/search/results", params={"page": 5})
+        assert response.status_code == 200
+        body = response.text
+        assert "No results on this page — 30 tracks match." in body
+        assert ">Back to first page</button>" in body
+        assert "No matches." not in body
+
+    @pytest.mark.anyio
+    async def test_paging_controls_carry_the_query_params(self, client: AsyncClient) -> None:
+        response = await client.get("/fragment/search/results", params={"query": "artist:Artist", "page_size": 5})
+        body = response.text
+        assert "query=artist%3AArtist" in body
+        assert "page_size=5" in body
+        assert "page=2" in body
 
 
 @pytest.mark.anyio

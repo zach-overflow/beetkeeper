@@ -107,6 +107,7 @@ class ImportStore:
         non-interactively (`-q`), plus `logpath` (`-l`), `group_albums`, `flat`, and `set_fields` (`--set`).
         Each job keeps the values it was submitted with, so concurrent/ad-hoc imports can differ.
         """
+        _LOGGER.debug("Creating ImportJob ...")
         now = _utcnow()
         record = ImportJobRecord(
             id=uuid4().hex,
@@ -123,6 +124,7 @@ class ImportStore:
         async with self._session() as session:
             session.add(record)
             await session.commit()
+        _LOGGER.debug("ImportJob created.")
         return self._to_view(record)
 
     async def get(self, job_id: str) -> ImportJob | None:
