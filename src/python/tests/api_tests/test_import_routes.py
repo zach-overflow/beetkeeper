@@ -89,6 +89,20 @@ async def test_list_imports_returns_submitted_jobs(client: AsyncClient) -> None:
 
 
 @pytest.mark.anyio
+async def test_list_imports_is_paginated_newest_first(client: AsyncClient) -> None:
+    job_ids = [(await client.post("/api/import", json={"paths": [f"/m/{n}"]})).json()["id"] for n in range(3)]
+    newest_first = list(reversed(job_ids))
+
+    first_page = (await client.get("/api/import", params={"page_size": 2})).json()
+    assert [job["id"] for job in first_page] == newest_first[:2]
+
+    second_page = (await client.get("/api/import", params={"page": 2, "page_size": 2})).json()
+    assert [job["id"] for job in second_page] == newest_first[2:]
+
+    assert (await client.get("/api/import", params={"page_size": 101})).status_code == 422
+
+
+@pytest.mark.anyio
 async def test_decision_on_non_awaiting_job_conflicts(client: AsyncClient) -> None:
     job_id = (await client.post("/api/import", json={"paths": ["/m/1"]})).json()["id"]
     response = await client.post(f"/api/import/{job_id}/decision", json={"action": "skip"})

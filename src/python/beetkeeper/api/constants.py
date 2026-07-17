@@ -30,6 +30,7 @@ OPENAPI_TAG_METADATA: Final[Iterable[_OpenApiTagMetadata]] = (
         "name": RouteTag.AUTH,
         "description": dedent(
             """\
+            Used only when optional "beetkeeper.auth.enable_login_protection" is "true". 
             Routes for simple login / logout flows. Beetkeeper does not support multiple user identities.
             Only handles authentication, with implicit authorization to everything for an authenticated client.
             """

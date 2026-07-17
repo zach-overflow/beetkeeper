@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from beetkeeper.api.api_models import ImportSubmitRequest
 from beetkeeper.api.constants import RouteTag
-from beetkeeper.api.dependencies import ImportStoreDep
+from beetkeeper.api.dependencies import ImportStoreDep, PageParamsDep
 from beetkeeper.core import ImportDecision, ImportJob
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,9 +38,11 @@ async def start_import(body: ImportSubmitRequest, store: ImportStoreDep) -> Impo
 
 
 @import_router.get("")
-async def list_imports(store: ImportStoreDep) -> list[ImportJob]:
-    """List all known import jobs."""
-    return await store.list()
+async def list_imports(store: ImportStoreDep, page: PageParamsDep) -> list[ImportJob]:
+    """List one page of known import jobs, newest first (so page 1 shows the most recent submissions)."""
+    jobs = await store.list()
+    jobs.reverse()  # store.list() is oldest-first
+    return page.slice(jobs)
 
 
 @import_router.get("/{job_id}")

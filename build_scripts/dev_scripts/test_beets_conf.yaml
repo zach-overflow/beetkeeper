@@ -10,5 +10,5 @@ beetkeeper:
     sqlite_path: /test_dirs/beets/beetkeeper.db
   auth:
     enable_login_protection: true
-    username: Bob
-    password: my-fake-password-123
+    username: admin
+    password: admin

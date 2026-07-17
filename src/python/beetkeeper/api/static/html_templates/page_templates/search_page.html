@@ -2,10 +2,6 @@
 {% block content %}
 <h1>Search the library</h1>
 
-<section id="library-stats" hx-get="{{ url_for('search_stats_fragment') }}" hx-trigger="load" hx-swap="innerHTML">
-    <p>Loading library stats…</p>
-</section>
-
 <form hx-get="{{ url_for('search_results_fragment') }}" hx-target="#search-results" hx-swap="innerHTML">
     <label for="query">Query</label>
     <input type="search" id="query" name="query" size="48"

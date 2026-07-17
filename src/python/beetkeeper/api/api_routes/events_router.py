@@ -11,9 +11,10 @@ See also:
 import logging
 from collections import defaultdict
 from datetime import datetime
-from typing import Annotated, cast
+from time import perf_counter
+from typing import cast
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
@@ -29,6 +30,7 @@ from beetkeeper.api.api_models import (
     TrackEventBody,
 )
 from beetkeeper.api.constants import RouteTag
+from beetkeeper.api.dependencies import PageParamsDep
 from beetkeeper.db.models import AlbumEvent, ListenerEvent, TrackEvent
 from beetkeeper.db.session import SessionDep
 
@@ -40,16 +42,19 @@ events_router = APIRouter(prefix="/events", tags=[RouteTag.EVENT])
 
 async def _record_listener_event(session: AsyncSession, event_type: APIEventType, pushed_at: datetime) -> int:
     """Inserts the parent `ListenerEvent` and flushes to obtain its generated `event_id` for child FKs."""
+    start = perf_counter()
+    _LOGGER.debug(f"Processing track event type: {event_type} ...")
     listener_event = ListenerEvent(event_type=event_type, pushed_at=pushed_at)
     session.add(listener_event)
     await session.flush()  # populates the autoincrement `event_id` used as the child rows' FK
+    _LOGGER.debug(f"Write beets event to db took {perf_counter() - start} seconds.")
     return cast("int", listener_event.event_id)
 
 
 @events_router.get("", status_code=status.HTTP_200_OK)
-async def events(session: SessionDep, limit: Annotated[int, Query(ge=1, le=500)] = 50) -> EventsListResponse:
+async def events(session: SessionDep, page: PageParamsDep) -> EventsListResponse:
     """
-    Lists the most recently ingested beets listener events (newest first), each with the beets album/track
+    Lists the requested page of ingested beets listener events (newest first), each with the beets album/track
     ids of its child rows (the ones the beetkeeper event-listener plugin pushed to the POST endpoints).
     """
     recent_events = (
@@ -57,7 +62,8 @@ async def events(session: SessionDep, limit: Annotated[int, Query(ge=1, le=500)]
             await session.execute(
                 select(ListenerEvent)
                 .order_by(col(ListenerEvent.pushed_at).desc(), col(ListenerEvent.event_id).desc())
-                .limit(limit)
+                .offset(page.offset)
+                .limit(page.page_size)
             )
         )
         .scalars()
@@ -98,7 +104,6 @@ async def events(session: SessionDep, limit: Annotated[int, Query(ge=1, le=500)]
 
 @events_router.post("/album", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def album(album_event: AlbumEventBody, session: SessionDep) -> EventIngestResponse:
-    _LOGGER.debug(f"Processing album event type: {album_event.event_type} ...")
     listener_event_id = await _record_listener_event(session, album_event.event_type, album_event.pushed_at)
     session.add(AlbumEvent(listener_event_id=listener_event_id, beets_album_id=album_event.album_fields.id))
     await session.commit()
@@ -107,7 +112,6 @@ async def album(album_event: AlbumEventBody, session: SessionDep) -> EventIngest
 
 @events_router.post("/track", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def track(track_event: TrackEventBody, session: SessionDep) -> EventIngestResponse:
-    _LOGGER.debug(f"Processing track event type: {track_event.event_type} ...")
     listener_event_id = await _record_listener_event(session, track_event.event_type, track_event.pushed_at)
     session.add(
         TrackEvent(
@@ -122,7 +126,6 @@ async def track(track_event: TrackEventBody, session: SessionDep) -> EventIngest
 
 @events_router.post("/filesystem", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def filesystem(fs_event: ImportTaskFilesEventBody, session: SessionDep) -> MultiItemEventIngestResponse:
-    _LOGGER.debug(f"Processing filesystem event type: {fs_event.event_type} ...")
     listener_event_id = await _record_listener_event(session, fs_event.event_type, fs_event.pushed_at)
     ingest_responses: list[EventIngestResponse] = []
     for item in fs_event.imported_items:
