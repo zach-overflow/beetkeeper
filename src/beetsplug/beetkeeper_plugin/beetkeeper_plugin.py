@@ -9,9 +9,9 @@ from enum import Enum
 from functools import cached_property, partial
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
-from beets.importer import ImportTask  # pants: no-infer-dep
+from beets.importer import ImportSession, ImportTask  # pants: no-infer-dep  noqa: TC002
 from beets.library import Album, Item  # pants: no-infer-dep
-from beets.plugins import BeetsPlugin  # pants: no-infer-dep
+from beets.plugins import BeetsPlugin, EventType  # pants: no-infer-dep  noqa: TC002
 from beetsplug._utils.requests import (  # type: ignore[import-untyped]
     RequestHandler,  # pants: no-infer-dep
     TimeoutAndRetrySession,  # pants: no-infer-dep
@@ -21,8 +21,6 @@ from requests.auth import AuthBase
 from requests.exceptions import RequestException
 
 if TYPE_CHECKING:
-    from beets.importer import ImportSession  # pants: no-infer-dep
-    from beets.plugins import EventType  # pants: no-infer-dep
     from requests import PreparedRequest, Response
 
 

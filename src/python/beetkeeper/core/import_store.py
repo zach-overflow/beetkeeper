@@ -124,7 +124,7 @@ class ImportStore:
         async with self._session() as session:
             session.add(record)
             await session.commit()
-        _LOGGER.debug("ImportJob created.")
+        _LOGGER.debug("ImportJob created")
         return self._to_view(record)
 
     async def get(self, job_id: str) -> ImportJob | None:

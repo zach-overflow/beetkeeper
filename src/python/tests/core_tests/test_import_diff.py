@@ -113,7 +113,7 @@ def test_choose_match_apply_writes_diff_to_output() -> None:
     assert "(track 1) old title -> New Title" in output
 
 
-def test_candidate_details_joins_known_attributes_and_builds_release_url() -> None:
+def test_candidate_details_joins_known_attributes() -> None:
     candidate = ImportCandidate(
         index=0,
         label="Boards of Canada - Inferno",
@@ -127,6 +127,7 @@ def test_candidate_details_joins_known_attributes_and_builds_release_url() -> No
         disambiguation="WEB",
         track_count=12,
         album_id="abc-123",
+        release_url="https://musicbrainz.org/release/abc-123",
     )
     assert candidate.details == "2026 · XW · Digital Media · Warp [WARP123] · 12 tracks · MusicBrainz · WEB"
     assert candidate.release_url == "https://musicbrainz.org/release/abc-123"
@@ -152,6 +153,7 @@ def test_build_decision_request_populates_differentiating_details() -> None:
         albumdisambig="WEB",
         data_source="MusicBrainz",
         album_id="abc-123",
+        data_url="https://musicbrainz.org/release/abc-123",
         tracks=[_Attrs(), _Attrs(), _Attrs()],
     )
     task = _Attrs(candidates=[_Attrs(info=info, distance=0.01)])
@@ -164,6 +166,30 @@ def test_build_decision_request_populates_differentiating_details() -> None:
     assert candidate.catalognum == "WARP123" and candidate.track_count == 3
     assert "Warp [WARP123]" in candidate.details and "MusicBrainz" in candidate.details
     assert candidate.release_url == "https://musicbrainz.org/release/abc-123"
+
+
+def test_build_decision_request_coerces_non_string_attributes() -> None:
+    """Non-MusicBrainz sources may use non-string fields (e.g. Discogs' int release ids)."""
+    session = WebImportSession.__new__(WebImportSession)
+    session._job_id = "job-z"
+    info = _Attrs(
+        artist="Butthole Surfers",
+        album="After The Astronaut",
+        year=2026,
+        label="Sunset Blvd Records",
+        catalognum=634457247475,
+        data_source="Discogs",
+        album_id=34097392,
+        tracks=[],
+    )
+    task = _Attrs(candidates=[_Attrs(info=info, distance=0.02)])
+
+    candidate = session._build_decision_request(task).candidates[0]
+
+    assert candidate.album_id == "34097392"
+    assert candidate.catalognum == "634457247475"
+    assert candidate.record_label == "Sunset Blvd Records"
+    assert candidate.release_url is None  # source provided no `data_url`
 
 
 def test_build_decision_request_handles_sparse_candidate_info() -> None:

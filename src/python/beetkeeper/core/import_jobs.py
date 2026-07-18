@@ -65,6 +65,9 @@ class ImportCandidate(BaseModel):
     disambiguation: str | None = None
     track_count: int | None = None
     album_id: str | None = Field(default=None, description="Source-specific release id (e.g. a MusicBrainz MBID).")
+    release_url: str | None = Field(
+        default=None, description="Web URL for the release, from the source plugin (beets' `AlbumInfo.data_url`)."
+    )
 
     @computed_field  # type: ignore[prop-decorator]  # mypy limitation: @computed_field stacks on @property
     @property
@@ -87,14 +90,6 @@ class ImportCandidate(BaseModel):
             if part
         ]
         return " · ".join(parts)
-
-    @computed_field  # type: ignore[prop-decorator]  # mypy limitation: @computed_field stacks on @property
-    @property
-    def release_url(self) -> str | None:
-        """A canonical web URL for the release, when derivable from the source + id (else None)."""
-        if self.data_source == "MusicBrainz" and self.album_id:
-            return f"https://musicbrainz.org/release/{self.album_id}"
-        return None
 
 
 class DecisionRequest(BaseModel):
