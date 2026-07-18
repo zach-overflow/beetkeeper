@@ -754,6 +754,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#the-beets-plugin-beetkeeper_plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The beets plugin (beetkeeper_plugin)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1019,6 +1030,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#the-beets-plugin-beetkeeper_plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The beets plugin (beetkeeper_plugin)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1101,6 +1123,12 @@ still a valid beets config — beetkeeper only requires the section when you run
 <td style="text-align: left;">Port the server listens on (must be <code>&gt; 0</code>).</td>
 </tr>
 <tr>
+<td style="text-align: left;"><code>server.forwarded_allow_ips</code></td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Reverse-proxy addresses (comma-separated IPs and/or CIDR networks like <code>192.168.40.0/24</code>, or <code>"*"</code> for all) whose <code>X-Forwarded-*</code> headers the server trusts. The UI renders root-relative URLs and works through any proxy without this; set it behind a reverse proxy so the request scheme and client address reflect the real client (accurate logs, correct absolute URLs anywhere one is ever emitted). Hostnames are <strong>not</strong> supported — uvicorn compares the raw peer IP. Note that setting this <strong>replaces</strong> the loopback default, so include <code>127.0.0.1</code> if a local proxy is also in play. Unset, uvicorn's default applies (the <code>FORWARDED_ALLOW_IPS</code> env var, else loopback only).</td>
+</tr>
+<tr>
 <td style="text-align: left;"><code>database.sqlite_path</code></td>
 <td style="text-align: left;">path</td>
 <td style="text-align: left;">—</td>
@@ -1162,6 +1190,24 @@ models in the source.</p>
 It is created (and kept schema-current) automatically by <code>beetkeeper run</code>, or manually via
 <code>beetkeeper db upgrade</code> (see <a href="../quickstart/cli/">the CLI</a>).</p>
 </div>
+<h2 id="the-beets-plugin-beetkeeper_plugin">The beets plugin (<code>beetkeeper_plugin</code>)<a class="headerlink" href="#the-beets-plugin-beetkeeper_plugin" title="Permanent link">&para;</a></h2>
+<p>The <a href="https://pypi.org/project/beetkeeper-plugin/"><code>beetkeeper-plugin</code></a> package provides the beets-side
+plugin that pushes library events (imports, removals) to the server's <code>/api/events</code> endpoints — this is
+what populates the <strong>Beets Events</strong> page. Enable it like any beets plugin:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">plugins</span><span class="p">:</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">beetkeeper_plugin</span>
+</code></pre></div>
+<p>Its own (optional) config section:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">beetkeeper_plugin</span><span class="p">:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="c1"># Where to push events. Defaults to the beetkeeper server on this host: loopback at</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="c1"># `beetkeeper.server.port` (or 8337 when that section is absent) — right for the usual</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="c1"># same-container/same-host setup, so most installs need no section at all.</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">server_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://127.0.0.1:8337</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="c1"># Only needed when the server runs with `auth.enable_login_protection`.</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="nt">api_token</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+</code></pre></div>
+<p>Push failures are logged and swallowed — an unreachable beetkeeper server never breaks the beets
+operation that fired the event.</p>
 
 
 
