@@ -36,8 +36,11 @@ pants_ignore = [
 dependents = "transitive"
 
 [source]
-# Longest-matching prefix wins, so files under the two distribution roots resolve to those, not `src`.
-root_patterns = ["src", "src/beetsplug", "src/python", "build_scripts"]
+# Longest-matching prefix wins, so files under `src/python` resolve to that root, not `src`. The beets
+# plugin intentionally has NO `src/beetsplug` root: resolving from `src` gives its sources the
+# `beetsplug.beetkeeper_plugin` import path — the same path beets imports after a wheel install (beets
+# only discovers plugins under the `beetsplug` namespace), so dev/test imports match production.
+root_patterns = ["src", "src/python", "build_scripts"]
 
 [docker]
 use_buildx = true

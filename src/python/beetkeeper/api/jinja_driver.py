@@ -1,8 +1,10 @@
 import json
 import logging
 from functools import cache
-from typing import ClassVar
+from typing import Any, ClassVar
 
+import jinja2
+from starlette.requests import Request
 from starlette.templating import Jinja2Templates
 
 from beetkeeper._version import __version__
@@ -10,6 +12,22 @@ from beetkeeper.api.constants import STATIC_DIRPATH
 from beetkeeper.api.security import SESSION_COOKIE_NAME
 
 _LOGGER = logging.getLogger(__name__)
+
+
+@jinja2.pass_context
+def _relative_url_for(context: dict[str, Any], name: str, /, **path_params: Any) -> str:
+    """Root-relative replacement for Starlette's default `url_for` template global (which is absolute).
+
+    Absolute URLs bake in the scheme/host the server *believes* it has — wrong behind any TLS-terminating
+    reverse proxy whose forwarded headers aren't trusted, at which point browsers block the page's `http://`
+    script/CSS/HTMX URLs as mixed content and the whole UI goes dead. Root-relative paths resolve against
+    the page's own origin, so URL generation works through any proxy chain (or none) with no
+    forwarded-header trust required. Like the default global, this needs `request` in the render context.
+    """
+    request: Request = context["request"]
+    url_path = str(request.app.url_path_for(name, **path_params))
+    root_path = request.scope.get("root_path", "").rstrip("/")
+    return f"{root_path}{url_path}"
 
 
 @cache
@@ -50,6 +68,7 @@ class _TemplatesSingleton:
     def load(cls) -> Jinja2Templates:
         if not cls._instance:
             tpls = Jinja2Templates(directory=STATIC_DIRPATH / "html_templates")
+            tpls.env.globals["url_for"] = _relative_url_for
             current_version = __version__
             if "+" in current_version:
                 current_version = current_version.split("+")[0]

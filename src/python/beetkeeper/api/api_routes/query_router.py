@@ -53,8 +53,9 @@ async def list_(  # trailing underscore: avoid shadowing the builtin `list` (use
         query_parts.append(str(filepath))
     if sort_by:
         query_parts.append(sort_by)
-    results = await (library.query_albums(query_parts) if albums else library.query_items(query_parts))
-    return page.slice(results)
+    query_method = library.query_albums if albums else library.query_items
+    results, _total = await query_method(query_parts, offset=page.offset, limit=page.page_size)
+    return results
 
 
 @query_router.get("/stats")

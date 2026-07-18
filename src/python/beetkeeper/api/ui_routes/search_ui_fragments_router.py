@@ -50,14 +50,15 @@ async def search_results_fragment(
     """`beet list`-style query: render one page of the matching tracks/albums as a table."""
     parts = _build_query_parts(query, filepath, sort_by)
     error: str | None = None
-    results: list[dict[str, Any]] = []
+    page_results: list[dict[str, Any]] = []
+    total = 0
     try:
-        results = await (library.query_albums(parts) if albums else library.query_items(parts))
+        query_method = library.query_albums if albums else library.query_items
+        page_results, total = await query_method(parts, offset=page.offset, limit=page.page_size)
     except Exception as exc:  # surface invalid-query errors in the UI instead of a 500
         _LOGGER.debug(f"Search query failed: {exc}")
         error = str(exc)
 
-    page_results = page.slice(results)
     base_params = urlencode(
         {
             "query": query,
@@ -74,7 +75,7 @@ async def search_results_fragment(
             "results": page_results,
             "albums": albums,
             "error": error,
-            "total": len(results),
+            "total": total,
             "page": page.page,
             "start_index": page.offset + 1,
             "end_index": page.offset + len(page_results),

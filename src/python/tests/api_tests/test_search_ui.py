@@ -21,29 +21,6 @@ def app_dependency_overrides(beets_library: BeetsLibrary) -> DependencyOverrides
     return {get_beets_library: lambda: beets_library}
 
 
-@pytest.fixture
-def populated_beets_library(tmp_path: Path) -> BeetsLibrary:
-    """A `BeetsLibrary` over a throwaway beets config whose library holds 30 synthetic tracks."""
-    from beets.library import Item, Library
-
-    beets_config = tmp_path / "beets.yaml"
-    beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n")
-    library = Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
-    for index in range(30):
-        library.add(
-            Item(
-                artist=f"Artist {index:02d}",
-                albumartist=f"Artist {index:02d}",
-                album="Album",
-                title=f"Song {index:02d}",
-                track=index + 1,
-                year=2000,
-                path=f"/music/song{index:02d}.mp3".encode(),
-            )
-        )
-    return BeetsLibrary(beets_config)
-
-
 @pytest.mark.anyio
 async def test_search_page_renders(client: AsyncClient) -> None:
     response = await client.get("/search")
@@ -56,6 +33,16 @@ async def test_search_page_renders(client: AsyncClient) -> None:
     assert "/fragment/search/results" in body
     assert "/fragment/search/stats" in body
     assert "/fragment/search/fields" in body
+
+
+@pytest.mark.anyio
+async def test_page_urls_are_root_relative(client: AsyncClient) -> None:
+    """Generated asset/HTMX URLs must be root-relative: absolute ones bake in the scheme/host the server
+    guessed, which browsers block as mixed content behind a TLS-terminating proxy it doesn't know about."""
+    body = (await client.get("/search")).text
+    assert 'src="/static/js/htmx.min.js"' in body
+    assert 'hx-get="/fragment/search/results"' in body
+    assert "http://testserver" not in body  # the AsyncClient base_url; absolute url_for would leak it
 
 
 @pytest.mark.anyio
