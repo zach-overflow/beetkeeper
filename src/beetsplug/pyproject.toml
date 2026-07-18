@@ -33,12 +33,19 @@ Changelog = "https://github.com/zach-overflow/beetkeeper/releases"
 # `_scm_version.py` via setuptools-scm, and `_version.py` re-exports it (falling back to a dev placeholder
 # for builds outside Pants, e.g. the uv dev venv, where the generated module doesn't exist).
 [tool.setuptools.dynamic]
-version = { attr = "beetkeeper_plugin._version.__version__" }
+version = { attr = "beetsplug.beetkeeper_plugin._version.__version__" }
 
-[tool.setuptools.packages.find]
-# `plugin_tests*` excluded explicitly so the test tree can never leak into the distribution.
-include = ["beetkeeper_plugin*"]
-exclude = ["plugin_tests*"]
+# beets only discovers plugins importable as `beetsplug.<name>`, so the wheel must install the sources
+# under the `beetsplug` namespace: the explicit package-dir mapping below places the local
+# `beetkeeper_plugin/` dir at `beetsplug/beetkeeper_plugin/` in the wheel. `beetsplug` itself is NOT a
+# declared package (no `beetsplug/__init__.py` shipped): beets' own `beetsplug/__init__.py` pkgutil
+# `extend_path` merges this portion into the namespace, and shipping our own `__init__.py` would collide
+# with the file beets installs.
+[tool.setuptools]
+packages = ["beetsplug.beetkeeper_plugin"]
+
+[tool.setuptools.package-dir]
+"beetsplug.beetkeeper_plugin" = "beetkeeper_plugin"
 
 [tool.setuptools.package-data]
 "*" = ["py.typed"]

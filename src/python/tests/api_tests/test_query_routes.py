@@ -66,3 +66,25 @@ async def test_fields_lists_known_query_fields(client: AsyncClient) -> None:
     assert "albumartist" in body["album_fields"]
     assert isinstance(body["item_flexible_attributes"], list)
     assert isinstance(body["album_flexible_attributes"], list)
+
+
+class TestListPagination:
+    """Windowing is applied inside `BeetsLibrary` (not post-materialization); assert the pages line up."""
+
+    @pytest.fixture
+    def app_dependency_overrides(self, populated_beets_library: BeetsLibrary) -> DependencyOverrides:
+        return {get_beets_library: lambda: populated_beets_library}
+
+    @pytest.mark.anyio
+    async def test_pages_window_the_sorted_results(self, client: AsyncClient) -> None:
+        page2 = await client.get("/api/query/list", params={"page": 2, "page_size": 12, "sort_by": "title+"})
+        assert [row["title"] for row in page2.json()] == [f"Song {index:02d}" for index in range(12, 24)]
+
+    @pytest.mark.anyio
+    async def test_last_page_holds_the_remainder(self, client: AsyncClient) -> None:
+        page3 = await client.get("/api/query/list", params={"page": 3, "page_size": 12, "sort_by": "title+"})
+        assert [row["title"] for row in page3.json()] == [f"Song {index:02d}" for index in range(24, 30)]
+
+    @pytest.mark.anyio
+    async def test_past_the_end_page_is_empty(self, client: AsyncClient) -> None:
+        assert (await client.get("/api/query/list", params={"page": 4, "page_size": 12})).json() == []

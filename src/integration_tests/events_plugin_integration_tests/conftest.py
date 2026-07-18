@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from beetkeeper.api.fastapi_app import create_app
 from beetkeeper.db.session import get_session
-from beetkeeper_plugin.beetkeeper_plugin import _APIToken, _BeetKeeperClient
+from beetsplug.beetkeeper_plugin.beetkeeper_plugin import _APIToken, _BeetKeeperClient
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator

@@ -73,6 +73,8 @@ def run(cli_state: CliState) -> None:
         port=user_config.server.port,
         log_level=user_config.log_level.lower(),
         workers=1,
+        # `None` preserves uvicorn's fallbacks (the `FORWARDED_ALLOW_IPS` env var, else loopback only).
+        forwarded_allow_ips=user_config.server.forwarded_allow_ips,
     )
 
 

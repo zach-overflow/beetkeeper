@@ -1,11 +1,12 @@
 """
-Event endpoints which the `beetsplug.beetkeeper_plugin.event_listener.BeetKeeperClient` will push beets events to.
+Event endpoints which the beets plugin's `beetsplug.beetkeeper_plugin.beetkeeper_plugin._BeetKeeperClient`
+pushes beets events to.
 
 Each push is recorded as one `ListenerEvent` row plus its per-entity child rows (`AlbumEvent` / `TrackEvent`),
 written through the async `SessionDep` dependency (see `beetkeeper.db.session`).
 See also:
     https://beets.readthedocs.io/en/stable/dev/plugins/events.html
-    `src/beetsplug/beetkeeper_plugin/event_listener.py`
+    `src/beetsplug/beetkeeper_plugin/beetkeeper_plugin.py`
 """
 
 import logging

@@ -16,7 +16,9 @@ from beetsplug._utils.requests import (  # type: ignore[import-untyped]
     RequestHandler,  # pants: no-infer-dep
     TimeoutAndRetrySession,  # pants: no-infer-dep
 )
+from confuse import ConfigError  # pants: no-infer-dep
 from requests.auth import AuthBase
+from requests.exceptions import RequestException
 
 if TYPE_CHECKING:
     from beets.importer import ImportSession  # pants: no-infer-dep
@@ -25,13 +27,37 @@ if TYPE_CHECKING:
 
 
 _LOGGER_NAME: Final[str] = __name__
+_DEFAULT_SERVER_PORT: Final[int] = 8337
+
+
+def _default_server_url() -> str:
+    """The beetkeeper server on this host: `http://127.0.0.1:<port>`.
+
+    The plugin normally runs on the same host (usually the same container) as the beetkeeper server, so
+    the default push target is loopback at the port from the beets config's `beetkeeper.server` section
+    (the server's own config), falling back to beetkeeper's default port when that section is absent.
+    """
+    from beets import config as beets_config  # pants: no-infer-dep
+
+    try:
+        port = int(beets_config["beetkeeper"]["server"]["port"].get(int))
+    except ConfigError:
+        port = _DEFAULT_SERVER_PORT
+    return f"http://127.0.0.1:{port}"
 
 
 class BeetkeeperPlugin(BeetsPlugin):
     """
     Plugin which registers a number of beets event listeners, all of which submit a POST request to the beetkeeper
     server. This allows the server to collect event data without 'peeking' into the beets database.
-    https://beets.readthedocs.io/en/stable/dev/plugins/events.html"""
+    https://beets.readthedocs.io/en/stable/dev/plugins/events.html
+
+    beets instantiates plugins with no arguments, so all settings come from the plugin's own beets config
+    section (`beetkeeper_plugin:`), every key optional:
+      * `server_url`: base url of the beetkeeper server to push events to. Defaults to loopback at the
+        port from the server's own `beetkeeper.server` config section (see `_default_server_url`).
+      * `api_token`: bearer token for the push requests, for servers running with login protection.
+    """
 
     # Must stay a subset of the server's accepted `beetkeeper.api.api_models.APIEventType` values.
     _EVENT_PAYLOAD_KEYS: ClassVar[dict[EventType, str]] = {
@@ -42,14 +68,14 @@ class BeetkeeperPlugin(BeetsPlugin):
         "item_removed": "item",
     }
 
-    def __init__(self, beetkeeper_server_url: str, raw_api_token: str | None = None):
-        """
-        Args:
-            beetkeeper_server_url: The base url to reach the beetkeeper server when submitting event-based HTTP requests.
-            raw_api_token: Optional beetkeeper API authentication token string.
-        """
-        self._client = _BeetKeeperClient(url=beetkeeper_server_url, api_token=_APIToken(value=raw_api_token or ""))
-        super().__init__("beetkeeper_listener")
+    def __init__(self) -> None:
+        """No-arg (beets instantiates plugins bare); reads `server_url`/`api_token` from `self.config`."""
+        super().__init__()
+        self.config.add({"server_url": "", "api_token": ""})
+        self.config["api_token"].redact = True
+        server_url = str(self.config["server_url"].as_str()).strip() or _default_server_url()
+        raw_api_token = str(self.config["api_token"].as_str())
+        self._client = _BeetKeeperClient(url=server_url.rstrip("/"), api_token=_APIToken(value=raw_api_token))
         for event_type, payload_key in self._EVENT_PAYLOAD_KEYS.items():
             self.register_listener(event_type, partial(self._handle_event, event_type, payload_key))
 
@@ -61,9 +87,15 @@ class BeetkeeperPlugin(BeetsPlugin):
         """
         The single handler behind every registered listener: posts the event's payload element (identified by
         `payload_key` in the event's keyword arguments) to the beetkeeper server.
+
+        Push failures are logged, never raised: beets propagates listener exceptions into the operation that
+        fired the event, so an unreachable beetkeeper server must not break imports/removals themselves.
         """
         self.log.debug(f"Run listener for '{event_type}' ...")
-        self._client.post(event_type=event_type, event_element=kwargs[payload_key])
+        try:
+            self._client.post(event_type=event_type, event_element=kwargs[payload_key])
+        except RequestException:
+            self.log.warning(f"Failed to push the '{event_type}' event to the beetkeeper server.", exc_info=True)
 
 
 type _EventElement = Album | Item | ImportTask | ImportSession

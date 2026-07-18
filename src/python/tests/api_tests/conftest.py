@@ -113,6 +113,29 @@ def beets_library(tmp_path: Path) -> BeetsLibrary:
 
 
 @pytest.fixture
+def populated_beets_library(tmp_path: Path) -> BeetsLibrary:
+    """A `BeetsLibrary` over a throwaway beets config whose library holds 30 synthetic tracks."""
+    from beets.library import Item, Library
+
+    beets_config = tmp_path / "beets.yaml"
+    beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n")
+    library = Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
+    for index in range(30):
+        library.add(
+            Item(
+                artist=f"Artist {index:02d}",
+                albumartist=f"Artist {index:02d}",
+                album="Album",
+                title=f"Song {index:02d}",
+                track=index + 1,
+                year=2000,
+                path=f"/music/song{index:02d}.mp3".encode(),
+            )
+        )
+    return BeetsLibrary(beets_config)
+
+
+@pytest.fixture
 def beets_import_config() -> Iterator[Any]:
     """Yield beets' global `import` config view, restoring every key the import tests touch afterwards."""
     from beets import config

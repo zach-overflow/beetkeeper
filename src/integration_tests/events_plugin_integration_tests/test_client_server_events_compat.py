@@ -1,5 +1,5 @@
 """
-Contract-compatibility tests between the beets plugin's events client (`beetkeeper_plugin.beetkeeper_plugin`)
+Contract-compatibility tests between the beets plugin's events client (`beetsplug.beetkeeper_plugin`)
 and the beetkeeper server's `/api/events` routes (`beetkeeper.api.api_routes.events_router`).
 """
 
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from pydantic import BaseModel
     from pytest_mock import MockerFixture, MockType
 
-    from beetkeeper_plugin.beetkeeper_plugin import _BeetKeeperClient
+    from beetsplug.beetkeeper_plugin.beetkeeper_plugin import _BeetKeeperClient
 
 type _EventElement = Album | Item | ImportTask
 type _ElementFactory = Callable[[type[_EventElement]], _EventElement]

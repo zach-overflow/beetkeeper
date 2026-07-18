@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from beets.importer import Action, ImportSession, ImportTask
 from beets.library import Album, Item
+from beetsplug.plugin_tests.conftest import FAKE_SERVER_URL
 
-from beetkeeper_plugin.beetkeeper_plugin import _APIToken, _BeetKeeperClient, _BkAuth, _BkSession
-from plugin_tests.conftest import FAKE_SERVER_URL
+from beetsplug.beetkeeper_plugin.beetkeeper_plugin import _APIToken, _BeetKeeperClient, _BkAuth, _BkSession
 
 if TYPE_CHECKING:
     from pytest_mock import MockerFixture, MockType

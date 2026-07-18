@@ -37,6 +37,7 @@ beetkeeper:
 | `log_level`               | string  | —       | One of `CRITICAL`, `DEBUG`, `ERROR`, `INFO`, `NOTSET`, `WARNING`. |
 | `server.hostname`         | string  | —       | Interface to bind (e.g. `0.0.0.0` to listen on all interfaces). |
 | `server.port`             | int     | `8337`  | Port the server listens on (must be `> 0`).                     |
+| `server.forwarded_allow_ips` | string | —    | Reverse-proxy addresses (comma-separated IPs and/or CIDR networks like `192.168.40.0/24`, or `"*"` for all) whose `X-Forwarded-*` headers the server trusts. The UI renders root-relative URLs and works through any proxy without this; set it behind a reverse proxy so the request scheme and client address reflect the real client (accurate logs, correct absolute URLs anywhere one is ever emitted). Hostnames are **not** supported — uvicorn compares the raw peer IP. Note that setting this **replaces** the loopback default, so include `127.0.0.1` if a local proxy is also in play. Unset, uvicorn's default applies (the `FORWARDED_ALLOW_IPS` env var, else loopback only). |
 | `database.sqlite_path`    | path    | —       | Path to beetkeeper's own SQLite db (created automatically on first run). |
 | `database.auto_upgrade`   | bool    | `true`  | Apply pending schema migrations automatically when the server starts (the db file is backed up first). When `false`, a stale schema fails startup until you run `beetkeeper db upgrade`. |
 | `auth.enable_login_protection` | bool | `false` | Opt-in login protection: when `true`, every page and API route requires a logged-in session. |
@@ -67,3 +68,29 @@ Sessions are stored (hashed) in beetkeeper's database, so they survive restarts.
     `database.sqlite_path` is beetkeeper's own bookkeeping database — **not** your beets library database.
     It is created (and kept schema-current) automatically by `beetkeeper run`, or manually via
     `beetkeeper db upgrade` (see [the CLI](quickstart/cli.md)).
+
+## The beets plugin (`beetkeeper_plugin`)
+
+The [`beetkeeper-plugin`](https://pypi.org/project/beetkeeper-plugin/) package provides the beets-side
+plugin that pushes library events (imports, removals) to the server's `/api/events` endpoints — this is
+what populates the **Beets Events** page. Enable it like any beets plugin:
+
+```yaml
+plugins:
+  - beetkeeper_plugin
+```
+
+Its own (optional) config section:
+
+```yaml
+beetkeeper_plugin:
+  # Where to push events. Defaults to the beetkeeper server on this host: loopback at
+  # `beetkeeper.server.port` (or 8337 when that section is absent) — right for the usual
+  # same-container/same-host setup, so most installs need no section at all.
+  server_url: http://127.0.0.1:8337
+  # Only needed when the server runs with `auth.enable_login_protection`.
+  api_token: ""
+```
+
+Push failures are logged and swallowed — an unreachable beetkeeper server never breaks the beets
+operation that fired the event.

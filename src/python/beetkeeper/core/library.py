@@ -28,6 +28,7 @@ Concurrency:
 import logging
 import threading
 from collections.abc import Callable, Mapping, Sequence
+from itertools import islice
 from pathlib import Path
 from typing import Any, Final, TypeVar
 
@@ -102,6 +103,17 @@ def _jsonify(model: Any) -> dict[str, Any]:
     }
 
 
+def _paged_jsonify(results: Any, offset: int, limit: int | None) -> tuple[list[dict[str, Any]], int]:
+    """Convert one `[offset, offset + limit)` window of a beets `Results` to dicts, with the total count.
+
+    beets fetches all matching rows up front but constructs/converts model objects lazily per iteration, so
+    slicing here (not after full conversion) is what keeps a page O(page size) instead of O(matches).
+    """
+    stop = None if limit is None else offset + limit
+    page = [_jsonify(model) for model in islice(results, offset, stop)]
+    return page, len(results)
+
+
 def open_library(beets_config_filepath: Path) -> Any:
     """Load the user's beets config and return an open `beets.library.Library`.
 
@@ -146,15 +158,29 @@ class BeetsLibrary:
         async with library_write_limiter:
             return await self._read(work)
 
-    async def query_items(self, query: Sequence[str] | None = None) -> list[dict[str, Any]]:
-        """Return JSON-safe dicts for beets `Item`s matching the query parts (None/empty -> all items)."""
-        parts = list(query) if query else None
-        return await self._read(lambda lib: [_jsonify(item) for item in lib.items(parts)])
+    async def query_items(
+        self, query: Sequence[str] | None = None, *, offset: int = 0, limit: int | None = None
+    ) -> tuple[list[dict[str, Any]], int]:
+        """One page of JSON-safe dicts for beets `Item`s matching the query parts, plus the total match count.
 
-    async def query_albums(self, query: Sequence[str] | None = None) -> list[dict[str, Any]]:
-        """Return JSON-safe dicts for beets `Album`s matching the query parts (None/empty -> all albums)."""
+        `query` of None/empty matches all items. Only the `[offset, offset + limit)` window is converted to
+        dicts (`limit=None` -> everything from `offset`): the dict conversion dominates query cost (~90
+        lazily-typed fields per item), so a page stays cheap no matter how many items match. The total comes
+        from `Results.__len__` — a plain row count for SQL-able queries, which is every windex/CLI-style
+        field, substring, and range query; only Python-predicate "slow queries" pay a full iteration.
+        """
         parts = list(query) if query else None
-        return await self._read(lambda lib: [_jsonify(album) for album in lib.albums(parts)])
+        return await self._read(lambda lib: _paged_jsonify(lib.items(parts), offset, limit))
+
+    async def query_albums(
+        self, query: Sequence[str] | None = None, *, offset: int = 0, limit: int | None = None
+    ) -> tuple[list[dict[str, Any]], int]:
+        """One page of JSON-safe dicts for beets `Album`s matching the query parts, plus the total match count.
+
+        Windowing/total semantics are identical to `query_items`.
+        """
+        parts = list(query) if query else None
+        return await self._read(lambda lib: _paged_jsonify(lib.albums(parts), offset, limit))
 
     async def stats(self, query: Sequence[str] | None = None) -> dict[str, Any]:
         """Summary statistics over matching items, mirroring `beet stats` (size is approximate, no disk I/O)."""

@@ -32,6 +32,17 @@ class ServerConfSection(BaseModel):
     model_config = ConfigDict(frozen=True, extra="ignore")
     hostname: str
     port: int = Field(default=8337, gt=0)
+    forwarded_allow_ips: str | None = Field(
+        default=None,
+        description=(
+            "Reverse-proxy addresses (comma-separated IPs and/or CIDR networks, or '*' for all) whose "
+            "`X-Forwarded-*` headers the server trusts. The UI itself renders root-relative URLs and needs "
+            "no forwarded-header trust; set this behind a reverse proxy so `request` scheme/client reflect "
+            "the real client (logs, absolute URLs in redirects/docs). Hostnames are NOT supported — uvicorn "
+            "compares the raw peer IP. Unset, uvicorn's default applies (the `FORWARDED_ALLOW_IPS` env var, "
+            "else loopback only)."
+        ),
+    )
 
     @model_validator(mode="before")
     @classmethod

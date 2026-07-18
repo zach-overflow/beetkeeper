@@ -60,7 +60,7 @@ class _BaseEventBody(BaseModel):
 
 class AlbumEventBody(_BaseEventBody):
     """
-    A post request payload expected from the plugin's listener for the `beetsplug.beetkeeper_plugin.event_listener`
+    A post request payload expected from the plugin's listener for the `beetsplug.beetkeeper_plugin`
     client's `album_imported` event pushes.
     """
 
@@ -69,7 +69,7 @@ class AlbumEventBody(_BaseEventBody):
 
 class TrackEventBody(_BaseEventBody):
     """
-    A post request payload expected from the plugin's listener for the `beetsplug.beetkeeper_plugin.event_listener`
+    A post request payload expected from the plugin's listener for the `beetsplug.beetkeeper_plugin`
     client's `item_imported` (track imported) event pushes. The track's album association (if any) travels as the
     nullable `track_fields.album_id`, so no `album_fields` is required.
     """
