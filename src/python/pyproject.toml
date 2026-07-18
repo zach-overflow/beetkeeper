@@ -13,7 +13,7 @@ dependencies = [
   "anyio>=4.14.2",
   "aiosqlite>=0.21",
   "alembic>=1.16",
-  "beets>=2.11.0",
+  "beets>=2.12",
   "beetkeeper-plugin",
   "click>=8.4.1",
   "fastapi>=0.138.0",

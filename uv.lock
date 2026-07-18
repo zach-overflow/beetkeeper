@@ -177,7 +177,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.16" },
     { name = "anyio", specifier = ">=4.14.2" },
     { name = "beetkeeper-plugin", editable = "src/beetsplug" },
-    { name = "beets", specifier = ">=2.11.0" },
+    { name = "beets", specifier = ">=2.12" },
     { name = "click", specifier = ">=8.4.1" },
     { name = "fastapi", specifier = ">=0.138.0" },
     { name = "greenlet", specifier = ">=3.1" },
@@ -203,7 +203,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "beets", specifier = ">=2.11.0" },
+    { name = "beets", specifier = ">=2.12" },
     { name = "requests", specifier = ">=2.34" },
 ]
 

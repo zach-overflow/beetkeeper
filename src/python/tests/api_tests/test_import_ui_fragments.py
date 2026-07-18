@@ -44,6 +44,7 @@ async def test_decision_fragment_renders_candidate_table(client: AsyncClient, im
                     media="Digital Media",
                     data_source="MusicBrainz",
                     album_id="id0",
+                    release_url="https://musicbrainz.org/release/id0",
                 ),
                 ImportCandidate(
                     index=1,
@@ -53,6 +54,7 @@ async def test_decision_fragment_renders_candidate_table(client: AsyncClient, im
                     media="CD",
                     data_source="MusicBrainz",
                     album_id="id1",
+                    release_url="https://musicbrainz.org/release/id1",
                 ),
             ],
             allowed_actions=[ImportAction.APPLY, ImportAction.ASIS, ImportAction.SKIP],

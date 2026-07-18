@@ -129,8 +129,8 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "85a1d97506bc16d571090234789381d782b7cf7d1fba9e769ba68937b54d7710",
-              "url": "https://files.pythonhosted.org/packages/f9/2e/9c36bdf5ddbce9e2bccd636ca5eb44743701a0a0e84921f5f7ed7d9e7bc5/beetkeeper_plugin-0.5.2-py3-none-any.whl"
+              "hash": "ffa2a7ab29481bc9bb185b9bde2add3e96df2c4e9a554d3a1c2a361183828c29",
+              "url": "https://files.pythonhosted.org/packages/4f/45/5e1db2e7091ce9c7e28e0bd3c52807475e6f6104cc44013e971e52aa3ab3/beetkeeper_plugin-0.5.3-py3-none-any.whl"
             }
           ],
           "project_name": "beetkeeper-plugin",
@@ -139,7 +139,7 @@
             "requests>=2.34"
           ],
           "requires_python": "<3.16,>=3.14",
-          "version": "0.5.2"
+          "version": "0.5.3"
         },
         {
           "artifacts": [
@@ -1182,19 +1182,19 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "fb516cdb12eb0d857d0cd85a7c57cea4d060bee4578d6cf5a14dfdf8cbf8784a",
-              "url": "https://files.pythonhosted.org/packages/81/e6/cd9575ac904136b3cbf7aa7ee819ef86eedb7274e46f230e94ea4342e729/platformdirs-4.10.0-py3-none-any.whl"
+              "hash": "0e4eff26be2d75293977f7cddc153fd9b8eaa7fb0c7b64ffe4076cb443117443",
+              "url": "https://files.pythonhosted.org/packages/ec/73/6fd0bb9ce84138c3857f12e9de63bc901852975a092d545f18087a204aa2/platformdirs-4.10.1-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "31e761a6a0ca04faf7353ea759bdba55652be214725111e5aac52dfa29d4bef7",
-              "url": "https://files.pythonhosted.org/packages/d7/47/e4501f49c178ae1d9f4a75073fda4204f52647993f075a9db4d14930e0c5/platformdirs-4.10.0.tar.gz"
+              "hash": "ceab4084426fe6319ce18e86deada8ab1b7487c7aee7040c55e277c9ae793695",
+              "url": "https://files.pythonhosted.org/packages/52/cd/4f25b2f95b23f5d2c9c1fe43e49841bff5800562149b2666afc09309aa8f/platformdirs-4.10.1.tar.gz"
             }
           ],
           "project_name": "platformdirs",
           "requires_dists": [],
           "requires_python": ">=3.10",
-          "version": "4.10.0"
+          "version": "4.10.1"
         },
         {
           "artifacts": [
@@ -2166,7 +2166,7 @@
     "alembic>=1.16",
     "anyio>=4.14.2",
     "beetkeeper-plugin",
-    "beets>=2.11.0",
+    "beets>=2.12",
     "click>=8.4.1",
     "fastapi>=0.138.0",
     "greenlet>=3.1",

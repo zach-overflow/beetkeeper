@@ -875,12 +875,6 @@
             "title": "Album Id",
             "description": "Source-specific release id (e.g. a MusicBrainz MBID)."
           },
-          "details": {
-            "type": "string",
-            "title": "Details",
-            "description": "One-line summary of the differentiating attributes (empty string when none are known).",
-            "readOnly": true
-          },
           "release_url": {
             "anyOf": [
               {
@@ -891,7 +885,12 @@
               }
             ],
             "title": "Release Url",
-            "description": "A canonical web URL for the release, when derivable from the source + id (else None).",
+            "description": "Web URL for the release, from the source plugin (beets' `AlbumInfo.data_url`)."
+          },
+          "details": {
+            "type": "string",
+            "title": "Details",
+            "description": "One-line summary of the differentiating attributes (empty string when none are known).",
             "readOnly": true
           }
         },
@@ -899,8 +898,7 @@
         "required": [
           "index",
           "label",
-          "details",
-          "release_url"
+          "details"
         ],
         "title": "ImportCandidate",
         "description": "A serializable view of one beets match candidate, surfaced to the UI for selection.\n\nBeyond the headline `label`/`similarity`, the optional release attributes below let the UI tell\notherwise-identical candidates apart (e.g. different pressings/editions of the same album); `details`\njoins the populated ones into a single human-readable line for display."

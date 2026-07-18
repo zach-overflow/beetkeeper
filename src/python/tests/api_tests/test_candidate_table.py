@@ -26,12 +26,27 @@ def test_columns_are_only_the_differing_attributes() -> None:
             media="Digital Media",
             catalognum="W1",
             album_id="id0",
+            release_url="https://musicbrainz.org/release/id0",
         ),
         _candidate(
-            1, similarity=0.99, data_source="MusicBrainz", year=2007, media="CD", catalognum="W2", album_id="id1"
+            1,
+            similarity=0.99,
+            data_source="MusicBrainz",
+            year=2007,
+            media="CD",
+            catalognum="W2",
+            album_id="id1",
+            release_url="https://musicbrainz.org/release/id1",
         ),
         _candidate(
-            2, similarity=0.90, data_source="MusicBrainz", year=2007, media="CD", catalognum="W3", album_id="id2"
+            2,
+            similarity=0.90,
+            data_source="MusicBrainz",
+            year=2007,
+            media="CD",
+            catalognum="W3",
+            album_id="id2",
+            release_url="https://musicbrainz.org/release/id2",
         ),
     ]
 
@@ -64,7 +79,8 @@ def test_single_candidate_shows_all_populated_attributes() -> None:
 
 
 def test_link_column_hidden_when_no_release_urls() -> None:
-    # A non-MusicBrainz source yields no release_url, so no Link column even though album_id differs.
+    # A source plugin that sets no `data_url` yields no release_url, so no Link column even though
+    # album_id differs.
     candidates = [
         _candidate(0, similarity=0.9, data_source="Discogs", album_id="d0"),
         _candidate(1, similarity=0.8, data_source="Discogs", album_id="d1"),

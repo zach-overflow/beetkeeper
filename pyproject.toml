@@ -204,11 +204,6 @@ namespace_packages = true
 module = ["diskcache.*"]
 ignore_missing_imports = true
 
-# beets ships no py.typed marker.
-[[tool.mypy.overrides]]
-module = ["beets.*"]
-ignore_missing_imports = true
-
 [tool.bandit]
 exclude_dirs = [
   ".github",

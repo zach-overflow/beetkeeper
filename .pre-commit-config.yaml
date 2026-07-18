@@ -44,7 +44,9 @@ repos:
         name: openapi-json-spec-check
         description: "Ensure the beetkeeper openapi.json is up to date."
         entry: "pants run build_scripts:openapi-json-exporter -- --check"
-        files: '^src/python/beetkeeper/api/.*$'
+        # Whole package, not just `api/`: core DTOs (e.g. `core.import_jobs.ImportCandidate`) surface in
+        # API response models, so their fields land in the exported schema too.
+        files: '^src/python/beetkeeper/.*$'
         language: system
         pass_filenames: false
         priority: 3

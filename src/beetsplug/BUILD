@@ -1,7 +1,5 @@
 # Subtree default: separate resolve so `beets` has one owner per resolve, keeping import inference unambiguous.
-__defaults__(
-    {(python_sources, python_tests, python_test_utils, python_requirements): dict(resolve="beetkeeper-resolve")}
-)
+__defaults__(all=dict(resolve="beetkeeper-resolve"), ignore_unknown_fields=True)
 
 file(name="pypi-readme", source="README.md")
 # With `generate_setup=False`, setuptools reads this pyproject directly (version via setuptools-scm).

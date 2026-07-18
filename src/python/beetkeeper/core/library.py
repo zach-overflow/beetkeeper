@@ -30,9 +30,13 @@ import threading
 from collections.abc import Callable, Mapping, Sequence
 from itertools import islice
 from pathlib import Path
-from typing import Any, Final, TypeVar
+from typing import TYPE_CHECKING, Any, Final, TypeVar
 
 from anyio import CapacityLimiter, to_thread
+
+if TYPE_CHECKING:
+    from beets.dbcore.db import Results
+    from beets.library import AnyLibModel, LibModel, Library
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -95,7 +99,7 @@ def _load_plugins_once() -> None:
             _LOGGER.info(f"Loaded beets plugins: {', '.join(loaded)}")
 
 
-def _jsonify(model: Any) -> dict[str, Any]:
+def _jsonify(model: LibModel) -> dict[str, Any]:
     """Convert a beets `Item`/`Album` to a JSON-safe dict (bytes fields like `path`/`artpath` are decoded)."""
     return {
         key: (value.decode("utf-8", "replace") if isinstance(value, bytes) else value)
@@ -103,7 +107,7 @@ def _jsonify(model: Any) -> dict[str, Any]:
     }
 
 
-def _paged_jsonify(results: Any, offset: int, limit: int | None) -> tuple[list[dict[str, Any]], int]:
+def _paged_jsonify(results: Results[AnyLibModel], offset: int, limit: int | None) -> tuple[list[dict[str, Any]], int]:
     """Convert one `[offset, offset + limit)` window of a beets `Results` to dicts, with the total count.
 
     beets fetches all matching rows up front but constructs/converts model objects lazily per iteration, so
@@ -114,7 +118,23 @@ def _paged_jsonify(results: Any, offset: int, limit: int | None) -> tuple[list[d
     return page, len(results)
 
 
-def open_library(beets_config_filepath: Path) -> Any:
+def _modify_matching_items(lib: Library, query: str, changes: Mapping[str, str], *, write: bool, move: bool) -> int:
+    """Modify every item matching `query` the way `beet modify` does; return the number modified.
+
+    Values are coerced into each field's beets type via `Model.set_parse`, and `Item.try_sync(write, move)`
+    persists the item — writing tags / moving files as requested — inside one library transaction.
+    """
+    count = 0
+    with lib.transaction():
+        for item in lib.items(query):
+            for field, value in changes.items():
+                item.set_parse(field, value)
+            item.try_sync(write, move)
+            count += 1
+    return count
+
+
+def open_library(beets_config_filepath: Path) -> Library:
     """Load the user's beets config and return an open `beets.library.Library`.
 
     Performs blocking I/O (opens the SQLite DB); call only from a worker thread, never the event loop.
@@ -147,14 +167,14 @@ class BeetsLibrary:
         """Bind the adapter to the beets config the library is opened from."""
         self._beets_config_filepath = beets_config_filepath
 
-    async def _read(self, work: Callable[[Any], _T]) -> _T:
+    async def _read(self, work: Callable[[Library], _T]) -> _T:
         def _do() -> _T:
             library = open_library(self._beets_config_filepath)
             return work(library)
 
         return await to_thread.run_sync(_do)
 
-    async def _write(self, work: Callable[[Any], _T]) -> _T:
+    async def _write(self, work: Callable[[Library], _T]) -> _T:
         async with library_write_limiter:
             return await self._read(work)
 
@@ -186,7 +206,7 @@ class BeetsLibrary:
         """Summary statistics over matching items, mirroring `beet stats` (size is approximate, no disk I/O)."""
         parts = list(query) if query else None
 
-        def _do(lib: Any) -> dict[str, Any]:
+        def _do(lib: Library) -> dict[str, Any]:
             total_size = 0
             total_time_seconds = 0.0
             tracks = 0
@@ -215,7 +235,7 @@ class BeetsLibrary:
     async def fields(self) -> dict[str, list[str]]:
         """Available item/album query fields + flexible attributes, mirroring `beet fields`."""
 
-        def _do(lib: Any) -> dict[str, list[str]]:
+        def _do(lib: Library) -> dict[str, list[str]]:
             from beets.library import Album, Item
 
             with lib.transaction() as tx:
@@ -233,32 +253,34 @@ class BeetsLibrary:
 
         return await self._read(_do)
 
-    async def modify_items(self, query: str, changes: Mapping[str, str], *, write_tags: bool = True) -> int:
-        """Apply field `changes` to every item matching `query`; return the number modified."""
+    async def modify_items(
+        self, query: str, changes: Mapping[str, str], *, write_tags: bool | None = None, move: bool | None = None
+    ) -> int:
+        """Apply field `changes` to every item matching `query`; return the number modified.
 
-        def _do(lib: Any) -> int:
-            # TODO[Claude]: confirm beets API — set fields per item, optionally `item.try_write()`, then
-            #     `item.store()` / `lib.save()`. Parse/typed-coerce values like `beet modify` does.
-            count = 0
-            for item in lib.items(query):
-                for field, value in changes.items():
-                    item[field] = value
-                if write_tags:
-                    item.try_write()
-                item.store()
-                count += 1
-            return count
+        Mirrors `beet modify`: each string value is parsed into the field's beets type (`Model.set_parse`),
+        then the item is synced with `Item.try_sync` — writing file tags per `write_tags` and moving/renaming
+        files per `move`. Both default (None) to the user's beets config, exactly like the CLI
+        (`ui.should_write` / `ui.should_move`).
+        """
+
+        def _do(lib: Library) -> int:
+            from beets import ui
+
+            return _modify_matching_items(
+                lib, query, changes, write=ui.should_write(write_tags), move=ui.should_move(move)
+            )
 
         return await self._write(_do)
 
     async def remove_items(self, query: str, *, delete_files: bool = False) -> int:
         """Remove items matching `query` from the library; return the number removed.
 
-        With `delete_files=True` the underlying media files are deleted from disk too.
+        With `delete_files=True` the underlying media files are deleted from disk too
+        (`Item.remove(delete=...)`, as `beet remove -d` does).
         """
 
-        def _do(lib: Any) -> int:
-            # TODO[Claude]: confirm beets API — `item.remove(delete=delete_files)` per matched item.
+        def _do(lib: Library) -> int:
             count = 0
             for item in lib.items(query):
                 item.remove(delete=delete_files)
