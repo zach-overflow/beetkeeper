@@ -52,6 +52,12 @@ docker volume rm beetkeeper-data    # only if you want to discard the DB
 - **Volumes:** the config file is mounted read-only (`:ro`); the DB (and, in this smoke-test config, the
   beets library/music) lives on the read-write `beetkeeper-data` volume so it persists across restarts
   (and holds the automatic pre-migration `.bak` backups).
+- **Extra pip requirements:** set `EXTRA_PIP_REQS` to a container path holding a
+  `requirements.txt` (e.g. `-e EXTRA_PIP_REQS=/config/extra-requirements.txt` plus a mount
+  for the file). At startup the entrypoint pip-installs those requirements into the container and exposes
+  them to the server (via `PEX_EXTRA_SYS_PATH`) before launching it — useful for extra beets plugins.
+  Unset (the default) skips this entirely. The install happens on every container start and lands on the
+  container's writable layer, not a volume.
 - **Host paths:** the `$DEPLOY/...:/config/...` mounts assume you run these from the repo root. Adjust
   the left-hand (host) side to wherever your real config lives.
 - **Workers/SQLite:** beetkeeper always runs a single server worker process (SQLite is effectively

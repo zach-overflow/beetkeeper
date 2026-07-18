@@ -4,6 +4,7 @@ file(name="pyproject", source="pyproject.toml")
 file(name="uv-lockfile", source="uv.lock")
 file(name="license-file", source="LICENSE.txt")
 file(name="dockerfile", source="Dockerfile")
+shell_source(name="docker-entrypoint", source="docker-entrypoint.sh")
 
 # Thin, single-linux-arch PEXes for the Docker image — one per arch, each pinned to that arch's
 # `complete_platforms` so it carries only that arch's wheels. Unlike a
@@ -50,5 +51,5 @@ docker_image(
     repository="zach-overflow/beetkeeper",
     # RELEASE_TAG is the v-stripped version exported by the release workflow; local builds fall back to `dev`.
     image_tags=["latest", env("RELEASE_TAG", "dev")],
-    dependencies=[":license-file", "//:beetkeeper-linux-amd64", "//:beetkeeper-linux-arm64"],
+    dependencies=[":license-file", ":docker-entrypoint", "//:beetkeeper-linux-amd64", "//:beetkeeper-linux-arm64"],
 )
