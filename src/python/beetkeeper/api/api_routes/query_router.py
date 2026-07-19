@@ -1,60 +1,31 @@
 """Read-only beets query routes (`list`, `stats`, `fields`), backed by `core.BeetsLibrary`."""
 
 import logging
-from pathlib import Path
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 
+from beetkeeper.api.api_models import ListQueryParams
 from beetkeeper.api.constants import RouteTag
-from beetkeeper.api.dependencies import BeetsLibraryDep, PageParamsDep
+from beetkeeper.api.dependencies import BeetsLibraryDep
 
 _LOGGER = logging.getLogger(__name__)
 query_router = APIRouter(prefix="/query", tags=[RouteTag.QUERY])
 
 
-# For each possible query param and its corresponding beets query search filter, see:
-# https://beets.readthedocs.io/en/v2.12.0/reference/query.html#combining-keywords
-# Some params are repeatable (multiple values per request) via the FastAPI `Query()` list pattern:
-# https://fastapi.tiangolo.com/tutorial/query-params-str-validations/#query-parameter-list-multiple-values
 @query_router.get("/list")
-async def list_(  # trailing underscore: avoid shadowing the builtin `list` (used in annotations below).
-    library: BeetsLibraryDep,
-    page: PageParamsDep,
-    albums: bool = False,
-    keyword: Annotated[list[str] | None, Query()] = None,
-    field: Annotated[list[str] | None, Query()] = None,
-    phrase: str | None = None,
-    filepath: Path | None = None,
-    sort_by: str | None = None,
+async def list_(  # trailing underscore: avoid shadowing the builtin `list` (used in the return annotation).
+    library: BeetsLibraryDep, params: ListQueryParams
 ) -> list[dict[str, Any]]:
     """Execute `beet list ...`: return one page of matching tracks (or albums) as JSON objects.
 
-    Args:
-        library: injected beets library adapter.
-        page: pagination query params (`page`, `page_size`).
-        albums: like `-a`; return albums instead of individual tracks.
-        keyword: repeatable bare-keyword query parts (substring match across default fields).
-        field: repeatable `field:value` parts (exact `=`, regex `::`, numeric/date ranges all supported).
-        phrase: a single multi-word phrase part.
-        filepath: a path within the beets library (becomes a path query).
-        sort_by: a beets sort token, e.g. `year+` or `artist-`.
+    The query params (pagination plus the beets query inputs, some repeatable) are documented on
+    `ListQueryParamsModel`.
 
     See: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#list
     """
-    query_parts: list[str] = []
-    if keyword:
-        query_parts.extend(keyword)
-    if field:
-        query_parts.extend(field)
-    if phrase:
-        query_parts.append(phrase)
-    if filepath:
-        query_parts.append(str(filepath))
-    if sort_by:
-        query_parts.append(sort_by)
-    query_method = library.query_albums if albums else library.query_items
-    results, _total = await query_method(query_parts, offset=page.offset, limit=page.page_size)
+    query_method = library.query_albums if params.albums else library.query_items
+    results, _total = await query_method(params.query_parts(), offset=params.offset, limit=params.page_size)
     return results
 
 

@@ -18,6 +18,16 @@ class RouteTag(StrEnum):
     QUERY = "query"
 
 
+@unique
+class EventLookupEntityType(StrEnum):
+    """The viable entity types which the `GET /api/events/(album|track)/{id}` and `GET /api/events/{event_id}`
+    routes support."""
+
+    ALBUM = "album"
+    TRACK = "track"
+    BKEVENT = "bkevent"
+
+
 class _OpenApiTagMetadata(TypedDict):
     """See https://fastapi.tiangolo.com/tutorial/metadata/#create-metadata-for-tags"""
 

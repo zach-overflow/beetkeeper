@@ -56,6 +56,7 @@ jobs:
       - name: Static checks and tests
         run: |
           pants lint check test ::
+          pants run build_scripts:openapi-json-exporter -- --check
 
       # Non-docker artifacts (wheels + all PEXes) build here; the image is validated per-arch in `build-image`
       # below. The image build needs a native runner per arch, so it can't be exercised in this single job.

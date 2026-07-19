@@ -1,30 +1,29 @@
 """HTML fragment routes for the events page — recently ingested beets listener events from the DB."""
 
-import logging
-
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from beetkeeper.api.api_routes.events_router import events
-from beetkeeper.api.dependencies import PageParams
+from beetkeeper.api.adapters import listener_event_records_lookup
+from beetkeeper.api.api_models import PageSize
 from beetkeeper.api.jinja_driver import get_templates
 from beetkeeper.db.session import SessionDep
 
-_LOGGER = logging.getLogger(__name__)
-_RECENT_EVENT_LIMIT = 50
 events_ui_fragments_router = APIRouter(prefix="/fragment/event")
 
 
 @events_ui_fragments_router.get("", response_class=HTMLResponse)
-async def event_fragment(request: Request, session: SessionDep) -> HTMLResponse:
-    """Render an HTML fragment of the most recently ingested beets listener events (newest first).
-
-    Delegates the event lookup to the JSON `GET /api/events` route coroutine, so the fragment and the
-    public API always agree on the events payload.
+async def recent_events_fragment(request: Request, session: SessionDep) -> HTMLResponse:
     """
-    events_response = await events(session=session, page=PageParams(page_size=_RECENT_EVENT_LIMIT))
+    Render an HTML fragment of the most recently ingested beets listener events (newest first).
+
+    Delegates the event lookup to the same adapter as the JSON `GET /api/events` route, so the fragment
+    and the public API always agree on the events payload.
+    """
+    event_records_list = await listener_event_records_lookup(
+        session=session, offset=0, limit=PageSize.EVENT_UI_PAGE_SIZE
+    )
     return get_templates().TemplateResponse(
         request=request,
         name="fragment_templates/event_fragment.html",
-        context={"events": [record.model_dump() for record in events_response.events]},
+        context={"events": [record.model_dump() for record in event_records_list]},
     )

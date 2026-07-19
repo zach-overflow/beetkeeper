@@ -28,8 +28,8 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col
 
-from beetkeeper.core.import_jobs import DecisionRequest, ImportDecision, ImportedEntities, ImportJob, ImportJobStatus
-from beetkeeper.db.models import AlbumEvent, ImportJobRecord, ImportLock, ListenerEvent, TrackEvent
+from beetkeeper.core.import_jobs import DecisionRequest, ImportDecision, ImportJob, ImportJobStatus
+from beetkeeper.db.models import ImportJobRecord, ImportLock
 from beetkeeper.db.session import shielded_session
 
 if TYPE_CHECKING:
@@ -161,40 +161,6 @@ class ImportStore:
                 .values(output=output, updated_at=_utcnow())
             )
             await session.commit()
-
-    async def record_import_events(self, imported: ImportedEntities) -> None:
-        """Record events for what an import added, so the events page reflects beetkeeper's own imports.
-
-        Mirrors what the external listener plugin would POST to `/api/events`: an `album_imported`
-        `ListenerEvent` (+ `AlbumEvent`) per album and an `item_imported` one (+ `TrackEvent`) per track.
-        """
-        if not imported.albums and not imported.singleton_item_ids:
-            return
-        now = _utcnow()
-        async with self._session() as session:
-            for album in imported.albums:
-                album_event = ListenerEvent(event_type="album_imported", pushed_at=now)
-                session.add(album_event)
-                await session.flush()  # populate event_id for the child FK
-                session.add(AlbumEvent(listener_event_id=album_event.event_id, beets_album_id=album.album_id))
-                for item_id in album.item_ids:
-                    await self._add_item_event(session, item_id, album.album_id, now)
-            for item_id in imported.singleton_item_ids:
-                await self._add_item_event(session, item_id, None, now)
-            await session.commit()
-
-    @staticmethod
-    async def _add_item_event(
-        session: AsyncSession, beets_item_id: int, beets_album_id: int | None, now: datetime
-    ) -> None:
-        item_event = ListenerEvent(event_type="item_imported", pushed_at=now)
-        session.add(item_event)
-        await session.flush()  # populate event_id for the child FK
-        session.add(
-            TrackEvent(
-                listener_event_id=item_event.event_id, beets_item_id=beets_item_id, beets_album_id=beets_album_id
-            )
-        )
 
     async def set_awaiting(self, request: DecisionRequest) -> None:
         """Park a job on a decision: store the request and mark AWAITING_DECISION (clears any stale answer)."""

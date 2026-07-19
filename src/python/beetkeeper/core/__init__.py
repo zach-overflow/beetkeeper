@@ -27,8 +27,6 @@ from beetkeeper.core.import_jobs import (
     ImportAction,
     ImportCandidate,
     ImportDecision,
-    ImportedAlbum,
-    ImportedEntities,
     ImportJob,
     ImportJobStatus,
 )
@@ -46,6 +44,4 @@ __all__ = [
     "ImportJobStatus",
     "ImportStore",
     "ImportWorker",
-    "ImportedAlbum",
-    "ImportedEntities",
 ]

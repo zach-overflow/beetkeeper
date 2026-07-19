@@ -73,6 +73,30 @@ plus actionlint and an MkDocs build check. Install git hooks with `prek install`
   and `workflow_call` would break PyPI trusted publishing), which builds wheels/image/docs in parallel
   from the tag, then publishes them in parallel (PyPI + Pages keep their environment gates).
 
+## CRITICAL: Beets DB ("Library") interactions
+
+Any code which interacts with the beets database (NOT the beetkeeper database) should be done carefully, and must take into consideration the official beets docs on their programming interface for the db [here](https://beets.readthedocs.io/en/stable/dev/library.html).
+
+Additionally, [this beets blog post](https://beets.io/blog/sqlite-nightmare.html) is helpful for details on the threading and locking model beets enforces for programmatic access to their DB (aka `Library`).
+
+## Beets event flow (beetkeeper-plugin → API)
+- **All recorded beets listener events originate exclusively from the `beetkeeper` beets plugin**
+  (`src/beetsplug/beetkeeper_plugin`), which POSTs them to the `/api/events/*` endpoints. The API parses
+  those requests and stores them (`ListenerEvent` + `AlbumEvent`/`TrackEvent` rows). The server must
+  **never** synthesize or "fill in" event records itself — not even for imports it runs. If no POST
+  arrived, no record exists, period. (The server distribution depends on `beetkeeper-plugin` for exactly
+  this reason.)
+- The import worker registers its own in-process beets listener (`core.import_worker._ImportNarrator`),
+  but it is **narration-only**: it feeds the job's human-readable output log and never writes event rows.
+- Consequence: beetkeeper-run imports appear on the events page only when the beets config loads the
+  `beetkeeper` plugin and its pushes succeed (correct `server_url`, and `api_token` when login protection
+  is enabled).
+- The shared event-type vocabulary is `beetkeeper.constants.BeetsEventType`. It lives at the top level
+  (not under `beetkeeper.api`) because `beetkeeper.api.__init__` pulls in the whole FastAPI app, whose
+  routers import `beetkeeper.db.models` — the db layer importing it from `beetkeeper.api.*` would be a
+  circular import. Integration tests (`src/integration_tests/events_plugin_integration_tests/`) keep it
+  in sync with the plugin's `_EVENT_PAYLOAD_KEYS` and beets' own `beets.plugins.EventType` literals.
+
 ## Relevant public docs
 - Pants: https://www.pantsbuild.org/stable/docs/introduction/welcome-to-pants
 - `python_distribution` target: https://www.pantsbuild.org/stable/reference/targets/python_distribution
@@ -82,7 +106,6 @@ plus actionlint and an MkDocs build check. Install git hooks with `prek install`
 	- beets API reference: https://beets.readthedocs.io/en/v2.12.0/api/index.html
 	- Overview of beets' **internal** API for its core database features.
 - FastAPI docs
-- <!-- TODO[Claude]: this docs bullet was left blank — fill in (or remove) the intended reference. -->
 
 ## Coding style and conventions
 
@@ -120,7 +143,7 @@ explaining at length. (Python docstrings are documentation, not comments, and ar
 	3. Any pure, simple javascript -- only if absolutely needed -- and should be defined in the common shared base HTML template within a `<script> block.
 2. Read the docstring at `src/python/beetkeeper/api/ui_routes/__init__.py` for details on the frontend code structure expectations. 
 	
-3. Do not use ANY javascript framework or any other additional frontend library other than <!-- TODO[Claude]: this rule is truncated — state the allowed exception (HTMX only?) so it is enforceable. Also note the preceding two list items were both numbered "2". -->
+3. Do not use ANY javascript framework or any other additional frontend library other than the vendored HTMX (`src/python/beetkeeper/api/static/js/htmx.min.js`). No CDN scripts, no npm/build step, no CSS frameworks beyond the classless stylesheet above.
 
 ### Test code
 

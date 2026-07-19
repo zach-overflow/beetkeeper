@@ -138,19 +138,3 @@ class ImportJob(BaseModel):
     def source_label(self) -> str:
         """Display name for the import source: the basename(s) of the path(s) (e.g. the album folder)."""
         return ", ".join(os.path.basename(path.rstrip("/")) or path for path in self.paths)
-
-
-class ImportedAlbum(BaseModel):
-    """One album added by an import, plus the ids of its tracks (used to record import events)."""
-
-    model_config = ConfigDict(frozen=True)
-    album_id: int
-    item_ids: list[int] = Field(default_factory=list)
-
-
-class ImportedEntities(BaseModel):
-    """What an import added to the beets library — recorded as `ListenerEvent`s so the events page reflects it."""
-
-    model_config = ConfigDict(frozen=True)
-    albums: list[ImportedAlbum] = Field(default_factory=list)
-    singleton_item_ids: list[int] = Field(default_factory=list)

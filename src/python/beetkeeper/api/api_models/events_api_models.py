@@ -1,29 +1,16 @@
 """Define any custom FastAPI request or response pydantic models for the `/api/events` subrouter here."""
 
 from datetime import datetime
-from enum import StrEnum, unique
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
-
-@unique
-class APIEventType(StrEnum):
-    """
-    Subset of beets listener `event_type`s which the API accepts from our plugin client.
-    See also:
-        https://beets.readthedocs.io/en/stable/dev/plugins/events.html
-    """
-
-    ALBUM_IMPORTED = "album_imported"
-    ALBUM_REMOVED = "album_removed"
-    IMPORT_TASK_FILES = "import_task_files"
-    TRACK_IMPORTED = "item_imported"
-    TRACK_REMOVED = "item_removed"
+from beetkeeper.constants import BeetsEventType
 
 
 class _BaseEventResponse(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
-    event_type: APIEventType
+
+    event_type: BeetsEventType
 
 
 class EventIngestResponse(_BaseEventResponse):
@@ -37,7 +24,7 @@ class MultiItemEventIngestResponse(_BaseEventResponse):
     event_ingest_responses: list[EventIngestResponse] = Field(default_factory=list)
 
 
-class ListenerEventRecord(_BaseEventResponse):
+class ListenerEventDetails(_BaseEventResponse):
     """One ingested beets listener event, with the beets album/track ids of its child rows."""
 
     pushed_at: datetime
@@ -45,16 +32,42 @@ class ListenerEventRecord(_BaseEventResponse):
     track_ids: list[int] = Field(default_factory=list)
 
 
+class EventSearchResult(BaseModel):
+    """A model with an aggregate of details for an event search match."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    event_id: int = Field(description="The beetkeeper event ID associated with this match.")
+    event_type: BeetsEventType = Field(
+        description="The type of beets event ( https://beets.readthedocs.io/en/stable/dev/plugins/events.html )."
+    )
+    event_time: datetime = Field(description="The time of the event taking place.")
+    beets_id: int = Field(description="The beets ID of the event's subject (either beets Album ID or Item ID).")
+    current_beets_subject_state: APIAlbum | APITrack | None = Field(
+        default=None,
+        description="Current state of the event's subject (Album or Item). Null if subject no longer exists.",
+    )
+
+
+class EventSearchResponse(BaseModel):
+    """Response model for the `GET /api/events/(album|track)/{id}` and `GET /api/events/{event_id}` search routes."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    results: list[EventSearchResult] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list, description="Any error messages from the event search.")
+
+
 class EventsListResponse(BaseModel):
     """Response payload for the events listing: recently ingested listener events, newest first."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
-    events: list[ListenerEventRecord] = Field(default_factory=list)
+    events: list[ListenerEventDetails] = Field(default_factory=list)
 
 
 class _BaseEventBody(BaseModel):
     model_config = ConfigDict(frozen=True, extra="allow")
-    event_type: APIEventType
+    event_type: BeetsEventType
     pushed_at: AwareDatetime
 
 

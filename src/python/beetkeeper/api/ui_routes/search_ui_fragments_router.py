@@ -17,7 +17,8 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from beetkeeper.api.dependencies import BeetsLibraryDep, PageParamsDep
+from beetkeeper.api.api_models import SearchResultsQueryParams
+from beetkeeper.api.dependencies import BeetsLibraryDep
 from beetkeeper.api.jinja_driver import get_templates
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,33 +40,27 @@ def _build_query_parts(query: str, filepath: str | None, sort_by: str | None = N
 
 @search_ui_fragments_router.get("/results", response_class=HTMLResponse)
 async def search_results_fragment(
-    request: Request,
-    library: BeetsLibraryDep,
-    page: PageParamsDep,
-    query: str = "",
-    albums: bool = False,
-    filepath: str | None = None,
-    sort_by: str | None = None,
+    request: Request, library: BeetsLibraryDep, params: SearchResultsQueryParams
 ) -> HTMLResponse:
     """`beet list`-style query: render one page of the matching tracks/albums as a table."""
-    parts = _build_query_parts(query, filepath, sort_by)
+    parts = _build_query_parts(params.query, params.filepath, params.sort_by)
     error: str | None = None
     page_results: list[dict[str, Any]] = []
     total = 0
     try:
-        query_method = library.query_albums if albums else library.query_items
-        page_results, total = await query_method(parts, offset=page.offset, limit=page.page_size)
+        query_method = library.query_albums if params.albums else library.query_items
+        page_results, total = await query_method(parts, offset=params.offset, limit=params.page_size)
     except Exception as exc:  # surface invalid-query errors in the UI instead of a 500
         _LOGGER.debug(f"Search query failed: {exc}")
         error = str(exc)
 
     base_params = urlencode(
         {
-            "query": query,
-            "albums": "true" if albums else "false",
-            "filepath": filepath or "",
-            "sort_by": sort_by or "",
-            "page_size": page.page_size,
+            "query": params.query,
+            "albums": "true" if params.albums else "false",
+            "filepath": params.filepath or "",
+            "sort_by": params.sort_by or "",
+            "page_size": params.page_size,
         }
     )
     return get_templates().TemplateResponse(
@@ -73,12 +68,12 @@ async def search_results_fragment(
         name="fragment_templates/search_results.html",
         context={
             "results": page_results,
-            "albums": albums,
+            "albums": params.albums,
             "error": error,
             "total": total,
-            "page": page.page,
-            "start_index": page.offset + 1,
-            "end_index": page.offset + len(page_results),
+            "page": params.page,
+            "start_index": params.offset + 1,
+            "end_index": params.offset + len(page_results),
             "base_params": base_params,
         },
     )

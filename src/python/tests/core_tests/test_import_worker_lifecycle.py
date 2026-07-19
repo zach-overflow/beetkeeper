@@ -3,9 +3,9 @@
 These cover the restart/crash failure modes: a freshly-started worker takes over a dead process's expired
 lease and fails its orphaned jobs (retrying recovery after a transient error), a live (unexpired) lease is
 respected, a failed import or failed post-import bookkeeping doesn't kill the worker loop, terminal-status
-writes are retried, abort short-circuits event recording, and the `DecisionBridge` resolves both the
-answered and the aborted decision waits. The beets pipeline itself is mocked out (`_run_import_blocking`);
-no real import, library, or network is touched.
+writes are retried, aborted jobs land on ABORTED, and the `DecisionBridge` resolves both the answered and
+the aborted decision waits. The beets pipeline itself is mocked out (`_run_import_blocking`); no real
+import, library, or network is touched.
 """
 
 from collections.abc import Awaitable, Callable
@@ -18,15 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from beetkeeper.core import (
-    ImportAction,
-    ImportDecision,
-    ImportedAlbum,
-    ImportedEntities,
-    ImportJobStatus,
-    ImportStore,
-    ImportWorker,
-)
+from beetkeeper.core import ImportAction, ImportDecision, ImportJobStatus, ImportStore, ImportWorker
 from beetkeeper.core.import_jobs import DecisionRequest
 from beetkeeper.core.import_worker import DecisionBridge
 from beetkeeper.db.models import ListenerEvent
@@ -185,18 +177,15 @@ async def test_worker_respects_a_live_lease_and_recovers_nothing(
 
 @pytest.mark.anyio
 @pytest.mark.usefixtures("fast_polls")
-async def test_completed_job_records_events_and_output(
+async def test_completed_job_persists_output_without_recording_events(
     import_store: ImportStore,
     worker: ImportWorker,
     session_factory: async_sessionmaker[AsyncSession],
     mocker: MockerFixture,
 ) -> None:
-    """The claim -> run -> COMPLETED path persists the terminal status, output, and import events."""
-    mocker.patch.object(
-        ImportWorker,
-        "_run_import_blocking",
-        return_value=ImportedEntities(albums=[ImportedAlbum(album_id=1, item_ids=[10])]),
-    )
+    """The claim -> run -> COMPLETED path persists the terminal status and output — and never writes
+    `ListenerEvent` rows: recorded events originate exclusively from the beetkeeper plugin's POSTs."""
+    mocker.patch.object(ImportWorker, "_run_import_blocking", return_value=None)
     job = await import_store.create(["/music/a"])
 
     await _run_worker_until(worker, _job_status_condition(import_store, job.id, ImportJobStatus.COMPLETED))
@@ -204,8 +193,7 @@ async def test_completed_job_records_events_and_output(
     view = await import_store.get(job.id)
     assert view is not None and view.output is not None and "Import completed." in view.output
     async with session_factory() as session:
-        events = (await session.execute(select(ListenerEvent))).scalars().all()
-    assert sorted(event.event_type for event in events) == ["album_imported", "item_imported"]
+        assert (await session.execute(select(ListenerEvent))).scalars().all() == []
 
 
 @pytest.mark.anyio
@@ -214,9 +202,7 @@ async def test_failed_import_marks_job_failed_and_worker_survives(
     import_store: ImportStore, worker: ImportWorker, mocker: MockerFixture
 ) -> None:
     """An import that raises fails ONLY that job — the worker loop stays alive and runs the next one."""
-    mocker.patch.object(
-        ImportWorker, "_run_import_blocking", side_effect=[RuntimeError("beets exploded"), ImportedEntities()]
-    )
+    mocker.patch.object(ImportWorker, "_run_import_blocking", side_effect=[RuntimeError("beets exploded"), None])
     first = await import_store.create(["/music/bad"])
     second = await import_store.create(["/music/good"])
 
@@ -234,22 +220,18 @@ async def test_bookkeeping_failure_fails_the_job_and_worker_survives(
     import_store: ImportStore, worker: ImportWorker, mocker: MockerFixture
 ) -> None:
     """A non-OperationalError from post-import bookkeeping lands on the job, not the worker loop."""
-    mocker.patch.object(
-        ImportWorker,
-        "_run_import_blocking",
-        return_value=ImportedEntities(albums=[ImportedAlbum(album_id=1, item_ids=[10])]),
-    )
-    error = IntegrityError("INSERT ...", {}, Exception("FOREIGN KEY constraint failed"))
-    calls = _fail_first_call_then_delegate(mocker, import_store, "record_import_events", error)
-    first = await import_store.create(["/music/bad-events"])
+    mocker.patch.object(ImportWorker, "_run_import_blocking", return_value=None)
+    error = IntegrityError("SELECT ...", {}, Exception("malformed database schema"))
+    calls = _fail_first_call_then_delegate(mocker, import_store, "is_abort_requested", error)
+    first = await import_store.create(["/music/bad-bookkeeping"])
     second = await import_store.create(["/music/good"])
 
     await _run_worker_until(worker, _job_status_condition(import_store, second.id, ImportJobStatus.COMPLETED))
 
     failed = await import_store.get(first.id)
     assert failed is not None and failed.status is ImportJobStatus.FAILED
-    assert failed.error is not None and "FOREIGN KEY constraint failed" in failed.error
-    assert len(calls) >= 2  # the second job's events were still recorded via the delegate
+    assert failed.error is not None and "malformed database schema" in failed.error
+    assert len(calls) >= 2  # the second job's abort check still went through via the delegate
 
 
 @pytest.mark.anyio
@@ -258,7 +240,7 @@ async def test_transient_terminal_write_failure_is_retried(
     import_store: ImportStore, worker: ImportWorker, mocker: MockerFixture
 ) -> None:
     """A transient error during the terminal status write is retried, not swallowed into a zombie job."""
-    mocker.patch.object(ImportWorker, "_run_import_blocking", return_value=ImportedEntities())
+    mocker.patch.object(ImportWorker, "_run_import_blocking", return_value=None)
     calls = _fail_first_call_then_delegate(mocker, import_store, "set_status", _locked_error("UPDATE ..."))
     job = await import_store.create(["/music/a"])
 
@@ -274,7 +256,7 @@ async def test_transient_db_error_does_not_kill_the_worker(
 ) -> None:
     """A transient `OperationalError` (e.g. SQLite "database is locked") is retried, not worker-fatal."""
     calls = _fail_first_call_then_delegate(mocker, import_store, "claim_next", _locked_error("SELECT ..."))
-    mocker.patch.object(ImportWorker, "_run_import_blocking", return_value=ImportedEntities())
+    mocker.patch.object(ImportWorker, "_run_import_blocking", return_value=None)
     job = await import_store.create(["/music/a"])
 
     await _run_worker_until(worker, _job_status_condition(import_store, job.id, ImportJobStatus.COMPLETED))
@@ -291,11 +273,7 @@ async def test_aborted_job_ends_aborted_without_recording_events(
     mocker: MockerFixture,
 ) -> None:
     """A job aborted mid-run lands on ABORTED and its (partial) import is not recorded as events."""
-    mocker.patch.object(
-        ImportWorker,
-        "_run_import_blocking",
-        return_value=ImportedEntities(albums=[ImportedAlbum(album_id=1, item_ids=[10])]),
-    )
+    mocker.patch.object(ImportWorker, "_run_import_blocking", return_value=None)
     job = await import_store.create(["/music/a"])
     assert await import_store.request_abort(job.id) is True
 

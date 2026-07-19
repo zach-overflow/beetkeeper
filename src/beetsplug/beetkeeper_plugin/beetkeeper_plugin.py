@@ -57,7 +57,7 @@ class BeetkeeperPlugin(BeetsPlugin):
       * `api_token`: bearer token for the push requests, for servers running with login protection.
     """
 
-    # Must stay a subset of the server's accepted `beetkeeper.api.api_models.APIEventType` values.
+    # Must stay a subset of the server's accepted `beetkeeper.constants.BeetsEventType` values.
     _EVENT_PAYLOAD_KEYS: ClassVar[dict[EventType, str]] = {
         "album_imported": "album",
         "album_removed": "album",

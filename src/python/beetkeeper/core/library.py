@@ -27,7 +27,7 @@ Concurrency:
 
 import logging
 import threading
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, TypeVar
@@ -108,7 +108,8 @@ def _jsonify(model: LibModel) -> dict[str, Any]:
 
 
 def _paged_jsonify(results: Results[AnyLibModel], offset: int, limit: int | None) -> tuple[list[dict[str, Any]], int]:
-    """Convert one `[offset, offset + limit)` window of a beets `Results` to dicts, with the total count.
+    """
+    Convert one `[offset, offset + limit)` window of a beets `Results` to dicts, with the total count.
 
     beets fetches all matching rows up front but constructs/converts model objects lazily per iteration, so
     slicing here (not after full conversion) is what keeps a page O(page size) instead of O(matches).
@@ -116,22 +117,6 @@ def _paged_jsonify(results: Results[AnyLibModel], offset: int, limit: int | None
     stop = None if limit is None else offset + limit
     page = [_jsonify(model) for model in islice(results, offset, stop)]
     return page, len(results)
-
-
-def _modify_matching_items(lib: Library, query: str, changes: Mapping[str, str], *, write: bool, move: bool) -> int:
-    """Modify every item matching `query` the way `beet modify` does; return the number modified.
-
-    Values are coerced into each field's beets type via `Model.set_parse`, and `Item.try_sync(write, move)`
-    persists the item — writing tags / moving files as requested — inside one library transaction.
-    """
-    count = 0
-    with lib.transaction():
-        for item in lib.items(query):
-            for field, value in changes.items():
-                item.set_parse(field, value)
-            item.try_sync(write, move)
-            count += 1
-    return count
 
 
 def open_library(beets_config_filepath: Path) -> Library:
@@ -154,13 +139,18 @@ def open_library(beets_config_filepath: Path) -> Library:
 
 
 class BeetsLibrary:
-    """Async facade over a beets `Library` for one-shot operations.
+    """
+    Async facade over a beets `Library` for one-shot operations.
 
     Each call opens the library inside a worker thread (beets connections are thread-local) and runs off
     the event loop. Mutating calls additionally hold `library_write_limiter`. Read results are returned as
     JSON-safe dicts (see `_jsonify`). Queries are beets query *parts* (a list of tokens like the CLI args);
     beets parses them — fields (`artist:Beatles`), keywords, phrases, path queries, and trailing sort
     tokens (`year+`): https://beets.readthedocs.io/en/v2.12.0/reference/query.html
+
+    See also:
+        https://beets.readthedocs.io/en/stable/dev/library.html
+        https://beets.io/blog/sqlite-nightmare.html
     """
 
     def __init__(self, beets_config_filepath: Path) -> None:
@@ -181,7 +171,8 @@ class BeetsLibrary:
     async def query_items(
         self, query: Sequence[str] | None = None, *, offset: int = 0, limit: int | None = None
     ) -> tuple[list[dict[str, Any]], int]:
-        """One page of JSON-safe dicts for beets `Item`s matching the query parts, plus the total match count.
+        """
+        One page of JSON-safe dicts for beets `Item`s matching the query parts, plus the total match count.
 
         `query` of None/empty matches all items. Only the `[offset, offset + limit)` window is converted to
         dicts (`limit=None` -> everything from `offset`): the dict conversion dominates query cost (~90
@@ -195,7 +186,8 @@ class BeetsLibrary:
     async def query_albums(
         self, query: Sequence[str] | None = None, *, offset: int = 0, limit: int | None = None
     ) -> tuple[list[dict[str, Any]], int]:
-        """One page of JSON-safe dicts for beets `Album`s matching the query parts, plus the total match count.
+        """
+        One page of JSON-safe dicts for beets `Album`s matching the query parts, plus the total match count.
 
         Windowing/total semantics are identical to `query_items`.
         """
@@ -253,38 +245,32 @@ class BeetsLibrary:
 
         return await self._read(_do)
 
-    async def modify_items(
-        self, query: str, changes: Mapping[str, str], *, write_tags: bool | None = None, move: bool | None = None
-    ) -> int:
-        """Apply field `changes` to every item matching `query`; return the number modified.
-
-        Mirrors `beet modify`: each string value is parsed into the field's beets type (`Model.set_parse`),
-        then the item is synced with `Item.try_sync` — writing file tags per `write_tags` and moving/renaming
-        files per `move`. Both default (None) to the user's beets config, exactly like the CLI
-        (`ui.should_write` / `ui.should_move`).
+    async def get_albums(self, beets_album_ids: Sequence[int]) -> dict[int, dict[str, Any]]:
         """
-
-        def _do(lib: Library) -> int:
-            from beets import ui
-
-            return _modify_matching_items(
-                lib, query, changes, write=ui.should_write(write_tags), move=ui.should_move(move)
-            )
-
-        return await self._write(_do)
-
-    async def remove_items(self, query: str, *, delete_files: bool = False) -> int:
-        """Remove items matching `query` from the library; return the number removed.
-
-        With `delete_files=True` the underlying media files are deleted from disk too
-        (`Item.remove(delete=...)`, as `beet remove -d` does).
+        Queries the beets `Library` by beets album ID(s).
+        Returns a dictionary mapping beets album ids to a JSON-safe dict of their corresponding
+        `beets.library.Album` fields (ids with no matching album are omitted).
         """
+        if not beets_album_ids:
+            return {}
+        from beets.dbcore.query import InQuery
 
-        def _do(lib: Library) -> int:
-            count = 0
-            for item in lib.items(query):
-                item.remove(delete=delete_files)
-                count += 1
-            return count
+        query = InQuery(field_name="id", pattern=tuple(set(beets_album_ids)))
+        return await self._read(
+            lambda lib: {album_dict["id"]: album_dict for album_dict in map(_jsonify, lib.albums(query))}
+        )
 
-        return await self._write(_do)
+    async def get_tracks(self, beets_item_ids: Sequence[int]) -> dict[int, dict[str, Any]]:
+        """
+        Queries the beets `Library` by beets item (track) ID(s).
+        Returns a dictionary mapping beets item ids to a JSON-safe dict of their corresponding
+        `beets.library.Item` fields (ids with no matching item are omitted).
+        """
+        if not beets_item_ids:
+            return {}
+        from beets.dbcore.query import InQuery
+
+        query = InQuery(field_name="id", pattern=tuple(set(beets_item_ids)))
+        return await self._read(
+            lambda lib: {item_dict["id"]: item_dict for item_dict in map(_jsonify, lib.items(query))}
+        )
