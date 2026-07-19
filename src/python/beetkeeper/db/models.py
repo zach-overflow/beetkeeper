@@ -8,7 +8,9 @@ Model definitions should be subclassed from `SQLModel` rather than SQLAlchemy mo
 from datetime import datetime
 
 from sqlalchemy import DateTime
-from sqlmodel import Field, SQLModel
+from sqlmodel import AutoString, Field, SQLModel
+
+from beetkeeper.constants import BeetsEventType
 
 
 class ListenerEvent(SQLModel, table=True):
@@ -16,7 +18,9 @@ class ListenerEvent(SQLModel, table=True):
 
     __tablename__ = "listener_event"
     event_id: int | None = Field(default=None, primary_key=True)
-    event_type: str
+    # `sa_type` keeps the column a plain string: SQLModel's default enum mapping (`sa.Enum`) would persist
+    # member *names* (breaking rows already stored as values) and add a CHECK constraint with no migration.
+    event_type: BeetsEventType = Field(sa_type=AutoString)
     pushed_at: datetime = Field(sa_type=DateTime)
 
 
@@ -59,7 +63,7 @@ class TrackEvent(SQLModel, table=True):
 # class-level `BeetsPlugin.listeners` table, so beetkeeper can register one in-process listener (a tiny
 # `BeetsPlugin` whose `register_listener(...)` runs in beets' pipeline threads) WITHOUT loading config
 # plugins, collect rows into a thread-safe sink, then have the leader worker persist them after the import
-# (mirroring the existing output-buffer / `record_import_events` patterns in `core/import_worker.py`).
+# (mirroring the existing output-buffer pattern in `core/import_worker.py`).
 # Schema notes for re-enabling: make `dst_path` unique + indexed (one row per imported file; re-imports
 # upsert), index `src_path` for reverse lookups, decode the bytes paths to str, and consider `ondelete=
 # "SET NULL"` (not CASCADE) so this "canonical ledger" survives pruning of transient `import_job` rows.

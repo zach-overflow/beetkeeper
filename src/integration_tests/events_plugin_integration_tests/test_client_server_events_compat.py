@@ -12,6 +12,7 @@ from fastapi import status
 
 from beetkeeper.api.api_models import AlbumEventBody, ImportTaskFilesEventBody, TrackEventBody
 
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 

@@ -39,8 +39,6 @@ from beetkeeper.core.import_jobs import (  # pants: no-infer-dep
     ImportAction,
     ImportCandidate,
     ImportDecision,
-    ImportedAlbum,
-    ImportedEntities,
     ImportJob,
     ImportJobStatus,
 )
@@ -435,65 +433,67 @@ class WebImportSession(ImportSession):
         )
 
 
-class _ImportedCollector:
-    """Thread-safe accumulator of what a running import added, fed by beets' import events.
+class _ImportNarrator:
+    """Thread-safe narrator of what a running import adds, fed by beets' import events.
 
     beets' pipeline fires `album_imported`/`item_imported` from its worker threads as each task's files
-    land in the library, so appends are locked and the narrative output line is emitted live per event.
+    land in the library, so the count is locked and the narrative output line is emitted live per event.
+    This is purely job-output narration — persisting import events is exclusively the beetkeeper plugin's
+    job (it POSTs them to `/api/events`); the server never records import events on its own.
     """
 
     def __init__(self, output: _OutputBuffer) -> None:
-        """Bind the collector to the job's output buffer (for the per-event narrative lines)."""
+        """Bind the narrator to the job's output buffer (for the per-event narrative lines)."""
         self._lock = threading.Lock()
         self._output = output
-        self._albums: list[ImportedAlbum] = []
-        self._singleton_item_ids: list[int] = []
+        self._imported_count = 0
 
     def album_imported(self, album: Album) -> None:
-        """Record one imported album and its tracks."""
-        item_ids = [item.id for item in album.items()]
+        """Narrate one imported album and its track count."""
+        item_count = len(list(album.items()))
         with self._lock:
-            self._albums.append(ImportedAlbum(album_id=album.id, item_ids=item_ids))
+            self._imported_count += 1
         self._output.append(
-            f"Imported album: {album.albumartist or '?'} - {album.album or '?'} ({len(item_ids)} track(s))."
+            f"Imported album: {album.albumartist or '?'} - {album.album or '?'} ({item_count} track(s))."
         )
 
     def item_imported(self, item: Item) -> None:
-        """Record one imported standalone (singleton) track."""
+        """Narrate one imported standalone (singleton) track."""
         with self._lock:
-            self._singleton_item_ids.append(item.id)
+            self._imported_count += 1
         self._output.append(f"Imported standalone track: {item.artist or '?'} - {item.title or '?'}.")
 
-    def imported(self) -> ImportedEntities:
-        """Snapshot everything collected so far."""
+    @property
+    def imported_count(self) -> int:
+        """Number of albums + standalone tracks narrated so far."""
         with self._lock:
-            return ImportedEntities(albums=list(self._albums), singleton_item_ids=list(self._singleton_item_ids))
+            return self._imported_count
 
 
 class _ImportEventsPlugin(BeetsPlugin):
-    """Routes beets' `album_imported`/`item_imported` events to the currently-running job's collector.
+    """Routes beets' `album_imported`/`item_imported` events to the currently-running job's narrator.
 
     beets dispatches events from the process-global `BeetsPlugin.listeners` registry, which has no
     unregister API — so exactly one instance is created lazily (`_import_events`) and lives for the
-    process, forwarding to whichever collector is installed on `self.collector`. The worker runs at most
-    one import at a time per process, so a single slot suffices; events with no collector installed
+    process, forwarding to whichever narrator is installed on `self.narrator`. The worker runs at most
+    one import at a time per process, so a single slot suffices; events with no narrator installed
     (imports run by other beets clients while we're idle) are ignored.
     """
 
     def __init__(self) -> None:
         """Register the import-event listeners (a one-time, process-global side effect)."""
         super().__init__(name="beetkeeper")
-        self.collector: _ImportedCollector | None = None
+        self.narrator: _ImportNarrator | None = None
         self.register_listener("album_imported", self._on_album_imported)
         self.register_listener("item_imported", self._on_item_imported)
 
     def _on_album_imported(self, album: Album) -> None:
-        if self.collector is not None:
-            self.collector.album_imported(album)
+        if self.narrator is not None:
+            self.narrator.album_imported(album)
 
     def _on_item_imported(self, item: Item) -> None:
-        if self.collector is not None:
-            self.collector.item_imported(item)
+        if self.narrator is not None:
+            self.narrator.item_imported(item)
 
 
 # The singleton lives in a dict so it can be set without `global` (mirrors `library._plugins_state`).
@@ -565,7 +565,6 @@ class ImportWorker:
 
     async def _run_job(self, job: ImportJob, portal: BlockingPortal) -> None:
         output = _OutputBuffer()
-        imported = ImportedEntities()
         failure: Exception | None = None
         async with anyio.create_task_group() as task_group:
             task_group.start_soon(self._renew_lease_until_cancelled)
@@ -576,9 +575,7 @@ class ImportWorker:
                 # concurrently so we keep leadership across long imports / decision waits. Holding
                 # `library_write_limiter` for the duration upholds the app-wide invariant that at most
                 # one beets-library writer exists (the UI's modify/remove wait until the import ends).
-                imported = await to_thread.run_sync(
-                    self._run_import_blocking, job, portal, output, limiter=library_write_limiter
-                )
+                await to_thread.run_sync(self._run_import_blocking, job, portal, output, limiter=library_write_limiter)
             except Exception as exc:  # keep the worker alive; the failure lands on the job below
                 failure = exc
             finally:
@@ -589,10 +586,6 @@ class ImportWorker:
         if failure is None:
             try:
                 aborted = await self._store.is_abort_requested(job.id)
-                if not aborted:
-                    # Record what we imported so the events page reflects beetkeeper's own imports (the
-                    # external listener plugin only covers imports run outside beetkeeper).
-                    await self._store.record_import_events(imported)
                 output.append("Import aborted." if aborted else "Import completed.")
                 status = ImportJobStatus.ABORTED if aborted else ImportJobStatus.COMPLETED
             except Exception as exc:  # bookkeeping failed — the job must still reach a terminal state
@@ -662,11 +655,11 @@ class ImportWorker:
                 continue
             last_version = version
 
-    def _run_import_blocking(self, job: ImportJob, portal: BlockingPortal, output: _OutputBuffer) -> ImportedEntities:
-        """Open the library, run the beets import to completion, and report what it added.
+    def _run_import_blocking(self, job: ImportJob, portal: BlockingPortal, output: _OutputBuffer) -> None:
+        """Open the library, run the beets import to completion, and narrate what it added.
 
         Executes in a worker thread (beets connections are thread-local). The added albums/items are
-        captured through beets' own `album_imported`/`item_imported` events (fired by the pipeline as each
+        narrated through beets' own `album_imported`/`item_imported` events (fired by the pipeline as each
         task lands — see `_ImportEventsPlugin`). beets warnings/errors during the run are funneled into
         `output` alongside the session's own narrative lines.
         """
@@ -695,17 +688,15 @@ class ImportWorker:
                 loghandler=loghandler,
             )
             events = _import_events()
-            collector = _ImportedCollector(output)
-            events.collector = collector
+            narrator = _ImportNarrator(output)
+            events.narrator = narrator
             try:
                 session.run()  # blocks until beets' pipeline finishes (or drains via cooperative SKIP on abort)
             finally:
-                events.collector = None
+                events.narrator = None
                 if loghandler is not None:
                     loghandler.close()
-            imported = collector.imported()
-            if not imported.albums and not imported.singleton_item_ids:
+            if narrator.imported_count == 0:
                 output.append("No new items were added to the library.")
-            return imported
         finally:
             beets_logger.removeHandler(handler)

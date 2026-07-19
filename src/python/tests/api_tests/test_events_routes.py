@@ -4,11 +4,15 @@ The `get_session` dependency is overridden to draw sessions from a freshly-migra
 package's `conftest.py`), so these run fully in-process (no real DB server, no sockets).
 """
 
+from pathlib import Path
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlmodel import select
 
+from beetkeeper.api.dependencies import get_beets_library
+from beetkeeper.core import BeetsLibrary
 from beetkeeper.db.models import AlbumEvent, ListenerEvent, TrackEvent
 from beetkeeper.db.session import get_session
 
@@ -161,3 +165,123 @@ async def test_events_listing_is_paginated(client: AsyncClient, pushed_at: str) 
 @pytest.mark.parametrize("params", [{"page_size": 0}, {"page_size": 101}, {"page": 0}])
 async def test_events_listing_rejects_out_of_range_page_params(client: AsyncClient, params: dict[str, int]) -> None:
     assert (await client.get("/api/events", params=params)).status_code == 422
+
+
+class TestEventSearchRoutes:
+    """`GET /api/events/album/{id}`, `/track/{id}`, and `/{event_id}`: joined event results with the
+    subject's current beets library state (null when the subject no longer exists in the library)."""
+
+    @pytest.fixture
+    def beets_library_with_album(self, tmp_path: Path) -> tuple[BeetsLibrary, int, list[int]]:
+        """A `BeetsLibrary` over a throwaway config holding one real album; returns (library, album_id, item_ids)."""
+        from beets.library import Item, Library
+
+        beets_config = tmp_path / "beets.yaml"
+        beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n")
+        library = Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
+        items = [
+            Item(
+                artist="Artist",
+                albumartist="Artist",
+                album="Album",
+                title=f"Song {index}",
+                track=index + 1,
+                path=f"/music/song{index}.mp3".encode(),
+            )
+            for index in range(2)
+        ]
+        album = library.add_album(items)
+        return BeetsLibrary(beets_config), album.id, [item.id for item in items]
+
+    @pytest.fixture
+    def app_dependency_overrides(
+        self, get_session_override: SessionOverride, beets_library_with_album: tuple[BeetsLibrary, int, list[int]]
+    ) -> DependencyOverrides:
+        return {get_session: get_session_override, get_beets_library: lambda: beets_library_with_album[0]}
+
+    @pytest.mark.anyio
+    async def test_search_by_album_id(
+        self, client: AsyncClient, beets_library_with_album: tuple[BeetsLibrary, int, list[int]], pushed_at: str
+    ) -> None:
+        _, album_id, _ = beets_library_with_album
+        payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": album_id}}
+        assert (await client.post("/api/events/album", json=payload)).status_code == 201
+
+        response = await client.get(f"/api/events/album/{album_id}")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["errors"] == []
+        assert len(body["results"]) == 1
+        result = body["results"][0]
+        assert result["event_type"] == "album_imported"
+        assert result["beets_id"] == album_id
+        assert result["current_beets_subject_state"]["id"] == album_id
+        assert result["current_beets_subject_state"]["album"] == "Album"
+
+    @pytest.mark.anyio
+    async def test_search_by_track_id(
+        self, client: AsyncClient, beets_library_with_album: tuple[BeetsLibrary, int, list[int]], pushed_at: str
+    ) -> None:
+        _, album_id, item_ids = beets_library_with_album
+        assert (
+            await client.post("/api/events/track", json=_track_item(pushed_at, item_ids[0], album_id))
+        ).status_code == 201
+
+        response = await client.get(f"/api/events/track/{item_ids[0]}")
+
+        assert response.status_code == 200
+        results = response.json()["results"]
+        assert len(results) == 1
+        assert results[0]["event_type"] == "item_imported"
+        assert results[0]["beets_id"] == item_ids[0]
+        assert results[0]["current_beets_subject_state"]["title"] == "Song 0"
+
+    @pytest.mark.anyio
+    async def test_search_by_event_id_spans_both_child_tables(
+        self,
+        client: AsyncClient,
+        session_factory: async_sessionmaker[AsyncSession],
+        beets_library_with_album: tuple[BeetsLibrary, int, list[int]],
+        pushed_at: str,
+    ) -> None:
+        _, album_id, item_ids = beets_library_with_album
+        payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": album_id}}
+        assert (await client.post("/api/events/album", json=payload)).status_code == 201
+        async with session_factory() as session:
+            listener_events = (await session.execute(select(ListenerEvent))).scalars().all()
+        assert len(listener_events) == 1
+        event_id = listener_events[0].event_id
+        assert event_id is not None
+
+        response = await client.get(f"/api/events/{event_id}")
+
+        assert response.status_code == 200
+        results = response.json()["results"]
+        assert len(results) == 1
+        assert results[0]["event_id"] == event_id
+        assert results[0]["beets_id"] == album_id
+
+    @pytest.mark.anyio
+    async def test_search_subject_missing_from_beets_library_is_null(self, client: AsyncClient, pushed_at: str) -> None:
+        payload = {"event_type": "album_removed", "pushed_at": pushed_at, "album_fields": {"id": 9999}}
+        assert (await client.post("/api/events/album", json=payload)).status_code == 201
+
+        response = await client.get("/api/events/album/9999")
+
+        assert response.status_code == 200
+        results = response.json()["results"]
+        assert len(results) == 1
+        assert results[0]["event_type"] == "album_removed"
+        assert results[0]["current_beets_subject_state"] is None
+
+    @pytest.mark.anyio
+    async def test_search_with_no_matching_events_is_empty(self, client: AsyncClient) -> None:
+        response = await client.get("/api/events/album/424242")
+        assert response.status_code == 200
+        assert response.json() == {"results": [], "errors": []}
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize("path", ["/api/events/album/-1", "/api/events/track/-1", "/api/events/-1"])
+    async def test_search_rejects_negative_ids(self, client: AsyncClient, path: str) -> None:
+        assert (await client.get(path)).status_code == 422

@@ -5,12 +5,10 @@ handoff, cooperative abort, and orphan recovery on leader takeover.
 """
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from beetkeeper.core import ImportAction, ImportDecision, ImportedAlbum, ImportedEntities, ImportJobStatus, ImportStore
+from beetkeeper.core import ImportAction, ImportDecision, ImportJobStatus, ImportStore
 from beetkeeper.core.import_jobs import DecisionRequest
-from beetkeeper.db.models import AlbumEvent, ListenerEvent, TrackEvent
 
 
 def _store(session_factory: async_sessionmaker[AsyncSession]) -> ImportStore:
@@ -172,39 +170,6 @@ async def test_abort_flag(session_factory: async_sessionmaker[AsyncSession]) -> 
     assert await store.is_abort_requested(job.id) is False
     assert await store.request_abort(job.id) is True
     assert await store.is_abort_requested(job.id) is True
-
-
-@pytest.mark.anyio
-async def test_record_import_events_writes_listener_rows(session_factory: async_sessionmaker[AsyncSession]) -> None:
-    store = _store(session_factory)
-    imported = ImportedEntities(albums=[ImportedAlbum(album_id=7, item_ids=[11, 12])], singleton_item_ids=[99])
-    await store.record_import_events(imported)
-
-    async with session_factory() as session:
-        listeners = (await session.execute(select(ListenerEvent))).scalars().all()
-        albums = (await session.execute(select(AlbumEvent))).scalars().all()
-        tracks = (await session.execute(select(TrackEvent))).scalars().all()
-
-    # 1 album_imported + 2 item_imported (in-album) + 1 item_imported (singleton).
-    assert sorted(le.event_type for le in listeners) == [
-        "album_imported",
-        "item_imported",
-        "item_imported",
-        "item_imported",
-    ]
-    assert len(albums) == 1 and albums[0].beets_album_id == 7
-    assert {(t.beets_item_id, t.beets_album_id) for t in tracks} == {(11, 7), (12, 7), (99, None)}
-    listener_ids = {le.event_id for le in listeners}
-    assert all(a.listener_event_id in listener_ids for a in albums)
-    assert all(t.listener_event_id in listener_ids for t in tracks)
-
-
-@pytest.mark.anyio
-async def test_record_import_events_noop_when_empty(session_factory: async_sessionmaker[AsyncSession]) -> None:
-    store = _store(session_factory)
-    await store.record_import_events(ImportedEntities())
-    async with session_factory() as session:
-        assert (await session.execute(select(ListenerEvent))).scalars().all() == []
 
 
 @pytest.mark.anyio
