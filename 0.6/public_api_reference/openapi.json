@@ -94,11 +94,11 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "description": "1-based page number.",
+              "description": "The page number, 1-indexed.",
               "default": 1,
               "title": "Page"
             },
-            "description": "1-based page number."
+            "description": "The page number, 1-indexed."
           },
           {
             "name": "page_size",
@@ -122,6 +122,219 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EventsListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/album/{beets_album_id}": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "By Album Id",
+        "description": "Returns the list of results for events associated with the beets album ID, if any exist.",
+        "operationId": "by_album_id_api_events_album__beets_album_id__get",
+        "parameters": [
+          {
+            "name": "beets_album_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": -1,
+              "title": "beets album ID to search listener events by"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The page number, 1-indexed.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "The page number, 1-indexed."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/track/{beets_track_id}": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "By Track Id",
+        "description": "Returns the list of results for events associated with the beets item ID, if any exist.",
+        "operationId": "by_track_id_api_events_track__beets_track_id__get",
+        "parameters": [
+          {
+            "name": "beets_track_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": -1,
+              "title": "beets track ID to search listener events by"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The page number, 1-indexed.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "The page number, 1-indexed."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/{beetkeeper_event_id}": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "By Event Id",
+        "description": "Returns the list of results for events associated with the beetkeeper event item ID, if any exist.",
+        "operationId": "by_event_id_api_events__beetkeeper_event_id__get",
+        "parameters": [
+          {
+            "name": "beetkeeper_event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": -1,
+              "title": "beetkeeper event ID to search listener events by"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The page number, 1-indexed.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "The page number, 1-indexed."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSearchResponse"
                 }
               }
             }
@@ -217,11 +430,11 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "description": "1-based page number.",
+              "description": "The page number, 1-indexed.",
               "default": 1,
               "title": "Page"
             },
-            "description": "1-based page number."
+            "description": "The page number, 1-indexed."
           },
           {
             "name": "page_size",
@@ -411,18 +624,47 @@
           "query"
         ],
         "summary": "List ",
-        "description": "Execute `beet list ...`: return one page of matching tracks (or albums) as JSON objects.\n\nArgs:\n    library: injected beets library adapter.\n    page: pagination query params (`page`, `page_size`).\n    albums: like `-a`; return albums instead of individual tracks.\n    keyword: repeatable bare-keyword query parts (substring match across default fields).\n    field: repeatable `field:value` parts (exact `=`, regex `::`, numeric/date ranges all supported).\n    phrase: a single multi-word phrase part.\n    filepath: a path within the beets library (becomes a path query).\n    sort_by: a beets sort token, e.g. `year+` or `artist-`.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#list",
+        "description": "Execute `beet list ...`: return one page of matching tracks (or albums) as JSON objects.\n\nThe query params (pagination plus the beets query inputs, some repeatable) are documented on\n`ListQueryParamsModel`.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#list",
         "operationId": "list__api_query_list_get",
         "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The page number, 1-indexed.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "The page number, 1-indexed."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
+          },
           {
             "name": "albums",
             "in": "query",
             "required": false,
             "schema": {
               "type": "boolean",
+              "description": "Like `-a`; return albums instead of individual tracks.",
               "default": false,
               "title": "Albums"
-            }
+            },
+            "description": "Like `-a`; return albums instead of individual tracks."
           },
           {
             "name": "keyword",
@@ -440,8 +682,10 @@
                   "type": "null"
                 }
               ],
+              "description": "Repeatable bare-keyword query parts (substring match across default fields).",
               "title": "Keyword"
-            }
+            },
+            "description": "Repeatable bare-keyword query parts (substring match across default fields)."
           },
           {
             "name": "field",
@@ -459,8 +703,10 @@
                   "type": "null"
                 }
               ],
+              "description": "Repeatable `field:value` parts (exact `=`, regex `::`, numeric/date ranges all supported).",
               "title": "Field"
-            }
+            },
+            "description": "Repeatable `field:value` parts (exact `=`, regex `::`, numeric/date ranges all supported)."
           },
           {
             "name": "phrase",
@@ -475,8 +721,10 @@
                   "type": "null"
                 }
               ],
+              "description": "A single multi-word phrase part.",
               "title": "Phrase"
-            }
+            },
+            "description": "A single multi-word phrase part."
           },
           {
             "name": "filepath",
@@ -492,8 +740,10 @@
                   "type": "null"
                 }
               ],
+              "description": "A path within the beets library (becomes a path query).",
               "title": "Filepath"
-            }
+            },
+            "description": "A path within the beets library (becomes a path query)."
           },
           {
             "name": "sort_by",
@@ -508,35 +758,10 @@
                   "type": "null"
                 }
               ],
+              "description": "A beets sort token, e.g. `year+` or `artist-`.",
               "title": "Sort By"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "1-based page number.",
-              "default": 1,
-              "title": "Page"
             },
-            "description": "1-based page number."
-          },
-          {
-            "name": "page_size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "description": "Maximum results per page.",
-              "default": 25,
-              "title": "Page Size"
-            },
-            "description": "Maximum results per page."
+            "description": "A beets sort token, e.g. `year+` or `artist-`."
           }
         ],
         "responses": {
@@ -624,7 +849,1156 @@
   },
   "components": {
     "schemas": {
-      "APIEventType": {
+      "APIAlbum": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "added": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added"
+          },
+          "album": {
+            "type": "string",
+            "title": "Album",
+            "default": ""
+          },
+          "albumartist": {
+            "type": "string",
+            "title": "Albumartist",
+            "default": ""
+          },
+          "albumartist_credit": {
+            "type": "string",
+            "title": "Albumartist Credit",
+            "default": ""
+          },
+          "albumartist_sort": {
+            "type": "string",
+            "title": "Albumartist Sort",
+            "default": ""
+          },
+          "albumartists": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists"
+          },
+          "albumartists_credit": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists Credit"
+          },
+          "albumartists_sort": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists Sort"
+          },
+          "albumdisambig": {
+            "type": "string",
+            "title": "Albumdisambig",
+            "default": ""
+          },
+          "albumstatus": {
+            "type": "string",
+            "title": "Albumstatus",
+            "default": ""
+          },
+          "albumtype": {
+            "type": "string",
+            "title": "Albumtype",
+            "default": ""
+          },
+          "albumtypes": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumtypes"
+          },
+          "artpath": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Artpath",
+            "default": ""
+          },
+          "asin": {
+            "type": "string",
+            "title": "Asin",
+            "default": ""
+          },
+          "barcode": {
+            "type": "string",
+            "title": "Barcode",
+            "default": ""
+          },
+          "catalognum": {
+            "type": "string",
+            "title": "Catalognum",
+            "default": ""
+          },
+          "comp": {
+            "type": "boolean",
+            "title": "Comp",
+            "default": false
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "default": ""
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "discogs_albumid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Albumid"
+          },
+          "discogs_artistid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Artistid"
+          },
+          "discogs_labelid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Labelid"
+          },
+          "disctotal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disctotal"
+          },
+          "genres": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genres"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": ""
+          },
+          "mb_albumartistid": {
+            "type": "string",
+            "title": "Mb Albumartistid",
+            "default": ""
+          },
+          "mb_albumartistids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mb Albumartistids"
+          },
+          "mb_albumid": {
+            "type": "string",
+            "title": "Mb Albumid",
+            "default": ""
+          },
+          "mb_releasegroupid": {
+            "type": "string",
+            "title": "Mb Releasegroupid",
+            "default": ""
+          },
+          "month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "original_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Day"
+          },
+          "original_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Month"
+          },
+          "original_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Year"
+          },
+          "r128_album_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R128 Album Gain"
+          },
+          "release_group_title": {
+            "type": "string",
+            "title": "Release Group Title",
+            "default": ""
+          },
+          "releasegroupdisambig": {
+            "type": "string",
+            "title": "Releasegroupdisambig",
+            "default": ""
+          },
+          "rg_album_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Album Gain"
+          },
+          "rg_album_peak": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Album Peak"
+          },
+          "script": {
+            "type": "string",
+            "title": "Script",
+            "default": ""
+          },
+          "style": {
+            "type": "string",
+            "title": "Style",
+            "default": ""
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "APIAlbum",
+        "description": "Model for the relevant parts of a `beets.library.Album` instance. used during beets plugin client push events\nfor an event tied to a given album. For simplicity, we only mark `id` as required, with all other fields as\noptional (which might not be the case for beets internals).\n\nNOTE: This was generated from `build_scripts/code_gen/pydantic_field_info_from_beets_model.py`."
+      },
+      "APITrack": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "acoustid_fingerprint": {
+            "type": "string",
+            "title": "Acoustid Fingerprint",
+            "default": ""
+          },
+          "acoustid_id": {
+            "type": "string",
+            "title": "Acoustid Id",
+            "default": ""
+          },
+          "added": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added"
+          },
+          "album": {
+            "type": "string",
+            "title": "Album",
+            "default": ""
+          },
+          "album_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Album Id"
+          },
+          "albumartist": {
+            "type": "string",
+            "title": "Albumartist",
+            "default": ""
+          },
+          "albumartist_credit": {
+            "type": "string",
+            "title": "Albumartist Credit",
+            "default": ""
+          },
+          "albumartist_sort": {
+            "type": "string",
+            "title": "Albumartist Sort",
+            "default": ""
+          },
+          "albumartists": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists"
+          },
+          "albumartists_credit": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists Credit"
+          },
+          "albumartists_sort": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists Sort"
+          },
+          "albumdisambig": {
+            "type": "string",
+            "title": "Albumdisambig",
+            "default": ""
+          },
+          "albumstatus": {
+            "type": "string",
+            "title": "Albumstatus",
+            "default": ""
+          },
+          "albumtype": {
+            "type": "string",
+            "title": "Albumtype",
+            "default": ""
+          },
+          "albumtypes": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumtypes"
+          },
+          "arrangers": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrangers"
+          },
+          "arrangers_ids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrangers Ids"
+          },
+          "artist": {
+            "type": "string",
+            "title": "Artist",
+            "default": ""
+          },
+          "artist_credit": {
+            "type": "string",
+            "title": "Artist Credit",
+            "default": ""
+          },
+          "artist_sort": {
+            "type": "string",
+            "title": "Artist Sort",
+            "default": ""
+          },
+          "artists": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artists"
+          },
+          "artists_credit": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artists Credit"
+          },
+          "artists_ids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artists Ids"
+          },
+          "artists_sort": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artists Sort"
+          },
+          "asin": {
+            "type": "string",
+            "title": "Asin",
+            "default": ""
+          },
+          "barcode": {
+            "type": "string",
+            "title": "Barcode",
+            "default": ""
+          },
+          "bitdepth": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bitdepth"
+          },
+          "bitrate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bitrate"
+          },
+          "bitrate_mode": {
+            "type": "string",
+            "title": "Bitrate Mode",
+            "default": ""
+          },
+          "bpm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bpm"
+          },
+          "catalognum": {
+            "type": "string",
+            "title": "Catalognum",
+            "default": ""
+          },
+          "channels": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channels"
+          },
+          "comments": {
+            "type": "string",
+            "title": "Comments",
+            "default": ""
+          },
+          "comp": {
+            "type": "boolean",
+            "title": "Comp",
+            "default": false
+          },
+          "composer_sort": {
+            "type": "string",
+            "title": "Composer Sort",
+            "default": ""
+          },
+          "composers": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composers"
+          },
+          "composers_ids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composers Ids"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "default": ""
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "disc": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disc"
+          },
+          "discogs_albumid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Albumid"
+          },
+          "discogs_artistid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Artistid"
+          },
+          "discogs_labelid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Labelid"
+          },
+          "disctitle": {
+            "type": "string",
+            "title": "Disctitle",
+            "default": ""
+          },
+          "disctotal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disctotal"
+          },
+          "encoder": {
+            "type": "string",
+            "title": "Encoder",
+            "default": ""
+          },
+          "encoder_info": {
+            "type": "string",
+            "title": "Encoder Info",
+            "default": ""
+          },
+          "encoder_settings": {
+            "type": "string",
+            "title": "Encoder Settings",
+            "default": ""
+          },
+          "format": {
+            "type": "string",
+            "title": "Format",
+            "default": ""
+          },
+          "genres": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genres"
+          },
+          "grouping": {
+            "type": "string",
+            "title": "Grouping",
+            "default": ""
+          },
+          "initial_key": {
+            "type": "string",
+            "title": "Initial Key",
+            "default": ""
+          },
+          "isrc": {
+            "type": "string",
+            "title": "Isrc",
+            "default": ""
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": ""
+          },
+          "length": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length"
+          },
+          "lyricists": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lyricists"
+          },
+          "lyricists_ids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lyricists Ids"
+          },
+          "lyrics": {
+            "type": "string",
+            "title": "Lyrics",
+            "default": ""
+          },
+          "mb_albumartistid": {
+            "type": "string",
+            "title": "Mb Albumartistid",
+            "default": ""
+          },
+          "mb_albumartistids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mb Albumartistids"
+          },
+          "mb_albumid": {
+            "type": "string",
+            "title": "Mb Albumid",
+            "default": ""
+          },
+          "mb_artistid": {
+            "type": "string",
+            "title": "Mb Artistid",
+            "default": ""
+          },
+          "mb_artistids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mb Artistids"
+          },
+          "mb_releasegroupid": {
+            "type": "string",
+            "title": "Mb Releasegroupid",
+            "default": ""
+          },
+          "mb_releasetrackid": {
+            "type": "string",
+            "title": "Mb Releasetrackid",
+            "default": ""
+          },
+          "mb_trackid": {
+            "type": "string",
+            "title": "Mb Trackid",
+            "default": ""
+          },
+          "mb_workid": {
+            "type": "string",
+            "title": "Mb Workid",
+            "default": ""
+          },
+          "media": {
+            "type": "string",
+            "title": "Media",
+            "default": ""
+          },
+          "month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "mtime": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mtime"
+          },
+          "original_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Day"
+          },
+          "original_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Month"
+          },
+          "original_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Year"
+          },
+          "path": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Path",
+            "default": ""
+          },
+          "r128_album_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R128 Album Gain"
+          },
+          "r128_track_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R128 Track Gain"
+          },
+          "release_group_title": {
+            "type": "string",
+            "title": "Release Group Title",
+            "default": ""
+          },
+          "releasegroupdisambig": {
+            "type": "string",
+            "title": "Releasegroupdisambig",
+            "default": ""
+          },
+          "remixers": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remixers"
+          },
+          "remixers_ids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remixers Ids"
+          },
+          "rg_album_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Album Gain"
+          },
+          "rg_album_peak": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Album Peak"
+          },
+          "rg_track_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Track Gain"
+          },
+          "rg_track_peak": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Track Peak"
+          },
+          "samplerate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Samplerate"
+          },
+          "script": {
+            "type": "string",
+            "title": "Script",
+            "default": ""
+          },
+          "style": {
+            "type": "string",
+            "title": "Style",
+            "default": ""
+          },
+          "subtitle": {
+            "type": "string",
+            "title": "Subtitle",
+            "default": ""
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "track": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track"
+          },
+          "trackdisambig": {
+            "type": "string",
+            "title": "Trackdisambig",
+            "default": ""
+          },
+          "tracktotal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracktotal"
+          },
+          "work": {
+            "type": "string",
+            "title": "Work",
+            "default": ""
+          },
+          "work_disambig": {
+            "type": "string",
+            "title": "Work Disambig",
+            "default": ""
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "APITrack",
+        "description": "Model for the relevant parts of a `beets.library.Item` (track) instance. used during beets plugin client push events\nfor an event tied to a single track ('Item'). For simplicity, we only mark `id` as required, with all other fields as\noptional (which might not be the case for beets internals).\n\nNOTE: This was generated from `build_scripts/code_gen/pydantic_field_info_from_beets_model.py`."
+      },
+      "BeetsEventType": {
         "type": "string",
         "enum": [
           "album_imported",
@@ -633,7 +2007,7 @@
           "item_imported",
           "item_removed"
         ],
-        "title": "APIEventType",
+        "title": "BeetsEventType",
         "description": "Subset of beets listener `event_type`s which the API accepts from our plugin client.\nSee also:\n    https://beets.readthedocs.io/en/stable/dev/plugins/events.html"
       },
       "DecisionRequest": {
@@ -674,11 +2048,83 @@
         "title": "DecisionRequest",
         "description": "Published when the importer needs a user choice for a task; the matching `ImportDecision` unblocks it."
       },
+      "EventSearchResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/EventSearchResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "description": "Any error messages from the event search."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EventSearchResponse",
+        "description": "Response model for the `GET /api/events/(album|track)/{id}` and `GET /api/events/{event_id}` search routes."
+      },
+      "EventSearchResult": {
+        "properties": {
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id",
+            "description": "The beetkeeper event ID associated with this match."
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/BeetsEventType",
+            "description": "The type of beets event ( https://beets.readthedocs.io/en/stable/dev/plugins/events.html )."
+          },
+          "event_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Event Time",
+            "description": "The time of the event taking place."
+          },
+          "beets_id": {
+            "type": "integer",
+            "title": "Beets Id",
+            "description": "The beets ID of the event's subject (either beets Album ID or Item ID)."
+          },
+          "current_beets_subject_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/APIAlbum"
+              },
+              {
+                "$ref": "#/components/schemas/APITrack"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Beets Subject State",
+            "description": "Current state of the event's subject (Album or Item). Null if subject no longer exists."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "event_type",
+          "event_time",
+          "beets_id"
+        ],
+        "title": "EventSearchResult",
+        "description": "A model with an aggregate of details for an event search match."
+      },
       "EventsListResponse": {
         "properties": {
           "events": {
             "items": {
-              "$ref": "#/components/schemas/ListenerEventRecord"
+              "$ref": "#/components/schemas/ListenerEventDetails"
             },
             "type": "array",
             "title": "Events"
@@ -1106,10 +2552,10 @@
         "title": "ImportSubmitRequest",
         "description": "Body for starting an import: the filesystem path(s) beets should import. All default values come from the\n`beets.config` values (cached) if left unspecified."
       },
-      "ListenerEventRecord": {
+      "ListenerEventDetails": {
         "properties": {
           "event_type": {
-            "$ref": "#/components/schemas/APIEventType"
+            "$ref": "#/components/schemas/BeetsEventType"
           },
           "pushed_at": {
             "type": "string",
@@ -1137,7 +2583,7 @@
           "event_type",
           "pushed_at"
         ],
-        "title": "ListenerEventRecord",
+        "title": "ListenerEventDetails",
         "description": "One ingested beets listener event, with the beets album/track ids of its child rows."
       },
       "LoginRequestBody": {
