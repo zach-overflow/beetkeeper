@@ -129,17 +129,17 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "ffa2a7ab29481bc9bb185b9bde2add3e96df2c4e9a554d3a1c2a361183828c29",
-              "url": "https://files.pythonhosted.org/packages/4f/45/5e1db2e7091ce9c7e28e0bd3c52807475e6f6104cc44013e971e52aa3ab3/beetkeeper_plugin-0.5.3-py3-none-any.whl"
+              "hash": "9d6b7e3d07d5e21040a18cdc1a20bfe032397dad01e149e81104c2aa2e17680f",
+              "url": "https://files.pythonhosted.org/packages/7f/cd/7c225976b647cafcd4b5a2a700ffdc7882b2826ca69958595adb48374bfd/beetkeeper_plugin-0.6.1-py3-none-any.whl"
             }
           ],
           "project_name": "beetkeeper-plugin",
           "requires_dists": [
-            "beets>=2.11.0",
+            "beets>=2.12",
             "requests>=2.34"
           ],
           "requires_python": "<3.16,>=3.14",
-          "version": "0.5.3"
+          "version": "0.6.1"
         },
         {
           "artifacts": [
@@ -365,23 +365,24 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "470c6aa1a5008c8d740267f2ad574e3a715b6dd873c1e5f8778b7f7abb954722",
-              "url": "https://files.pythonhosted.org/packages/65/5d/a1333543a1b40fcbb08830330f6ea7bc7a3bda387a7a0c2bead534f5c01f/confuse-2.2.0-py3-none-any.whl"
+              "hash": "0705a61938ae48d20c29fdb641f7dbd79aed5325bb7d0bd2df8a4dacb14de2ad",
+              "url": "https://files.pythonhosted.org/packages/7f/9c/65beb352015e520146b3debc9942cfbd5f6ec5aea7fdcedff2edc23954ab/confuse-2.2.1-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "35c1b53e81be125f441bee535130559c935917b26aeaa61289010cd1f55c2b9e",
-              "url": "https://files.pythonhosted.org/packages/a2/a6/444c7376439851ce1d07932f88b707910d4605466d1c313621943c738112/confuse-2.2.0.tar.gz"
+              "hash": "8e7600c3261852122eb5f17b24b06ab8e5437b21d6224853c1420c38ac469d3c",
+              "url": "https://files.pythonhosted.org/packages/98/45/3ad821336a7953a2322e7e2d062488cfe179748725e5165117151b88a121/confuse-2.2.1.tar.gz"
             }
           ],
           "project_name": "confuse",
           "requires_dists": [
             "pyyaml",
             "sphinx-rtd-theme>=3.0.2; extra == \"docs\"",
-            "sphinx>=7.4.7; extra == \"docs\""
+            "sphinx>=7.4.7; extra == \"docs\"",
+            "typing_extensions>=4.4; python_version < \"3.13\""
           ],
           "requires_python": ">=3.10",
-          "version": "2.2.0"
+          "version": "2.2.1"
         },
         {
           "artifacts": [
@@ -1182,19 +1183,19 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "0e4eff26be2d75293977f7cddc153fd9b8eaa7fb0c7b64ffe4076cb443117443",
-              "url": "https://files.pythonhosted.org/packages/ec/73/6fd0bb9ce84138c3857f12e9de63bc901852975a092d545f18087a204aa2/platformdirs-4.10.1-py3-none-any.whl"
+              "hash": "360ccded2b7fce0af0ff80cc8f5942a1c5d99b0e856033acb030bfc634709e74",
+              "url": "https://files.pythonhosted.org/packages/7d/68/d8d58938dfb1370b266a1a729e6d77a985be23689a0496498ee17b2cbf90/platformdirs-4.11.0-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "ceab4084426fe6319ce18e86deada8ab1b7487c7aee7040c55e277c9ae793695",
-              "url": "https://files.pythonhosted.org/packages/52/cd/4f25b2f95b23f5d2c9c1fe43e49841bff5800562149b2666afc09309aa8f/platformdirs-4.10.1.tar.gz"
+              "hash": "0555d18370482847566ffabcaa53ad7c6c1c29f195989ae1ed634a05f76ea1e0",
+              "url": "https://files.pythonhosted.org/packages/78/9b/560e4be8e26f6fd133a03630a8df0c663b9e8d61b4ade152b72005aec83b/platformdirs-4.11.0.tar.gz"
             }
           ],
           "project_name": "platformdirs",
           "requires_dists": [],
           "requires_python": ">=3.10",
-          "version": "4.10.1"
+          "version": "4.11.0"
         },
         {
           "artifacts": [
@@ -2163,7 +2164,7 @@
   "requirements": [
     "PyYAML>=6.0.3",
     "aiosqlite>=0.21",
-    "alembic>=1.16",
+    "alembic>=1.18.5",
     "anyio>=4.14.2",
     "beetkeeper-plugin",
     "beets>=2.12",

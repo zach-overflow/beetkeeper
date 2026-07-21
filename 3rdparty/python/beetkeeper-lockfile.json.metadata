@@ -6,7 +6,7 @@
   "generated_with_requirements": [
     "PyYAML>=6.0.3",
     "aiosqlite>=0.21",
-    "alembic>=1.16",
+    "alembic>=1.18.5",
     "anyio>=4.14.2",
     "beetkeeper-plugin",
     "beets>=2.12",
