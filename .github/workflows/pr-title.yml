@@ -29,7 +29,10 @@ jobs:
       - name: Run cog verify on the PR title
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
+        # cog verify panics without a git identity; install-only skips the action's git config step.
         run: |
+          git config --global user.name github-actions
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           if ! cog verify "${PR_TITLE}"; then
             echo "::error::PR title '${PR_TITLE}' is not a conventional commit message. It becomes the \
           squash commit on the default branch, so it must parse (e.g. 'feat(scope): ...', 'fix: ...', \
