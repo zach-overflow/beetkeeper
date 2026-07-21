@@ -66,12 +66,17 @@ plus actionlint and an MkDocs build check. Install git hooks with `prek install`
   `src/beetsplug/beetkeeper_plugin/BUILD`) generate `_scm_version.py` from git via setuptools-scm; each
   package's committed `_version.py` re-exports it, falling back to `0.0.0.dev0` outside Pants (uv builds).
   An exact `vMAJOR.MINOR.PATCH` tag yields a clean version; anything else is a dev version.
-- **Flow** (details: `docs/contributor_docs/release_management.md`): save a *draft* GitHub release titled
-  `MAJOR.MINOR.PATCH` → run the `Release` workflow (validates + builds everything, publishes nothing) →
-  approve the `release` environment gate, which tags the commit and publishes the draft → `Release`
-  dispatches `publish.yml` (`workflow_dispatch`; a GITHUB_TOKEN-created tag can't fire `push` triggers,
-  and `workflow_call` would break PyPI trusted publishing), which builds wheels/image/docs in parallel
-  from the tag, then publishes them in parallel (PyPI + Pages keep their environment gates).
+- **Flow** (details: `docs/contributor_docs/release_management.md`): releases are driven by
+  [conventional commits](https://www.conventionalcommits.org/) via cocogitto (`cog.toml`; only commits
+  since the latest `v` tag count). PRs are squash-merged, so the PR *title* is the conventional commit
+  that lands on `main` (enforced by `.github/workflows/pr-title.yml` running `cog verify`). Run the `Release` workflow from `main` (checks commits, validates +
+  builds everything, publishes nothing) → approve the `release` environment gate, where `cog bump --auto`
+  computes the next semver and pushes a `vX.Y.Z` tag onto the validated commit (tag-only bump — no commit
+  or `CHANGELOG.md` is ever pushed to `main`, so branch protection can't conflict), and the GitHub
+  release is uploaded with the cog-generated changelog → `Release` dispatches `publish.yml`
+  (`workflow_dispatch`; a GITHUB_TOKEN-created tag can't fire `push` triggers, and `workflow_call` would
+  break PyPI trusted publishing), which builds wheels/image/docs in parallel from the tag, then publishes
+  them in parallel (PyPI + Pages keep their environment gates).
 
 ## CRITICAL: Beets DB ("Library") interactions
 

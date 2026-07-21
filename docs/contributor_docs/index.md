@@ -1,7 +1,15 @@
 # Contributing
 
-Documentation for working on beetkeeper itself. If you just want to run beetkeeper, start with
-[Installation](../quickstart/installation.md).
+Documentation for working on beetkeeper itself. If you just want to run beetkeeper, see the
+[getting started](../quickstart/index.md) page.
+
+Contributions are welcome! If you are interested in contributing, please read through this page first.
+
+Whether you want to contribute a doc change, a new feature, or a bug fix, it is recommended that you open an `
+
+## 
+
+## Development Guides
 
 - **[Testing & development](testing_and_development.md)** — local dev setup, running the test suite, and
   the Pants-based build workflow.
