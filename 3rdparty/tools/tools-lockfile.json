@@ -1767,19 +1767,19 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "0e4eff26be2d75293977f7cddc153fd9b8eaa7fb0c7b64ffe4076cb443117443",
-              "url": "https://files.pythonhosted.org/packages/ec/73/6fd0bb9ce84138c3857f12e9de63bc901852975a092d545f18087a204aa2/platformdirs-4.10.1-py3-none-any.whl"
+              "hash": "360ccded2b7fce0af0ff80cc8f5942a1c5d99b0e856033acb030bfc634709e74",
+              "url": "https://files.pythonhosted.org/packages/7d/68/d8d58938dfb1370b266a1a729e6d77a985be23689a0496498ee17b2cbf90/platformdirs-4.11.0-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "ceab4084426fe6319ce18e86deada8ab1b7487c7aee7040c55e277c9ae793695",
-              "url": "https://files.pythonhosted.org/packages/52/cd/4f25b2f95b23f5d2c9c1fe43e49841bff5800562149b2666afc09309aa8f/platformdirs-4.10.1.tar.gz"
+              "hash": "0555d18370482847566ffabcaa53ad7c6c1c29f195989ae1ed634a05f76ea1e0",
+              "url": "https://files.pythonhosted.org/packages/78/9b/560e4be8e26f6fd133a03630a8df0c663b9e8d61b4ade152b72005aec83b/platformdirs-4.11.0.tar.gz"
             }
           ],
           "project_name": "platformdirs",
           "requires_dists": [],
           "requires_python": ">=3.10",
-          "version": "4.10.1"
+          "version": "4.11.0"
         },
         {
           "artifacts": [
@@ -2787,19 +2787,19 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "e7e6b0769c8f51ed59acab6e994b00621096cfb1c640a7509295987388fbaf65",
-              "url": "https://files.pythonhosted.org/packages/5e/f5/0c41cb68dcae6b7de4fac4188a3a9589e21fb31df21ea3a2e888db95e6c9/soupsieve-2.8.4-py3-none-any.whl"
+              "hash": "4f4477399246b7a0c720a88ca2454b11cd6bb9ae4c9d170140786e916776c14c",
+              "url": "https://files.pythonhosted.org/packages/0f/2c/437fe806897c2d6cfdc3ee43a18da8bf8e568530a4ae9bac781541ca9896/soupsieve-2.9.1-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "e121fd02e975c695e4e9e8774a5ee35d74714b59307868dcc5319ad2d9e3328e",
-              "url": "https://files.pythonhosted.org/packages/47/2c/0a5f6f8ee0d5589e48c7640213ed5175d52cf540a06725b628cc1a45d6ce/soupsieve-2.8.4.tar.gz"
+              "hash": "c33e6605bbc71dd628b00c632d58ae607c22bade247e52553928f83bbb75b4ba",
+              "url": "https://files.pythonhosted.org/packages/d9/38/e12680bbe6b4f8f3d17adcaf38d26850aa756c85cf4a80e79fc12a018fe8/soupsieve-2.9.1.tar.gz"
             }
           ],
           "project_name": "soupsieve",
           "requires_dists": [],
-          "requires_python": ">=3.9",
-          "version": "2.8.4"
+          "requires_python": ">=3.10",
+          "version": "2.9.1"
         },
         {
           "artifacts": [
@@ -3449,7 +3449,7 @@
     "mkdocs-swagger-ui-tag>=0.8.1",
     "mkdocs>=1.6.1",
     "mypy-extensions>=1.1.0",
-    "mypy>=2.1.0",
+    "mypy>=2.3.0",
     "pydantic>=2.13.4",
     "pyproject-fmt>=2.25.2",
     "pytest-mock>=3.15.1",
