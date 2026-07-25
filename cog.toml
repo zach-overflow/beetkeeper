@@ -25,6 +25,6 @@ template = "remote"
 remote = "github.com"
 owner = "zach-overflow"
 repository = "beetkeeper"
-authors = []
+authors = [{ username = "zach-overflow", signature = "Zach" }]
 
 [bump_profiles]
