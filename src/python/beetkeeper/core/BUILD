@@ -1,1 +1,1 @@
-python_sources()
+python_sources(dependencies=["!//src/beetsplug:plugin-requirements"])

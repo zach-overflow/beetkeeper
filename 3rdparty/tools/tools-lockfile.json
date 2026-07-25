@@ -31,21 +31,19 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53",
-              "url": "https://files.pythonhosted.org/packages/78/b6/6307fbef88d9b5ee7421e68d78a9f162e0da4900bc5f5793f6d3d0e34fb8/annotated_types-0.7.0-py3-none-any.whl"
+              "hash": "f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0",
+              "url": "https://files.pythonhosted.org/packages/99/91/8acff4f5e50511b911bbccb72b8628a49c68ce14148cd9f6431094859a90/annotated_types-0.8.0-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89",
-              "url": "https://files.pythonhosted.org/packages/ee/67/531ea369ba64dcff5ec9c3402f9f51bf748cec26dde048a2f973a4eea7f5/annotated_types-0.7.0.tar.gz"
+              "hash": "13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7",
+              "url": "https://files.pythonhosted.org/packages/5f/56/a8120250d128bed162cd73c76d45f6ef9991f3e068f62a8ee060afa3104a/annotated_types-0.8.0.tar.gz"
             }
           ],
           "project_name": "annotated-types",
-          "requires_dists": [
-            "typing-extensions>=4.0.0; python_version < \"3.9\""
-          ],
-          "requires_python": ">=3.8",
-          "version": "0.7.0"
+          "requires_dists": [],
+          "requires_python": ">=3.10",
+          "version": "0.8.0"
         },
         {
           "artifacts": [
@@ -347,19 +345,19 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "2227dcbaafe0d2f59279d1762ddddc37783ed4354594f194ffc31d20f41fc3db",
-              "url": "https://files.pythonhosted.org/packages/ef/2f/c5464532e965badff2f4c4c1a3a83f5697f0d7c407ed0cda44aaa99bb451/certifi-2026.6.17-py3-none-any.whl"
+              "hash": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775",
+              "url": "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "024c88eeec92ca068db80f02b8b07c9cef7b9fe261d1d535abfd5abd6f6af432",
-              "url": "https://files.pythonhosted.org/packages/c9/c7/424b75da314c1045981bd9777432fad05a9e0c69daa4ed7e308bbaffe405/certifi-2026.6.17.tar.gz"
+              "hash": "741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55",
+              "url": "https://files.pythonhosted.org/packages/a3/c2/24167ea9858356b47a87a50d39908bfdb72ceeefe0041586e704e5376b3a/certifi-2026.7.22.tar.gz"
             }
           ],
           "project_name": "certifi",
           "requires_dists": [],
           "requires_python": ">=3.7",
-          "version": "2026.6.17"
+          "version": "2026.7.22"
         },
         {
           "artifacts": [
@@ -623,13 +621,13 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "b9ad015a835173d59865e2f5d8296fbc2b317bf56a2ba1a5bfbdd03de2fd4b1c",
-              "url": "https://files.pythonhosted.org/packages/5f/c7/cb03251d9dfb177246a9809a76f189d21df32dbd4a845951881d11323b7f/fastapi-0.139.2-py3-none-any.whl"
+              "hash": "e951c0a0d9540bf5d9a2a9e078fd415da2ab7e312d435139e7d9e2e7fe9f0b23",
+              "url": "https://files.pythonhosted.org/packages/eb/76/6d9e25ad88da9d3ff744bcdbec4736e38c2288611d43f673a5d9bfa27c07/fastapi-0.140.0-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "333145a6891e9b5b3cfceb69baf817e8240cde4d4588ae5a10bf56ffacb6255e",
-              "url": "https://files.pythonhosted.org/packages/cd/95/d3f0ae10836324a2eab98a52b61210ac609f08200bf4bb0dc8132d32f78a/fastapi-0.139.2.tar.gz"
+              "hash": "f338951b82fd74ca8f843163aec43ea1a1ce84d515415a50fa98fa25572a5544",
+              "url": "https://files.pythonhosted.org/packages/0d/fb/fd7671137d9fa3df1d93a2f5111eb982709201724b29f211e4beb2d58688/fastapi-0.140.0.tar.gz"
             }
           ],
           "project_name": "fastapi",
@@ -668,7 +666,7 @@
             "uvicorn[standard]>=0.12.0; extra == \"standard-no-fastapi-cloud-cli\""
           ],
           "requires_python": ">=3.10",
-          "version": "0.139.2"
+          "version": "0.140.0"
         },
         {
           "artifacts": [
@@ -2677,13 +2675,13 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "096136c214c602be2b323524d30755dc5b30ec5a218a206207f33b12c05c6f11",
-              "url": "https://files.pythonhosted.org/packages/c7/bb/49b10783f29067da2eec179320617e94faf63196609de47aeab3c26c3325/sentry_sdk-2.66.0-py3-none-any.whl"
+              "hash": "86002793161d9a95ef04bdd8d442e9bfece5d989b755f05d6360215094a7aff6",
+              "url": "https://files.pythonhosted.org/packages/89/d3/726bd88f0eece09ddf431bea4c9191c18e7a8d070b854eb0014d447712ee/sentry_sdk-2.66.1-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "9727d35aa83c56cd53294676fe65b96296a334c9ce107fa2142bd70f47acb265",
-              "url": "https://files.pythonhosted.org/packages/48/ff/670abe04c5072719b5060ed93851d0d69525d60f8f2c5810f8becd58f9c1/sentry_sdk-2.66.0.tar.gz"
+              "hash": "f882fb08710c5f8bfc603aafa3e901b384009a19cc3f76a572b863392ee81cdc",
+              "url": "https://files.pythonhosted.org/packages/7f/6f/d59cad0889d15fde85254cf58e701484de3f3f0406003b3197746910b19b/sentry_sdk-2.66.1.tar.gz"
             }
           ],
           "project_name": "sentry-sdk",
@@ -2745,7 +2743,7 @@
             "urllib3>=1.26.11"
           ],
           "requires_python": ">=3.6",
-          "version": "2.66.0"
+          "version": "2.66.1"
         },
         {
           "artifacts": [

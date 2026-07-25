@@ -5,7 +5,7 @@ import pytest
 from beetsplug.plugin_tests.conftest import FAKE_SERVER_URL
 from requests.exceptions import RequestException
 
-from beetsplug.beetkeeper_plugin.beetkeeper_plugin import BeetkeeperPlugin
+from beetsplug.beetkeeper_plugin.beetkeeper_plugin import BeetkeeperPlugin, _APIToken
 
 if TYPE_CHECKING:
     from beets.plugins import EventType  # pants: no-infer-dep
@@ -27,20 +27,53 @@ def test_listeners_registered(mocker: MockerFixture, mock_client: MockType) -> N
         assert handler.args == (event_type, BeetkeeperPlugin._EVENT_PAYLOAD_KEYS[event_type])
 
 
-def test_client_url_from_config(mocker: MockerFixture) -> None:
-    """The plugin binds its client to the `server_url` from its own beets config section."""
+@pytest.mark.parametrize(
+    "configured_url",
+    [
+        pytest.param(FAKE_SERVER_URL, id="plain"),
+        pytest.param(f"{FAKE_SERVER_URL}/", id="trailing-slash"),
+        pytest.param(f"  {FAKE_SERVER_URL}  ", id="whitespace-padded"),
+    ],
+)
+def test_client_url_from_config(mocker: MockerFixture, configured_url: str) -> None:
+    """The plugin binds its client to the `server_url` from its own beets config section, normalized."""
     mock_client_class = mocker.patch("beetsplug.beetkeeper_plugin.beetkeeper_plugin._BeetKeeperClient", autospec=True)
+    beets.config["beetkeeper_plugin"]["server_url"].set(configured_url)
     BeetkeeperPlugin()
     assert mock_client_class.call_args.kwargs["url"] == FAKE_SERVER_URL
 
 
-def test_client_url_defaults_to_local_server(mocker: MockerFixture) -> None:
-    """Without a configured `server_url`, events target loopback at the `beetkeeper.server.port` port."""
+@pytest.mark.parametrize("configured_url", [pytest.param("", id="empty"), pytest.param("   ", id="blank")])
+def test_client_url_defaults_to_local_server(mocker: MockerFixture, configured_url: str) -> None:
+    """Without a configured `server_url`, events target the model's fixed loopback default."""
     mock_client_class = mocker.patch("beetsplug.beetkeeper_plugin.beetkeeper_plugin._BeetKeeperClient", autospec=True)
-    beets.config["beetkeeper_plugin"]["server_url"].set("")
-    beets.config["beetkeeper"]["server"]["port"].set(9999)
+    beets.config["beetkeeper_plugin"]["server_url"].set(configured_url)
     BeetkeeperPlugin()
-    assert mock_client_class.call_args.kwargs["url"] == "http://127.0.0.1:9999"
+    assert mock_client_class.call_args.kwargs["url"] == "http://127.0.0.1:8337"
+
+
+def test_client_invalid_url_fails_plugin_load(mocker: MockerFixture) -> None:
+    """A malformed `server_url` aborts plugin load instead of silently pushing events nowhere."""
+    mocker.patch("beetsplug.beetkeeper_plugin.beetkeeper_plugin._BeetKeeperClient", autospec=True)
+    beets.config["beetkeeper_plugin"]["server_url"].set("not a url")
+    with pytest.raises(ValueError, match="beetkeeper_plugin"):
+        BeetkeeperPlugin()
+
+
+@pytest.mark.parametrize(
+    ("raw_token", "expected_token"),
+    [
+        pytest.param(" s3cret ", _APIToken(value="s3cret"), id="set"),
+        pytest.param("   ", None, id="blank"),
+        pytest.param("", None, id="empty"),
+    ],
+)
+def test_client_api_token_from_config(mocker: MockerFixture, raw_token: str, expected_token: _APIToken | None) -> None:
+    """A configured token reaches the client stripped; a blank/absent one means no auth at all."""
+    mock_client_class = mocker.patch("beetsplug.beetkeeper_plugin.beetkeeper_plugin._BeetKeeperClient", autospec=True)
+    beets.config["beetkeeper_plugin"]["api_token"].set(raw_token)
+    BeetkeeperPlugin()
+    assert mock_client_class.call_args.kwargs["api_token"] == expected_token
 
 
 @pytest.mark.parametrize(("event_type", "payload_key"), sorted(BeetkeeperPlugin._EVENT_PAYLOAD_KEYS.items()))
