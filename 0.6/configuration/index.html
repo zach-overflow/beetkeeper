@@ -1113,8 +1113,8 @@ still a valid beets config — beetkeeper only requires the section when you run
 <tr>
 <td style="text-align: left;"><code>server.hostname</code></td>
 <td style="text-align: left;">string</td>
-<td style="text-align: left;">—</td>
-<td style="text-align: left;">Interface to bind (e.g. <code>0.0.0.0</code> to listen on all interfaces).</td>
+<td style="text-align: left;"><code>127.0.0.1</code></td>
+<td style="text-align: left;">Interface to bind (e.g. <code>0.0.0.0</code> to listen on all interfaces; the default binds loopback only).</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>server.port</code></td>
@@ -1199,13 +1199,40 @@ what populates the <strong>Beets Events</strong> page. Enable it like any beets 
 </code></pre></div>
 <p>Its own (optional) config section:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">beetkeeper_plugin</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="c1"># Where to push events. Defaults to the beetkeeper server on this host: loopback at</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="c1"># `beetkeeper.server.port` (or 8337 when that section is absent) — right for the usual</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="c1"># same-container/same-host setup, so most installs need no section at all.</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">server_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://127.0.0.1:8337</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="c1"># Only needed when the server runs with `auth.enable_login_protection`.</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="nt">api_token</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="c1"># Where to push events. Defaults to `http://127.0.0.1:8337` — matching the beetkeeper server&#39;s own</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="c1"># defaults, right for the usual same-container/same-host setup — so most installs need no section at all.</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">server_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://127.0.0.1:8337</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="c1"># Only needed when the server runs with `auth.enable_login_protection`; leave unset otherwise.</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">api_token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-token-here</span>
 </code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Key</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Default</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>server_url</code></td>
+<td style="text-align: left;">url</td>
+<td style="text-align: left;"><code>http://127.0.0.1:8337</code></td>
+<td style="text-align: left;">Base URL of the beetkeeper server to push events to. Must be a valid <code>http(s)://</code> URL.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>api_token</code></td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Bearer token for the push requests, for servers running with login protection. When unset (or blank), pushes carry no auth at all.</td>
+</tr>
+</tbody>
+</table>
+<p>The section is validated when beets loads the plugin (see the
+<a href="https://github.com/zach-overflow/beetkeeper/blob/main/src/beetsplug/beetkeeper_plugin/_bk_plugin_settings.py"><code>_bk_plugin_settings</code></a>
+pydantic models): a malformed <code>server_url</code> fails plugin load with a clear validation error instead of
+silently pushing events nowhere, and blank values are treated as unset (their defaults apply).</p>
 <p>Push failures are logged and swallowed — an unreachable beetkeeper server never breaks the beets
 operation that fired the event.</p>
 

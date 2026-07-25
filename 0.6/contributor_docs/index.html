@@ -782,6 +782,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -798,6 +816,47 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#ai-llm-usage-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI / LLM Usage Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development Guides
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -915,6 +974,36 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#ai-llm-usage-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI / LLM Usage Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development Guides
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -939,8 +1028,27 @@
 
 
 <h1 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">&para;</a></h1>
-<p>Documentation for working on beetkeeper itself. If you just want to run beetkeeper, start with
-<a href="../quickstart/installation/">Installation</a>.</p>
+<p>Documentation for working on beetkeeper itself. If you just want to run beetkeeper, see the
+<a href="../quickstart/">getting started</a> page.</p>
+<p>Contributions are welcome! If you are interested in contributing, please read through this page first.</p>
+<p>Whether you want to contribute a doc change, a new feature, or a bug fix, it is recommended that you open an `</p>
+<h2 id="ai-llm-usage-rules">AI / LLM Usage Rules<a class="headerlink" href="#ai-llm-usage-rules" title="Permanent link">&para;</a></h2>
+<ul>
+<li>
+<p>All AI usage in any form must be disclosed. You must state the tool you used (e.g. Claude Code, Cursor, Amp) along with the extent that the work was AI-assisted.</p>
+</li>
+<li>
+<p>The contributor must fully understand all code they are sharing. If you can't explain what your changes do and how they interact with the greater system without the aid of AI tools, do not contribute to this project.</p>
+</li>
+<li>
+<p><strong>All community interactions, including comments, discussion, issues, PR titles, and descriptions must be composed by a human</strong>. The one exception here is LLM-assisted translations. Please note when this is in use (ex: "I am translating from LANGUAGE with an LLM")</p>
+</li>
+<li>
+<p><strong>No AI-generated media or "art" is allowed. This means, no AI-generated images, videos, audio, etc</strong>. Code is the only acceptable AI-generated content, per the other rules in this policy. As beetkeeper is itself a celebration of music and art, this a zero-tolerance rule.</p>
+</li>
+</ul>
+<p>This AI policy was adopted from the <a href="https://github.com/ghostty-org/ghostty/blob/2aa773a23a87289175bd022dfb617a5e8c27e824/AI_POLICY.md">ghostty-org AI policy</a> and the <a href="https://www.pantsbuild.org/dev/docs/contributions">Pantsbuild LLM Assistance Notice</a>.</p>
+<h2 id="development-guides">Development Guides<a class="headerlink" href="#development-guides" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong><a href="testing_and_development/">Testing &amp; development</a></strong> — local dev setup, running the test suite, and
   the Pants-based build workflow.</li>
