@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
 from functools import cached_property, partial
-from typing import TYPE_CHECKING, Any, ClassVar, Final
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from beets.importer import ImportSession, ImportTask  # pants: no-infer-dep  noqa: TC002
 from beets.library import Album, Item  # pants: no-infer-dep
@@ -16,32 +16,13 @@ from beetsplug._utils.requests import (  # type: ignore[import-untyped]
     RequestHandler,  # pants: no-infer-dep
     TimeoutAndRetrySession,  # pants: no-infer-dep
 )
-from confuse import ConfigError  # pants: no-infer-dep
 from requests.auth import AuthBase
 from requests.exceptions import RequestException
 
+from beetsplug.beetkeeper_plugin._bk_plugin_settings import load_config_section
+
 if TYPE_CHECKING:
     from requests import PreparedRequest, Response
-
-
-_LOGGER_NAME: Final[str] = __name__
-_DEFAULT_SERVER_PORT: Final[int] = 8337
-
-
-def _default_server_url() -> str:
-    """The beetkeeper server on this host: `http://127.0.0.1:<port>`.
-
-    The plugin normally runs on the same host (usually the same container) as the beetkeeper server, so
-    the default push target is loopback at the port from the beets config's `beetkeeper.server` section
-    (the server's own config), falling back to beetkeeper's default port when that section is absent.
-    """
-    from beets import config as beets_config  # pants: no-infer-dep
-
-    try:
-        port = int(beets_config["beetkeeper"]["server"]["port"].get(int))
-    except ConfigError:
-        port = _DEFAULT_SERVER_PORT
-    return f"http://127.0.0.1:{port}"
 
 
 class BeetkeeperPlugin(BeetsPlugin):
@@ -51,10 +32,12 @@ class BeetkeeperPlugin(BeetsPlugin):
     https://beets.readthedocs.io/en/stable/dev/plugins/events.html
 
     beets instantiates plugins with no arguments, so all settings come from the plugin's own beets config
-    section (`beetkeeper_plugin:`), every key optional:
-      * `server_url`: base url of the beetkeeper server to push events to. Defaults to loopback at the
-        port from the server's own `beetkeeper.server` config section (see `_default_server_url`).
+    section (`beetkeeper_plugin:`), every key optional (see `_bk_plugin_settings.BkPluginConf`):
+      * `server_url`: base url of the beetkeeper server to push events to. Defaults to
+        `http://127.0.0.1:8337` — the beetkeeper server's own defaults, right for the usual
+        same-host/same-container setup.
       * `api_token`: bearer token for the push requests, for servers running with login protection.
+        Unset or blank means the pushes carry no auth at all.
     """
 
     # Must stay a subset of the server's accepted `beetkeeper.constants.BeetsEventType` values.
@@ -69,17 +52,22 @@ class BeetkeeperPlugin(BeetsPlugin):
     def __init__(self) -> None:
         """No-arg (beets instantiates plugins bare); reads `server_url`/`api_token` from `self.config`."""
         super().__init__()
-        self.config.add({"server_url": "", "api_token": ""})
-        self.config["api_token"].redact = True
-        server_url = str(self.config["server_url"].as_str()).strip() or _default_server_url()
-        raw_api_token = str(self.config["api_token"].as_str())
-        self._client = _BeetKeeperClient(url=server_url.rstrip("/"), api_token=_APIToken(value=raw_api_token))
+        # avoid using the garbage `Confuse` library by flattening subconfig into an ordered dict.
+        self._pydantic_conf = load_config_section(plugin_confuse_view=self.config)
+        self._client = _BeetKeeperClient(
+            url=self._pydantic_conf.server_url.unicode_string().rstrip("/"),
+            api_token=_APIToken(value=self._pydantic_conf.api_token.get_secret_value())
+            if self._pydantic_conf.api_token
+            else None,
+        )
+        self.log.debug("Registering beetkeeper_plugin listeners ...")
         for event_type, payload_key in self._EVENT_PAYLOAD_KEYS.items():
             self.register_listener(event_type, partial(self._handle_event, event_type, payload_key))
 
     @cached_property
     def log(self) -> logging.Logger:
-        return logging.getLogger(_LOGGER_NAME)
+        """Generates a logger for the `BeetkeeperPlugin` instance."""
+        return logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__qualname__}")
 
     def _handle_event(self, event_type: EventType, payload_key: str, **kwargs: Any) -> None:
         """
@@ -111,14 +99,25 @@ class _BeetKeeperClient(RequestHandler):
 
     _base_path: ClassVar[str] = "/api/events"
 
-    def __init__(self, url: str, api_token: _APIToken):
+    def __init__(self, url: str, api_token: _APIToken | None):
         self._url = url
         self._api_token = api_token
         super().__init__()
 
+    @cached_property
+    def log(self) -> logging.Logger:
+        """Generates a logger for the `_BeetKeeperClient` instance."""
+        return logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__qualname__}")
+
     def create_session(self) -> _BkSession:
         session = _BkSession()
-        session.auth = _BkAuth(token=self._api_token)
+        if self._api_token:
+            session.auth = _BkAuth(token=self._api_token)
+        else:
+            session.auth = None
+            self.log.warning(
+                "No beetkeeper auth token found in beets config.yaml. beetkeeper_plugin will not use auth for api requests."
+            )
         return session
 
     def post(self, event_type: EventType, event_element: _EventElement) -> Response:

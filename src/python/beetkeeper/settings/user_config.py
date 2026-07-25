@@ -30,7 +30,7 @@ class ServerConfSection(BaseModel):
     """
 
     model_config = ConfigDict(frozen=True, extra="ignore")
-    hostname: str
+    hostname: str = Field(default="127.0.0.1")
     port: int = Field(default=8337, gt=0)
     forwarded_allow_ips: str | None = Field(
         default=None,

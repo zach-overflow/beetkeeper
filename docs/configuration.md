@@ -35,7 +35,7 @@ beetkeeper:
 | Key                       | Type    | Default | Description                                                     |
 | :------------------------ | :------ | :------ | :-------------------------------------------------------------- |
 | `log_level`               | string  | —       | One of `CRITICAL`, `DEBUG`, `ERROR`, `INFO`, `NOTSET`, `WARNING`. |
-| `server.hostname`         | string  | —       | Interface to bind (e.g. `0.0.0.0` to listen on all interfaces). |
+| `server.hostname`         | string  | `127.0.0.1` | Interface to bind (e.g. `0.0.0.0` to listen on all interfaces; the default binds loopback only). |
 | `server.port`             | int     | `8337`  | Port the server listens on (must be `> 0`).                     |
 | `server.forwarded_allow_ips` | string | —    | Reverse-proxy addresses (comma-separated IPs and/or CIDR networks like `192.168.40.0/24`, or `"*"` for all) whose `X-Forwarded-*` headers the server trusts. The UI renders root-relative URLs and works through any proxy without this; set it behind a reverse proxy so the request scheme and client address reflect the real client (accurate logs, correct absolute URLs anywhere one is ever emitted). Hostnames are **not** supported — uvicorn compares the raw peer IP. Note that setting this **replaces** the loopback default, so include `127.0.0.1` if a local proxy is also in play. Unset, uvicorn's default applies (the `FORWARDED_ALLOW_IPS` env var, else loopback only). |
 | `database.sqlite_path`    | path    | —       | Path to beetkeeper's own SQLite db (created automatically on first run). |
@@ -84,13 +84,22 @@ Its own (optional) config section:
 
 ```yaml
 beetkeeper_plugin:
-  # Where to push events. Defaults to the beetkeeper server on this host: loopback at
-  # `beetkeeper.server.port` (or 8337 when that section is absent) — right for the usual
-  # same-container/same-host setup, so most installs need no section at all.
+  # Where to push events. Defaults to `http://127.0.0.1:8337` — matching the beetkeeper server's own
+  # defaults, right for the usual same-container/same-host setup — so most installs need no section at all.
   server_url: http://127.0.0.1:8337
-  # Only needed when the server runs with `auth.enable_login_protection`.
-  api_token: ""
+  # Only needed when the server runs with `auth.enable_login_protection`; leave unset otherwise.
+  api_token: your-token-here
 ```
+
+| Key          | Type   | Default                 | Description                                                     |
+| :----------- | :----- | :---------------------- | :-------------------------------------------------------------- |
+| `server_url` | url    | `http://127.0.0.1:8337` | Base URL of the beetkeeper server to push events to. Must be a valid `http(s)://` URL. |
+| `api_token`  | string | —                       | Bearer token for the push requests, for servers running with login protection. When unset (or blank), pushes carry no auth at all. |
+
+The section is validated when beets loads the plugin (see the
+[`_bk_plugin_settings`](https://github.com/zach-overflow/beetkeeper/blob/main/src/beetsplug/beetkeeper_plugin/_bk_plugin_settings.py)
+pydantic models): a malformed `server_url` fails plugin load with a clear validation error instead of
+silently pushing events nowhere, and blank values are treated as unset (their defaults apply).
 
 Push failures are logged and swallowed — an unreachable beetkeeper server never breaks the beets
 operation that fired the event.

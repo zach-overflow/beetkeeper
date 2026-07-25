@@ -45,6 +45,12 @@ def test_client_init(client: _BeetKeeperClient, api_token: _APIToken) -> None:
     assert session.auth._token is api_token
 
 
+def test_client_no_token_session_has_no_auth() -> None:
+    """Without an api token (server without login protection), the session carries no auth at all."""
+    session = _BeetKeeperClient(url=FAKE_SERVER_URL, api_token=None).create_session()
+    assert session.auth is None
+
+
 def test_jsonify(client: _BeetKeeperClient, item: Item, mock_task: MockType, mocker: MockerFixture) -> None:
     """Each element kind serializes to its expected, `json.dumps`-safe request-body shape."""
     item_body = client._jsonify(event_type="item_imported", event_element=item)
