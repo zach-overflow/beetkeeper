@@ -15,7 +15,7 @@ dependencies = [
   "alembic>=1.18.5",
   "beets>=2.12",
   "beetkeeper-plugin",
-  "click>=8.4.1",
+  "click>=8.4.2",
   "fastapi>=0.138.0",
   "python-multipart>=0.0.20",
   "greenlet>=3.1",
