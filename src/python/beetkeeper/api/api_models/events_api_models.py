@@ -25,11 +25,14 @@ class MultiItemEventIngestResponse(_BaseEventResponse):
 
 
 class ListenerEventDetails(_BaseEventResponse):
-    """One ingested beets listener event, with the beets album/track ids of its child rows."""
+    """One ingested beets listener event, with the beets album/track ids of its child rows and, for
+    `import_task_files` events, the import's source/destination filepaths."""
 
     pushed_at: datetime
     album_ids: list[int] = Field(default_factory=list)
     track_ids: list[int] = Field(default_factory=list)
+    source_paths: list[str] = Field(default_factory=list)
+    destination_paths: list[str] = Field(default_factory=list)
 
 
 class EventSearchResult(BaseModel):
@@ -96,6 +99,10 @@ class TrackEventBody(_BaseEventBody):
 
 class ImportTaskFilesEventBody(_BaseEventBody):
     choice_flag: str | None
+    source_paths: list[str] = Field(
+        default_factory=list,
+        description="The import task's source paths (the album's source directories, or the singleton's file).",
+    )
     imported_items: list[TrackEventBody]
 
 

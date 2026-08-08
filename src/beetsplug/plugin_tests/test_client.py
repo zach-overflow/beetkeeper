@@ -32,6 +32,7 @@ def mock_task(mocker: MockerFixture, item: Item) -> MockType:
     task: MockType = mocker.Mock(spec=ImportTask)
     task.imported_items.return_value = [item]
     task.choice_flag = Action.APPLY
+    task.paths = [b"/inbox/fake album"]
     return task
 
 
@@ -70,13 +71,16 @@ def test_jsonify(client: _BeetKeeperClient, item: Item, mock_task: MockType, moc
     task_body = client._jsonify(event_type="import_task_files", event_element=mock_task)
     assert task_body["event_type"] == "import_task_files"
     assert task_body["choice_flag"] == Action.APPLY.name
+    assert task_body["source_paths"] == ["/inbox/fake album"]
     (imported_item_body,) = task_body["imported_items"]
     assert imported_item_body["event_type"] == "import_task_files"
     assert imported_item_body["track_fields"]["title"] == "fake track"
 
     mock_task.imported_items.return_value = []
+    mock_task.paths = None
     empty_task_body = client._jsonify(event_type="import_task_files", event_element=mock_task)
     assert empty_task_body["imported_items"] == []
+    assert empty_task_body["source_paths"] == []
 
     session_body = client._jsonify(event_type="import_begin", event_element=mocker.Mock(spec=ImportSession))
     assert session_body["event_element"] == "unknown"

@@ -2575,6 +2575,20 @@
             },
             "type": "array",
             "title": "Track Ids"
+          },
+          "source_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Paths"
+          },
+          "destination_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Destination Paths"
           }
         },
         "additionalProperties": false,
@@ -2584,7 +2598,7 @@
           "pushed_at"
         ],
         "title": "ListenerEventDetails",
-        "description": "One ingested beets listener event, with the beets album/track ids of its child rows."
+        "description": "One ingested beets listener event, with the beets album/track ids of its child rows and, for\n`import_task_files` events, the import's source/destination filepaths."
       },
       "LoginRequestBody": {
         "properties": {

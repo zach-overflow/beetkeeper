@@ -13,7 +13,7 @@ from sqlmodel import select
 
 from beetkeeper.api.dependencies import get_beets_library
 from beetkeeper.core import BeetsLibrary
-from beetkeeper.db.models import AlbumEvent, ListenerEvent, TrackEvent
+from beetkeeper.db.models import AlbumEvent, ImportDestinationPath, ImportSourcePath, ListenerEvent, TrackEvent
 from beetkeeper.db.session import get_session
 
 from .conftest import DependencyOverrides, SessionOverride
@@ -24,12 +24,13 @@ def app_dependency_overrides(get_session_override: SessionOverride) -> Dependenc
     return {get_session: get_session_override}
 
 
-def _track_item(pushed_at: str, beets_item_id: int, beets_album_id: int | None = 1) -> dict[str, object]:
-    return {
-        "event_type": "item_imported",
-        "pushed_at": pushed_at,
-        "track_fields": {"id": beets_item_id, "album_id": beets_album_id},
-    }
+def _track_item(
+    pushed_at: str, beets_item_id: int, beets_album_id: int | None = 1, path: str | None = None
+) -> dict[str, object]:
+    track_fields: dict[str, object] = {"id": beets_item_id, "album_id": beets_album_id}
+    if path is not None:
+        track_fields["path"] = path
+    return {"event_type": "item_imported", "pushed_at": pushed_at, "track_fields": track_fields}
 
 
 @pytest.mark.anyio
@@ -92,9 +93,10 @@ async def test_filesystem_event_persists_each_item(
         "event_type": "import_task_files",
         "pushed_at": pushed_at,
         "choice_flag": "APPLY",
+        "source_paths": ["/inbox/An Album"],
         "imported_items": [
-            _track_item(pushed_at, 11, 90),
-            _track_item(pushed_at, 12, 90),
+            _track_item(pushed_at, 11, 90, path="/music/An Album/01 one.mp3"),
+            _track_item(pushed_at, 12, 90, path="/music/An Album/02 two.mp3"),
             _track_item(pushed_at, 13, 90),
         ],
     }
@@ -108,9 +110,38 @@ async def test_filesystem_event_persists_each_item(
     async with session_factory() as session:
         listeners = (await session.execute(select(ListenerEvent))).scalars().all()
         tracks = (await session.execute(select(TrackEvent))).scalars().all()
+        source_path_rows = (await session.execute(select(ImportSourcePath))).scalars().all()
+        destination_path_rows = (await session.execute(select(ImportDestinationPath))).scalars().all()
     assert len(listeners) == 1
     assert sorted(t.beets_item_id for t in tracks) == [11, 12, 13]
     assert {t.beets_album_id for t in tracks} == {90}
+    assert [(row.listener_event_id, row.source_path) for row in source_path_rows] == [
+        (listeners[0].event_id, "/inbox/An Album")
+    ]
+    assert [(row.listener_event_id, row.destination_path) for row in destination_path_rows] == [
+        (listeners[0].event_id, "/music/An Album/01 one.mp3"),
+        (listeners[0].event_id, "/music/An Album/02 two.mp3"),
+    ]
+
+
+@pytest.mark.anyio
+async def test_filesystem_event_without_source_paths_persists_no_path_rows(
+    client: AsyncClient, session_factory: async_sessionmaker[AsyncSession], pushed_at: str
+) -> None:
+    """A push from an older plugin (no `source_paths` key, no item paths) still ingests cleanly."""
+    payload = {
+        "event_type": "import_task_files",
+        "pushed_at": pushed_at,
+        "choice_flag": "APPLY",
+        "imported_items": [_track_item(pushed_at, 11, 90)],
+    }
+    assert (await client.post("/api/events/filesystem", json=payload)).status_code == 201
+
+    async with session_factory() as session:
+        source_path_rows = (await session.execute(select(ImportSourcePath))).scalars().all()
+        destination_path_rows = (await session.execute(select(ImportDestinationPath))).scalars().all()
+    assert source_path_rows == []
+    assert destination_path_rows == []
 
 
 @pytest.mark.anyio
@@ -144,6 +175,30 @@ async def test_events_listing_returns_recent_events_with_child_ids(client: Async
     assert events[0]["album_ids"] == []
     assert events[1]["album_ids"] == [101]
     assert events[1]["track_ids"] == []
+
+
+@pytest.mark.anyio
+async def test_events_listing_includes_filesystem_paths(client: AsyncClient, pushed_at: str) -> None:
+    """A filesystem event's source/destination paths come back in the listing; other events list none."""
+    album_payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": 101}}
+    assert (await client.post("/api/events/album", json=album_payload)).status_code == 201
+    fs_payload = {
+        "event_type": "import_task_files",
+        "pushed_at": pushed_at,
+        "choice_flag": "APPLY",
+        "source_paths": ["/inbox/An Album"],
+        "imported_items": [_track_item(pushed_at, 11, 90, path="/music/An Album/01 one.mp3")],
+    }
+    assert (await client.post("/api/events/filesystem", json=fs_payload)).status_code == 201
+
+    response = await client.get("/api/events")
+    assert response.status_code == 200
+    events = response.json()["events"]
+    assert [e["event_type"] for e in events] == ["import_task_files", "album_imported"]
+    assert events[0]["source_paths"] == ["/inbox/An Album"]
+    assert events[0]["destination_paths"] == ["/music/An Album/01 one.mp3"]
+    assert events[1]["source_paths"] == []
+    assert events[1]["destination_paths"] == []
 
 
 @pytest.mark.anyio

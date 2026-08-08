@@ -41,6 +41,7 @@ def event_element_factory(mocker: MockerFixture) -> _ElementFactory:
         task = mocker.Mock(spec=ImportTask)
         task.imported_items.return_value = [_factory(Item)]
         task.choice_flag = Action.APPLY
+        task.paths = [b"/inbox/fake album"]
         return cast("ImportTask", task)
 
     return _factory

@@ -1,4 +1,16 @@
 <!-- Recently ingested beets listener events. Rendered by `recent_events_fragment` and swapped into the events page. -->
+{% macro path_cell(paths) -%}
+	{%- if paths | length == 1 -%}
+	<code>{{ paths[0] }}</code>
+	{%- elif paths -%}
+	<details>
+		<summary>{{ paths | length }} paths</summary>
+		<ul>
+			{% for path in paths %}<li><code>{{ path }}</code></li>{% endfor %}
+		</ul>
+	</details>
+	{%- else -%}—{%- endif -%}
+{%- endmacro %}
 {% if events %}
 <table>
 	<thead>
@@ -7,6 +19,8 @@
 			<th>Event</th>
 			<th>Beets album id(s)</th>
 			<th>Beets track id(s)</th>
+			<th>Source path(s)</th>
+			<th>Destination path(s)</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -20,6 +34,8 @@
 			<td>{{ event.event_type }}</td>
 			<td>{{ event.album_ids | join(", ") if event.album_ids else "—" }}</td>
 			<td>{{ event.track_ids | join(", ") if event.track_ids else "—" }}</td>
+			<td>{{ path_cell(event.source_paths) }}</td>
+			<td>{{ path_cell(event.destination_paths) }}</td>
 		</tr>
 		{% endfor %}
 	</tbody>
