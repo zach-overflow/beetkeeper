@@ -10,10 +10,26 @@ from sqlmodel import col
 from beetkeeper.api.api_models import APIAlbum, APITrack, EventSearchResult, ListenerEventDetails
 from beetkeeper.api.constants import EventLookupEntityType
 from beetkeeper.constants import BeetsEventType
-from beetkeeper.db.models import AlbumEvent, ListenerEvent, TrackEvent
+from beetkeeper.db.models import AlbumEvent, ImportDestinationPath, ImportSourcePath, ListenerEvent, TrackEvent
 
 if TYPE_CHECKING:
     from beetkeeper.core.library import BeetsLibrary
+
+_EVENT_TYPES_WITH_ALBUM_ROWS = frozenset({BeetsEventType.ALBUM_IMPORTED, BeetsEventType.ALBUM_REMOVED})
+_EVENT_TYPES_WITH_TRACK_ROWS = frozenset(
+    {BeetsEventType.TRACK_IMPORTED, BeetsEventType.TRACK_REMOVED, BeetsEventType.IMPORT_TASK_FILES}
+)
+_EVENT_TYPES_WITH_PATH_ROWS = frozenset({BeetsEventType.IMPORT_TASK_FILES})
+
+
+def _event_ids_of_types(events: Sequence[ListenerEvent], event_types: frozenset[BeetsEventType]) -> list[int | None]:
+    """
+    The ids of `events` whose type is one of `event_types`.
+
+    Which child tables an event type writes is fixed by the `/api/events/*` push routes (see
+    `beetkeeper.api.api_routes.events_router`), so the listing skips child-table queries that cannot match.
+    """
+    return [event.event_id for event in events if event.event_type in event_types]
 
 
 # TODO[https://github.com/zach-overflow/beetkeeper/issues/75]: Add async, non-blocking logging here.
@@ -36,30 +52,64 @@ async def listener_event_records_lookup(session: AsyncSession, offset: int, limi
         .all()
     )
 
-    event_ids = [event.event_id for event in recent_events]
+    album_event_ids = _event_ids_of_types(recent_events, _EVENT_TYPES_WITH_ALBUM_ROWS)
+    track_event_ids = _event_ids_of_types(recent_events, _EVENT_TYPES_WITH_TRACK_ROWS)
+    path_event_ids = _event_ids_of_types(recent_events, _EVENT_TYPES_WITH_PATH_ROWS)
     album_ids_by_event: dict[int | None, list[int]] = defaultdict(list)
     track_ids_by_event: dict[int | None, list[int]] = defaultdict(list)
-    if event_ids:
+    source_paths_by_event: dict[int | None, list[str]] = defaultdict(list)
+    destination_paths_by_event: dict[int | None, list[str]] = defaultdict(list)
+    if album_event_ids:
         album_events = (
-            (await session.execute(select(AlbumEvent).where(col(AlbumEvent.listener_event_id).in_(event_ids))))
+            (await session.execute(select(AlbumEvent).where(col(AlbumEvent.listener_event_id).in_(album_event_ids))))
             .scalars()
             .all()
         )
         for album_event in album_events:
             album_ids_by_event[album_event.listener_event_id].append(album_event.beets_album_id)
+    if track_event_ids:
         track_events = (
-            (await session.execute(select(TrackEvent).where(col(TrackEvent.listener_event_id).in_(event_ids))))
+            (await session.execute(select(TrackEvent).where(col(TrackEvent.listener_event_id).in_(track_event_ids))))
             .scalars()
             .all()
         )
         for track_event in track_events:
             track_ids_by_event[track_event.listener_event_id].append(track_event.beets_item_id)
+    if path_event_ids:
+        source_path_rows = (
+            (
+                await session.execute(
+                    select(ImportSourcePath).where(col(ImportSourcePath.listener_event_id).in_(path_event_ids))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for source_path_row in source_path_rows:
+            source_paths_by_event[source_path_row.listener_event_id].append(source_path_row.source_path)
+        destination_path_rows = (
+            (
+                await session.execute(
+                    select(ImportDestinationPath).where(
+                        col(ImportDestinationPath.listener_event_id).in_(path_event_ids)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for destination_path_row in destination_path_rows:
+            destination_paths_by_event[destination_path_row.listener_event_id].append(
+                destination_path_row.destination_path
+            )
     return [
         ListenerEventDetails(
             event_type=BeetsEventType(event.event_type),
             pushed_at=event.pushed_at,
             album_ids=album_ids_by_event.get(event.event_id, []),
             track_ids=track_ids_by_event.get(event.event_id, []),
+            source_paths=source_paths_by_event.get(event.event_id, []),
+            destination_paths=destination_paths_by_event.get(event.event_id, []),
         )
         for event in recent_events
     ]

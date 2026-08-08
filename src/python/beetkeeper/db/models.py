@@ -7,7 +7,7 @@ Model definitions should be subclassed from `SQLModel` rather than SQLAlchemy mo
 # https://sqlmodel.tiangolo.com/#sql-databases-in-fastapi
 from datetime import datetime
 
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, Index
 from sqlmodel import AutoString, Field, SQLModel
 
 from beetkeeper.constants import BeetsEventType
@@ -17,6 +17,8 @@ class ListenerEvent(SQLModel, table=True):
     """Append-only full history of beets events types, their lib model type, and associated model IDs."""
 
     __tablename__ = "listener_event"
+    # Serves the newest-first listing's `ORDER BY pushed_at DESC, event_id DESC` via a reverse index scan.
+    __table_args__ = (Index("ix_listener_event_pushed_at_event_id", "pushed_at", "event_id"),)
     event_id: int | None = Field(default=None, primary_key=True)
     # `sa_type` keeps the column a plain string: SQLModel's default enum mapping (`sa.Enum`) would persist
     # member *names* (breaking rows already stored as values) and add a CHECK constraint with no migration.
@@ -34,8 +36,10 @@ class AlbumEvent(SQLModel, table=True):
     # https://sqlmodel.tiangolo.com/tutorial/relationship-attributes/cascade-delete-relationships/?h=foreign#foreign-key-constraint-support
     # NOTE: have to set pragma in sqllite to enable foreing key constraints
     id: int | None = Field(default=None, primary_key=True)
-    listener_event_id: int | None = Field(default=None, foreign_key="listener_event.event_id", ondelete="CASCADE")
-    beets_album_id: int
+    listener_event_id: int | None = Field(
+        default=None, foreign_key="listener_event.event_id", ondelete="CASCADE", index=True
+    )
+    beets_album_id: int = Field(index=True)
 
 
 class TrackEvent(SQLModel, table=True):
@@ -48,9 +52,33 @@ class TrackEvent(SQLModel, table=True):
     # https://sqlmodel.tiangolo.com/tutorial/relationship-attributes/cascade-delete-relationships/?h=foreign#foreign-key-constraint-support
     # NOTE: have to set pragma in sqllite to enable foreing key constraints
     id: int | None = Field(default=None, primary_key=True)
-    listener_event_id: int | None = Field(default=None, foreign_key="listener_event.event_id", ondelete="CASCADE")
-    beets_item_id: int
+    listener_event_id: int | None = Field(
+        default=None, foreign_key="listener_event.event_id", ondelete="CASCADE", index=True
+    )
+    beets_item_id: int = Field(index=True)
     beets_album_id: int | None = Field(default=None)
+
+
+class ImportSourcePath(SQLModel, table=True):
+    """Records of import events' corresponding source filepath(s) prior to beets importing them."""
+
+    __tablename__ = "import_source_path"
+    id: int | None = Field(default=None, primary_key=True)
+    listener_event_id: int | None = Field(
+        default=None, foreign_key="listener_event.event_id", ondelete="CASCADE", index=True
+    )
+    source_path: str
+
+
+class ImportDestinationPath(SQLModel, table=True):
+    """Records of import events' corresponding destination filepath(s) after beets imported them."""
+
+    __tablename__ = "import_destination_path"
+    id: int | None = Field(default=None, primary_key=True)
+    listener_event_id: int | None = Field(
+        default=None, foreign_key="listener_event.event_id", ondelete="CASCADE", index=True
+    )
+    destination_path: str
 
 
 # TODO: draft — not wired up yet. Re-enable once it has a migration and a valid `import_job` FK

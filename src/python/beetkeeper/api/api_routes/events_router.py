@@ -29,7 +29,7 @@ from beetkeeper.api.api_models import (
 from beetkeeper.api.constants import EventLookupEntityType, RouteTag
 from beetkeeper.api.dependencies import BeetsLibraryDep
 from beetkeeper.constants import BeetsEventType
-from beetkeeper.db.models import AlbumEvent, ListenerEvent, TrackEvent
+from beetkeeper.db.models import AlbumEvent, ImportDestinationPath, ImportSourcePath, ListenerEvent, TrackEvent
 from beetkeeper.db.session import SessionDep
 
 # TODO[https://github.com/zach-overflow/beetkeeper/issues/75]: replace these log calls with non-blocking calls
@@ -143,6 +143,15 @@ async def track(track_event: TrackEventBody, session: SessionDep) -> EventIngest
 @events_router.post("/filesystem", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def filesystem(fs_event: ImportTaskFilesEventBody, session: SessionDep) -> MultiItemEventIngestResponse:
     listener_event_id = await _record_listener_event(session, fs_event.event_type, fs_event.pushed_at)
+    session.add_all(
+        ImportSourcePath(listener_event_id=listener_event_id, source_path=source_path)
+        for source_path in fs_event.source_paths
+    )
+    session.add_all(
+        ImportDestinationPath(listener_event_id=listener_event_id, destination_path=decoded)
+        for item in fs_event.imported_items
+        if (decoded := item.track_fields.path.decode("utf-8", errors="replace"))
+    )
     ingest_responses: list[EventIngestResponse] = []
     for item in fs_event.imported_items:
         session.add(

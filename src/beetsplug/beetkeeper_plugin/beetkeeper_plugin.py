@@ -156,6 +156,7 @@ class _BeetKeeperClient(RequestHandler):
             body["track_fields"] = _model_fields(event_element)
         elif isinstance(event_element, ImportTask):
             body["choice_flag"] = event_element.choice_flag
+            body["source_paths"] = list(event_element.paths or [])
             body["imported_items"] = [
                 cls._jsonify(event_type=event_type, event_element=item) for item in event_element.imported_items()
             ]
