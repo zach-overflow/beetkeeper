@@ -2598,7 +2598,7 @@
           "pushed_at"
         ],
         "title": "ListenerEventDetails",
-        "description": "One ingested beets listener event, with the beets album/track ids of its child rows and, for\n`import_task_files` events, the import's source/destination filepaths."
+        "description": "One ingested beets listener event, with the beets album/track ids of its child rows and, for\n`import_task_files` events, the import's source/destination filepaths (with `album_ids` holding the\nimported tracks' distinct beets album ids, since those events have no album child rows of their own)."
       },
       "LoginRequestBody": {
         "properties": {

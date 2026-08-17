@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Sequence
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import select
@@ -7,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import ColumnElement
 from sqlmodel import col
 
-from beetkeeper.api.api_models import APIAlbum, APITrack, EventSearchResult, ListenerEventDetails
+from beetkeeper.api.api_models import APIAlbum, APITrack, EventDisplayRecord, EventSearchResult, ListenerEventDetails
 from beetkeeper.api.constants import EventLookupEntityType
 from beetkeeper.constants import BeetsEventType
 from beetkeeper.db.models import AlbumEvent, ImportDestinationPath, ImportSourcePath, ListenerEvent, TrackEvent
@@ -20,16 +21,21 @@ _EVENT_TYPES_WITH_TRACK_ROWS = frozenset(
     {BeetsEventType.TRACK_IMPORTED, BeetsEventType.TRACK_REMOVED, BeetsEventType.IMPORT_TASK_FILES}
 )
 _EVENT_TYPES_WITH_PATH_ROWS = frozenset({BeetsEventType.IMPORT_TASK_FILES})
+_MERGE_PARTNER_MAX_SKEW = timedelta(minutes=1)
+_MERGED_EVENT_LABELS = {
+    BeetsEventType.ALBUM_IMPORTED: "Album imported",
+    BeetsEventType.TRACK_IMPORTED: "Singleton imported",
+}
 
 
-def _event_ids_of_types(events: Sequence[ListenerEvent], event_types: frozenset[BeetsEventType]) -> list[int | None]:
+def _event_ids_of_types(events: Sequence[ListenerEvent], event_types: frozenset[BeetsEventType]) -> list[int]:
     """
     The ids of `events` whose type is one of `event_types`.
 
     Which child tables an event type writes is fixed by the `/api/events/*` push routes (see
     `beetkeeper.api.api_routes.events_router`), so the listing skips child-table queries that cannot match.
     """
-    return [event.event_id for event in events if event.event_type in event_types]
+    return [event.event_id for event in events if event.event_id is not None and event.event_type in event_types]
 
 
 # TODO[https://github.com/zach-overflow/beetkeeper/issues/75]: Add async, non-blocking logging here.
@@ -55,10 +61,10 @@ async def listener_event_records_lookup(session: AsyncSession, offset: int, limi
     album_event_ids = _event_ids_of_types(recent_events, _EVENT_TYPES_WITH_ALBUM_ROWS)
     track_event_ids = _event_ids_of_types(recent_events, _EVENT_TYPES_WITH_TRACK_ROWS)
     path_event_ids = _event_ids_of_types(recent_events, _EVENT_TYPES_WITH_PATH_ROWS)
-    album_ids_by_event: dict[int | None, list[int]] = defaultdict(list)
-    track_ids_by_event: dict[int | None, list[int]] = defaultdict(list)
-    source_paths_by_event: dict[int | None, list[str]] = defaultdict(list)
-    destination_paths_by_event: dict[int | None, list[str]] = defaultdict(list)
+    album_ids_by_event: dict[int, list[int]] = defaultdict(list)
+    track_ids_by_event: dict[int, list[int]] = defaultdict(list)
+    source_paths_by_event: dict[int, list[str]] = defaultdict(list)
+    destination_paths_by_event: dict[int, list[str]] = defaultdict(list)
     if album_event_ids:
         album_events = (
             (await session.execute(select(AlbumEvent).where(col(AlbumEvent.listener_event_id).in_(album_event_ids))))
@@ -66,15 +72,23 @@ async def listener_event_records_lookup(session: AsyncSession, offset: int, limi
             .all()
         )
         for album_event in album_events:
-            album_ids_by_event[album_event.listener_event_id].append(album_event.beets_album_id)
+            album_ids_by_event[cast("int", album_event.listener_event_id)].append(album_event.beets_album_id)
     if track_event_ids:
         track_events = (
             (await session.execute(select(TrackEvent).where(col(TrackEvent.listener_event_id).in_(track_event_ids))))
             .scalars()
             .all()
         )
+        import_task_files_event_ids = frozenset(path_event_ids)
         for track_event in track_events:
-            track_ids_by_event[track_event.listener_event_id].append(track_event.beets_item_id)
+            listener_event_id = cast("int", track_event.listener_event_id)
+            track_ids_by_event[listener_event_id].append(track_event.beets_item_id)
+            if (
+                listener_event_id in import_task_files_event_ids
+                and track_event.beets_album_id is not None
+                and track_event.beets_album_id not in album_ids_by_event[listener_event_id]
+            ):
+                album_ids_by_event[listener_event_id].append(track_event.beets_album_id)
     if path_event_ids:
         source_path_rows = (
             (
@@ -86,7 +100,7 @@ async def listener_event_records_lookup(session: AsyncSession, offset: int, limi
             .all()
         )
         for source_path_row in source_path_rows:
-            source_paths_by_event[source_path_row.listener_event_id].append(source_path_row.source_path)
+            source_paths_by_event[cast("int", source_path_row.listener_event_id)].append(source_path_row.source_path)
         destination_path_rows = (
             (
                 await session.execute(
@@ -99,20 +113,110 @@ async def listener_event_records_lookup(session: AsyncSession, offset: int, limi
             .all()
         )
         for destination_path_row in destination_path_rows:
-            destination_paths_by_event[destination_path_row.listener_event_id].append(
+            destination_paths_by_event[cast("int", destination_path_row.listener_event_id)].append(
                 destination_path_row.destination_path
             )
-    return [
-        ListenerEventDetails(
-            event_type=BeetsEventType(event.event_type),
-            pushed_at=event.pushed_at,
-            album_ids=album_ids_by_event.get(event.event_id, []),
-            track_ids=track_ids_by_event.get(event.event_id, []),
-            source_paths=source_paths_by_event.get(event.event_id, []),
-            destination_paths=destination_paths_by_event.get(event.event_id, []),
+    event_records: list[ListenerEventDetails] = []
+    for event in recent_events:
+        event_id = cast("int", event.event_id)
+        event_records.append(
+            ListenerEventDetails(
+                event_type=BeetsEventType(event.event_type),
+                pushed_at=event.pushed_at,
+                album_ids=album_ids_by_event.get(event_id, []),
+                track_ids=track_ids_by_event.get(event_id, []),
+                source_paths=source_paths_by_event.get(event_id, []),
+                destination_paths=destination_paths_by_event.get(event_id, []),
+            )
         )
-        for event in recent_events
-    ]
+    return event_records
+
+
+def merge_import_event_records(event_records: Sequence[ListenerEventDetails]) -> list[EventDisplayRecord]:
+    """
+    Builds the events-UI display rows, folding each import's push pair into a single record.
+
+    A beets import task pushes `import_task_files` immediately followed by `album_imported` (album import)
+    or `item_imported` (singleton import), so listing pushes verbatim shows every import as two rows. Each
+    pair merges into one record labeled "Album imported" / "Singleton imported" that keeps the later
+    push's timestamp and adopts the `import_task_files` record's paths and ids. Records with no partner in
+    `event_records` (removals, one half's push having failed) pass through with their raw event type as
+    the label. Display-only: the stored rows and the JSON `GET /api/events` listing keep one record per
+    push.
+
+    `event_records` must be ordered newest-first (the `listener_event_records_lookup` order).
+    """
+    display_records: list[EventDisplayRecord] = []
+    partner_indexes: set[int] = set()
+    for index, event_record in enumerate(event_records):
+        if index in partner_indexes:
+            continue
+        partner_index = _import_task_files_partner_index(event_records, index, partner_indexes)
+        if partner_index is None:
+            display_records.append(_display_record(event_record))
+            continue
+        partner_indexes.add(partner_index)
+        display_records.append(_merged_display_record(event_record, event_records[partner_index]))
+    return display_records
+
+
+def _display_record(event_record: ListenerEventDetails) -> EventDisplayRecord:
+    return EventDisplayRecord(
+        event_label=event_record.event_type.value,
+        pushed_at=event_record.pushed_at,
+        album_ids=event_record.album_ids,
+        track_ids=event_record.track_ids,
+        source_paths=event_record.source_paths,
+        destination_paths=event_record.destination_paths,
+    )
+
+
+def _merged_display_record(event_record: ListenerEventDetails, partner: ListenerEventDetails) -> EventDisplayRecord:
+    return EventDisplayRecord(
+        event_label=_MERGED_EVENT_LABELS[event_record.event_type],
+        pushed_at=event_record.pushed_at,
+        album_ids=_ordered_union(event_record.album_ids, partner.album_ids),
+        track_ids=_ordered_union(event_record.track_ids, partner.track_ids),
+        source_paths=partner.source_paths,
+        destination_paths=partner.destination_paths,
+    )
+
+
+def _ordered_union(first: list[int], second: list[int]) -> list[int]:
+    return first + [value for value in second if value not in first]
+
+
+def _import_task_files_partner_index(
+    event_records: Sequence[ListenerEventDetails], record_index: int, partner_indexes: set[int]
+) -> int | None:
+    """
+    The index of the `import_task_files` record paired with the imported-event record at `record_index`,
+    or None when that record is not a pairable `album_imported`/`item_imported` or has no partner.
+
+    The plugin pushes `import_task_files` immediately before the imported event of the same task, so the
+    partner is the nearest older unpaired `import_task_files` record sharing a beets album id (album
+    imports) or track id (singleton imports) — bounded to `_MERGE_PARTNER_MAX_SKEW`, so a matching record
+    from an unrelated earlier import never pairs.
+    """
+    event_record = event_records[record_index]
+    if event_record.event_type is BeetsEventType.ALBUM_IMPORTED and event_record.album_ids:
+        pairing_ids = frozenset(event_record.album_ids)
+    elif event_record.event_type is BeetsEventType.TRACK_IMPORTED and event_record.track_ids:
+        pairing_ids = frozenset(event_record.track_ids)
+    else:
+        return None
+    pair_on_album_ids = event_record.event_type is BeetsEventType.ALBUM_IMPORTED
+    for candidate_index in range(record_index + 1, len(event_records)):
+        candidate = event_records[candidate_index]
+        if abs(event_record.pushed_at - candidate.pushed_at) > _MERGE_PARTNER_MAX_SKEW:
+            return None
+        if (
+            candidate_index not in partner_indexes
+            and candidate.event_type is BeetsEventType.IMPORT_TASK_FILES
+            and not pairing_ids.isdisjoint(candidate.album_ids if pair_on_album_ids else candidate.track_ids)
+        ):
+            return candidate_index
+    return None
 
 
 def _defined_fields(subject_dict: dict[str, Any]) -> dict[str, Any]:

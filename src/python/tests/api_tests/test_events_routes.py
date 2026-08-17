@@ -197,8 +197,33 @@ async def test_events_listing_includes_filesystem_paths(client: AsyncClient, pus
     assert [e["event_type"] for e in events] == ["import_task_files", "album_imported"]
     assert events[0]["source_paths"] == ["/inbox/An Album"]
     assert events[0]["destination_paths"] == ["/music/An Album/01 one.mp3"]
+    assert events[0]["album_ids"] == [90]
     assert events[1]["source_paths"] == []
     assert events[1]["destination_paths"] == []
+
+
+@pytest.mark.anyio
+async def test_events_listing_keeps_album_import_push_pair_as_two_events(client: AsyncClient, pushed_at: str) -> None:
+    """The JSON listing stays one record per push: an album import's `import_task_files` + `album_imported`
+    pair is not merged here (that fold is display-only, in the events UI fragment)."""
+    fs_payload = {
+        "event_type": "import_task_files",
+        "pushed_at": pushed_at,
+        "choice_flag": "APPLY",
+        "source_paths": ["/inbox/An Album"],
+        "imported_items": [_track_item(pushed_at, 11, 101, path="/music/An Album/01 one.mp3")],
+    }
+    album_payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": 101}}
+    assert (await client.post("/api/events/filesystem", json=fs_payload)).status_code == 201
+    assert (await client.post("/api/events/album", json=album_payload)).status_code == 201
+
+    response = await client.get("/api/events")
+    assert response.status_code == 200
+    events = response.json()["events"]
+    assert [e["event_type"] for e in events] == ["album_imported", "import_task_files"]
+    assert events[0]["album_ids"] == [101]
+    assert events[1]["album_ids"] == [101]
+    assert events[1]["track_ids"] == [11]
 
 
 @pytest.mark.anyio

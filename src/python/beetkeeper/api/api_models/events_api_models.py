@@ -26,8 +26,28 @@ class MultiItemEventIngestResponse(_BaseEventResponse):
 
 class ListenerEventDetails(_BaseEventResponse):
     """One ingested beets listener event, with the beets album/track ids of its child rows and, for
-    `import_task_files` events, the import's source/destination filepaths."""
+    `import_task_files` events, the import's source/destination filepaths (with `album_ids` holding the
+    imported tracks' distinct beets album ids, since those events have no album child rows of their own).
+    """
 
+    pushed_at: datetime
+    album_ids: list[int] = Field(default_factory=list)
+    track_ids: list[int] = Field(default_factory=list)
+    source_paths: list[str] = Field(default_factory=list)
+    destination_paths: list[str] = Field(default_factory=list)
+
+
+class EventDisplayRecord(BaseModel):
+    """
+    One events-UI table row: a listener event — or a merged album/singleton import push pair — with the
+    human-readable label the fragment template renders in its "Event" cell. Built by
+    `beetkeeper.api.adapters.merge_import_event_records` for the `/fragment/event` template only; the JSON
+    routes keep returning `ListenerEventDetails`.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    event_label: str
     pushed_at: datetime
     album_ids: list[int] = Field(default_factory=list)
     track_ids: list[int] = Field(default_factory=list)
