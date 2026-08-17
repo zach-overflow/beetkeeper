@@ -31,7 +31,7 @@
 				<time datetime="{{ event.pushed_at.isoformat() }}">{{ event.pushed_at.strftime("%Y-%m-%d %H:%M:%S") }}</time>
 				{% else %}—{% endif %}
 			</td>
-			<td>{{ event.event_type }}</td>
+			<td>{{ event.event_label }}</td>
 			<td>{{ event.album_ids | join(", ") if event.album_ids else "—" }}</td>
 			<td>{{ event.track_ids | join(", ") if event.track_ids else "—" }}</td>
 			<td>{{ path_cell(event.source_paths) }}</td>
