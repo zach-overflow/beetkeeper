@@ -29,7 +29,7 @@ Follow the instructions in the [quickstart section](./quickstart/index.md).
 **Automated event tracking** — album/song import completion, file modifications, and more. The full beets
 event history is retained whether triggered via the UI or the API.
 
-![Event tracking](assets/images/events_example_0-0-3rc1.png){ width="70%" }
+![Event tracking](assets/images/events_example_screenshot.png){ width="70%" }
 
 **Search your beets library** — similar in spirit to `beets[web]`, exposing the full beets query language.
 

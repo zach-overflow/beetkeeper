@@ -11,14 +11,24 @@
 	</details>
 	{%- else -%}—{%- endif -%}
 {%- endmacro %}
+{% macro subject_cell(subjects, id_label) -%}
+	{%- if subjects -%}
+	<details>
+		<summary>{% for subject in subjects %}{{ subject.name or subject.beets_id }}{{ ", " if not loop.last }}{% endfor %}</summary>
+		<ul>
+			{% for subject in subjects %}<li>{{ subject.name or subject.beets_id }} — {{ id_label }}: <code>{{ subject.beets_id if subject.beets_id is not none else "—" }}</code></li>{% endfor %}
+		</ul>
+	</details>
+	{%- else -%}—{%- endif -%}
+{%- endmacro %}
 {% if events %}
 <table>
 	<thead>
 		<tr>
 			<th>When</th>
 			<th>Event</th>
-			<th>Beets album id(s)</th>
-			<th>Beets track id(s)</th>
+			<th>Release Name</th>
+			<th>Track names</th>
 			<th>Source path(s)</th>
 			<th>Destination path(s)</th>
 		</tr>
@@ -32,8 +42,8 @@
 				{% else %}—{% endif %}
 			</td>
 			<td>{{ event.event_label }}</td>
-			<td>{{ event.album_ids | join(", ") if event.album_ids else "—" }}</td>
-			<td>{{ event.track_ids | join(", ") if event.track_ids else "—" }}</td>
+			<td>{{ subject_cell(event.albums, "beets album id") }}</td>
+			<td>{{ subject_cell(event.tracks, "beets track id") }}</td>
 			<td>{{ path_cell(event.source_paths) }}</td>
 			<td>{{ path_cell(event.destination_paths) }}</td>
 		</tr>

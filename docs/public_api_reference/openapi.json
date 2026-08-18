@@ -2120,6 +2120,36 @@
         "title": "EventSearchResult",
         "description": "A model with an aggregate of details for an event search match."
       },
+      "EventSubjectSummary": {
+        "properties": {
+          "beets_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beets Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EventSubjectSummary",
+        "description": "One beets album or track referenced by a listener event: its beets id plus the name recorded at\npush time (the album/release name, or the track title). Either part can be missing: rows ingested\nbefore names were recorded have no name, and a singleton's release name has no beets album id."
+      },
       "EventsListResponse": {
         "properties": {
           "events": {
@@ -2562,19 +2592,19 @@
             "format": "date-time",
             "title": "Pushed At"
           },
-          "album_ids": {
+          "albums": {
             "items": {
-              "type": "integer"
+              "$ref": "#/components/schemas/EventSubjectSummary"
             },
             "type": "array",
-            "title": "Album Ids"
+            "title": "Albums"
           },
-          "track_ids": {
+          "tracks": {
             "items": {
-              "type": "integer"
+              "$ref": "#/components/schemas/EventSubjectSummary"
             },
             "type": "array",
-            "title": "Track Ids"
+            "title": "Tracks"
           },
           "source_paths": {
             "items": {
@@ -2589,16 +2619,34 @@
             },
             "type": "array",
             "title": "Destination Paths"
+          },
+          "album_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Album Ids",
+            "readOnly": true
+          },
+          "track_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Track Ids",
+            "readOnly": true
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "event_type",
-          "pushed_at"
+          "pushed_at",
+          "album_ids",
+          "track_ids"
         ],
         "title": "ListenerEventDetails",
-        "description": "One ingested beets listener event, with the beets album/track ids of its child rows and, for\n`import_task_files` events, the import's source/destination filepaths (with `album_ids` holding the\nimported tracks' distinct beets album ids, since those events have no album child rows of their own)."
+        "description": "One ingested beets listener event, with the album/track summaries of its child rows and, for\n`import_task_files` events, the import's source/destination filepaths (with `albums` holding the\nimported tracks' distinct releases, since those events have no album child rows of their own).\n`album_ids`/`track_ids` are derived views kept for response compatibility."
       },
       "LoginRequestBody": {
         "properties": {

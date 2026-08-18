@@ -7,3 +7,4 @@ python_source(
     # beets makes subset runs (e.g. `pants check build_scripts::`) work, matching the PEX it runs inside.
     dependencies=["./fake_tag_data:fake_tag_data", "src/python:app-requirements#beets", ":test-container-config"],
 )
+python_source(name="seed-fake-event-data", source="./seed_fake_event_data.py")

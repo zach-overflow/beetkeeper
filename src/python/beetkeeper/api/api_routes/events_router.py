@@ -49,6 +49,17 @@ async def _record_listener_event(session: AsyncSession, event_type: BeetsEventTy
     return cast("int", listener_event.event_id)
 
 
+def _track_event_row(listener_event_id: int, track_event: TrackEventBody) -> TrackEvent:
+    """Builds a `TrackEvent` row from a track push, storing empty name/title tags as NULL."""
+    return TrackEvent(
+        listener_event_id=listener_event_id,
+        beets_item_id=track_event.track_fields.id,
+        beets_album_id=track_event.track_fields.album_id,
+        track_title=track_event.track_fields.title or None,
+        album_name=track_event.track_fields.album or None,
+    )
+
+
 @events_router.get("", status_code=status.HTTP_200_OK)
 async def events(session: SessionDep, page_query_params: PageQueryParams) -> EventsListResponse:
     """
@@ -121,7 +132,13 @@ async def by_event_id(
 @events_router.post("/album", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def album(album_event: AlbumEventBody, session: SessionDep) -> EventIngestResponse:
     listener_event_id = await _record_listener_event(session, album_event.event_type, album_event.pushed_at)
-    session.add(AlbumEvent(listener_event_id=listener_event_id, beets_album_id=album_event.album_fields.id))
+    session.add(
+        AlbumEvent(
+            listener_event_id=listener_event_id,
+            beets_album_id=album_event.album_fields.id,
+            album_name=album_event.album_fields.album or None,
+        )
+    )
     await session.commit()
     return EventIngestResponse(event_type=album_event.event_type, ingested_id=album_event.album_fields.id)
 
@@ -129,13 +146,7 @@ async def album(album_event: AlbumEventBody, session: SessionDep) -> EventIngest
 @events_router.post("/track", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def track(track_event: TrackEventBody, session: SessionDep) -> EventIngestResponse:
     listener_event_id = await _record_listener_event(session, track_event.event_type, track_event.pushed_at)
-    session.add(
-        TrackEvent(
-            listener_event_id=listener_event_id,
-            beets_item_id=track_event.track_fields.id,
-            beets_album_id=track_event.track_fields.album_id,
-        )
-    )
+    session.add(_track_event_row(listener_event_id, track_event))
     await session.commit()
     return EventIngestResponse(event_type=track_event.event_type, ingested_id=track_event.track_fields.id)
 
@@ -154,13 +165,7 @@ async def filesystem(fs_event: ImportTaskFilesEventBody, session: SessionDep) ->
     )
     ingest_responses: list[EventIngestResponse] = []
     for item in fs_event.imported_items:
-        session.add(
-            TrackEvent(
-                listener_event_id=listener_event_id,
-                beets_item_id=item.track_fields.id,
-                beets_album_id=item.track_fields.album_id,
-            )
-        )
+        session.add(_track_event_row(listener_event_id, item))
         ingest_responses.append(EventIngestResponse(event_type=item.event_type, ingested_id=item.track_fields.id))
     await session.commit()
     return MultiItemEventIngestResponse(event_type=fs_event.event_type, event_ingest_responses=ingest_responses)

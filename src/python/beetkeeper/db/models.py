@@ -40,6 +40,7 @@ class AlbumEvent(SQLModel, table=True):
         default=None, foreign_key="listener_event.event_id", ondelete="CASCADE", index=True
     )
     beets_album_id: int = Field(index=True)
+    album_name: str | None = Field(default=None)
 
 
 class TrackEvent(SQLModel, table=True):
@@ -57,6 +58,8 @@ class TrackEvent(SQLModel, table=True):
     )
     beets_item_id: int = Field(index=True)
     beets_album_id: int | None = Field(default=None)
+    track_title: str | None = Field(default=None)
+    album_name: str | None = Field(default=None)
 
 
 class ImportSourcePath(SQLModel, table=True):
