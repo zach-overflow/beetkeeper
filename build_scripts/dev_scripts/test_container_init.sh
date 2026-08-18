@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 #
 # Container entrypoint for the manual test server (see build_scripts/run-test-server.sh). Installs the
-# checked-in test config (test_beets_conf.yaml) under /test_dirs and generates fake importable FLAC albums under
-# /test_dirs/downloads (in-container only, so no host mount needs cleanup), then (if /host_static is
-# mounted) swaps the PEX's extracted `beetkeeper/api/static` directory for a symlink to it so host edits
-# render live. The whole build_scripts/dev_scripts directory is mounted read-only at /dev_scripts.
+# checked-in test config (test_beets_conf.yaml) under /test_dirs, generates fake importable FLAC albums under
+# /test_dirs/downloads (in-container only, so no host mount needs cleanup), and seeds fake listener events
+# through the server's /api/events push routes (dev_scripts/seed_fake_event_data.py) so the events page has
+# rows to spot-check. If /host_static is mounted, the PEX's extracted `beetkeeper/api/static` directory is
+# swapped for a symlink to it so host edits render live. The whole build_scripts/dev_scripts directory is
+# mounted read-only at /dev_scripts.
 set -exuo pipefail
 
 mkdir -p /test_dirs/{beets,downloads,music}
@@ -31,4 +33,9 @@ if [[ -d /host_static ]]; then
 fi
 
 /app/beetkeeper.pex db upgrade
+
+# Backgrounded before the exec: the seeder polls /api/health until the server below is up, then pushes
+# fake events through the public /api/events routes (event rows only ever come from those pushes).
+PEX_INTERPRETER=1 /app/beetkeeper.pex /dev_scripts/seed_fake_event_data.py &
+
 exec /app/beetkeeper.pex run

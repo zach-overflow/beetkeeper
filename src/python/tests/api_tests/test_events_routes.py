@@ -25,11 +25,20 @@ def app_dependency_overrides(get_session_override: SessionOverride) -> Dependenc
 
 
 def _track_item(
-    pushed_at: str, beets_item_id: int, beets_album_id: int | None = 1, path: str | None = None
+    pushed_at: str,
+    beets_item_id: int,
+    beets_album_id: int | None = 1,
+    path: str | None = None,
+    title: str | None = None,
+    album: str | None = None,
 ) -> dict[str, object]:
     track_fields: dict[str, object] = {"id": beets_item_id, "album_id": beets_album_id}
     if path is not None:
         track_fields["path"] = path
+    if title is not None:
+        track_fields["title"] = title
+    if album is not None:
+        track_fields["album"] = album
     return {"event_type": "item_imported", "pushed_at": pushed_at, "track_fields": track_fields}
 
 
@@ -37,7 +46,7 @@ def _track_item(
 async def test_album_event_persists(
     client: AsyncClient, session_factory: async_sessionmaker[AsyncSession], pushed_at: str
 ) -> None:
-    payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": 101}}
+    payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": 101, "album": "An Album"}}
     response = await client.post("/api/events/album", json=payload)
 
     assert response.status_code == 201
@@ -50,6 +59,7 @@ async def test_album_event_persists(
     assert listeners[0].event_type == "album_imported"
     assert len(albums) == 1
     assert albums[0].beets_album_id == 101
+    assert albums[0].album_name == "An Album"
     assert albums[0].listener_event_id == listeners[0].event_id
 
 
@@ -57,7 +67,9 @@ async def test_album_event_persists(
 async def test_track_event_persists(
     client: AsyncClient, session_factory: async_sessionmaker[AsyncSession], pushed_at: str
 ) -> None:
-    response = await client.post("/api/events/track", json=_track_item(pushed_at, 777, beets_album_id=55))
+    response = await client.post(
+        "/api/events/track", json=_track_item(pushed_at, 777, beets_album_id=55, title="A Song", album="An Album")
+    )
 
     assert response.status_code == 201
     assert response.json()["ingested_id"] == 777
@@ -67,6 +79,8 @@ async def test_track_event_persists(
     assert len(tracks) == 1
     assert tracks[0].beets_item_id == 777
     assert tracks[0].beets_album_id == 55
+    assert tracks[0].track_title == "A Song"
+    assert tracks[0].album_name == "An Album"
 
 
 @pytest.mark.anyio
@@ -83,6 +97,8 @@ async def test_singleton_track_event_persists_without_album(
         tracks = (await session.execute(select(TrackEvent))).scalars().all()
     assert len(tracks) == 1
     assert tracks[0].beets_album_id is None
+    assert tracks[0].track_title is None
+    assert tracks[0].album_name is None
 
 
 @pytest.mark.anyio
@@ -160,19 +176,27 @@ async def test_events_listing_empty(client: AsyncClient) -> None:
 
 @pytest.mark.anyio
 async def test_events_listing_returns_recent_events_with_child_ids(client: AsyncClient, pushed_at: str) -> None:
-    """The listing returns ingested events newest-first, each with its child beets album/track ids."""
-    album_payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": 101}}
+    """The listing returns ingested events newest-first, each with its child beets album/track summaries
+    (plus the derived `album_ids`/`track_ids` views kept for response compatibility)."""
+    album_payload = {
+        "event_type": "album_imported",
+        "pushed_at": pushed_at,
+        "album_fields": {"id": 101, "album": "An Album"},
+    }
     assert (await client.post("/api/events/album", json=album_payload)).status_code == 201
     assert (
-        await client.post("/api/events/track", json=_track_item(pushed_at, 777, beets_album_id=101))
+        await client.post("/api/events/track", json=_track_item(pushed_at, 777, beets_album_id=101, title="A Song"))
     ).status_code == 201
 
     response = await client.get("/api/events")
     assert response.status_code == 200
     events = response.json()["events"]
     assert [e["event_type"] for e in events] == ["item_imported", "album_imported"]
+    assert events[0]["tracks"] == [{"beets_id": 777, "name": "A Song"}]
     assert events[0]["track_ids"] == [777]
+    assert events[0]["albums"] == []
     assert events[0]["album_ids"] == []
+    assert events[1]["albums"] == [{"beets_id": 101, "name": "An Album"}]
     assert events[1]["album_ids"] == [101]
     assert events[1]["track_ids"] == []
 
@@ -187,7 +211,7 @@ async def test_events_listing_includes_filesystem_paths(client: AsyncClient, pus
         "pushed_at": pushed_at,
         "choice_flag": "APPLY",
         "source_paths": ["/inbox/An Album"],
-        "imported_items": [_track_item(pushed_at, 11, 90, path="/music/An Album/01 one.mp3")],
+        "imported_items": [_track_item(pushed_at, 11, 90, path="/music/An Album/01 one.mp3", album="An Album")],
     }
     assert (await client.post("/api/events/filesystem", json=fs_payload)).status_code == 201
 
@@ -197,6 +221,7 @@ async def test_events_listing_includes_filesystem_paths(client: AsyncClient, pus
     assert [e["event_type"] for e in events] == ["import_task_files", "album_imported"]
     assert events[0]["source_paths"] == ["/inbox/An Album"]
     assert events[0]["destination_paths"] == ["/music/An Album/01 one.mp3"]
+    assert events[0]["albums"] == [{"beets_id": 90, "name": "An Album"}]
     assert events[0]["album_ids"] == [90]
     assert events[1]["source_paths"] == []
     assert events[1]["destination_paths"] == []

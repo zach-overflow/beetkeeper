@@ -37,6 +37,8 @@ def _album_import_payloads(
                     "id": track_id,
                     "album_id": beets_album_id,
                     "path": f"/music/An Album/{index:02d} song.mp3",
+                    "title": f"Song {index}",
+                    "album": "An Album",
                 },
             }
             for index, track_id in enumerate((11, 12), start=1)
@@ -45,7 +47,7 @@ def _album_import_payloads(
     album_payload: dict[str, object] = {
         "event_type": "album_imported",
         "pushed_at": album_pushed_at,
-        "album_fields": {"id": 101},
+        "album_fields": {"id": 101, "album": "An Album"},
     }
     return fs_payload, album_payload
 
@@ -59,11 +61,16 @@ async def test_event_fragment_empty_when_no_events(client: AsyncClient) -> None:
 
 @pytest.mark.anyio
 async def test_event_fragment_renders_recent_events(client: AsyncClient, pushed_at: str) -> None:
-    album_payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": 101}}
+    """The release/track cells show the recorded names, expandable to the subjects' beets ids."""
+    album_payload = {
+        "event_type": "album_imported",
+        "pushed_at": pushed_at,
+        "album_fields": {"id": 101, "album": "An Album"},
+    }
     track_payload = {
         "event_type": "item_imported",
         "pushed_at": pushed_at,
-        "track_fields": {"id": 777, "album_id": 101},
+        "track_fields": {"id": 777, "album_id": 101, "title": "A Song"},
     }
     assert (await client.post("/api/events/album", json=album_payload)).status_code == 201
     assert (await client.post("/api/events/track", json=track_payload)).status_code == 201
@@ -71,11 +78,30 @@ async def test_event_fragment_renders_recent_events(client: AsyncClient, pushed_
     response = await client.get("/fragment/event")
     assert response.status_code == 200
     body = response.text
+    assert "Release Name" in body
+    assert "Track names" in body
     assert "album_imported" in body
     assert "item_imported" in body
-    assert "101" in body
-    assert "777" in body
+    assert "<summary>An Album</summary>" in body
+    assert "<summary>A Song</summary>" in body
+    assert "beets album id: <code>101</code>" in body
+    assert "beets track id: <code>777</code>" in body
     assert "2026-06-23" in body
+
+
+@pytest.mark.anyio
+async def test_event_fragment_falls_back_to_ids_for_nameless_events(client: AsyncClient, pushed_at: str) -> None:
+    """Rows ingested without names (e.g. before names were recorded) show the beets ids instead."""
+    album_payload = {"event_type": "album_imported", "pushed_at": pushed_at, "album_fields": {"id": 101}}
+    track_payload = {"event_type": "item_imported", "pushed_at": pushed_at, "track_fields": {"id": 777}}
+    assert (await client.post("/api/events/album", json=album_payload)).status_code == 201
+    assert (await client.post("/api/events/track", json=track_payload)).status_code == 201
+
+    response = await client.get("/fragment/event")
+    assert response.status_code == 200
+    body = response.text
+    assert "<summary>101</summary>" in body
+    assert "<summary>777</summary>" in body
 
 
 @pytest.mark.anyio
@@ -110,7 +136,7 @@ async def test_event_fragment_renders_filesystem_event_paths(client: AsyncClient
 @pytest.mark.anyio
 async def test_event_fragment_merges_album_import_push_pair(client: AsyncClient, pushed_at: str) -> None:
     """An album import's back-to-back `import_task_files` + `album_imported` pushes render as one
-    "Album imported" row carrying the album id, the imported track ids, and the source/destination paths."""
+    "Album imported" row carrying the release name, the imported tracks, and the source/destination paths."""
     fs_payload, album_payload = _album_import_payloads(pushed_at, pushed_at, beets_album_id=101)
     assert (await client.post("/api/events/filesystem", json=fs_payload)).status_code == 201
     assert (await client.post("/api/events/album", json=album_payload)).status_code == 201
@@ -122,8 +148,11 @@ async def test_event_fragment_merges_album_import_push_pair(client: AsyncClient,
     assert "Album imported" in body
     assert "import_task_files" not in body
     assert "album_imported" not in body
-    assert "101" in body
-    assert "11, 12" in body
+    assert "<summary>An Album</summary>" in body
+    assert "beets album id: <code>101</code>" in body
+    assert "<summary>Song 1, Song 2</summary>" in body
+    assert "beets track id: <code>11</code>" in body
+    assert "beets track id: <code>12</code>" in body
     assert "/inbox/An Album" in body
     assert "/music/An Album/01 song.mp3" in body
     assert "/music/An Album/02 song.mp3" in body
@@ -132,7 +161,8 @@ async def test_event_fragment_merges_album_import_push_pair(client: AsyncClient,
 @pytest.mark.anyio
 async def test_event_fragment_merges_singleton_import_push_pair(client: AsyncClient, pushed_at: str) -> None:
     """A singleton import's back-to-back `import_task_files` + `item_imported` pushes render as one
-    "Singleton imported" row carrying the track id and the source/destination paths."""
+    "Singleton imported" row carrying the track title, the singleton's release name (which has no beets
+    album id), and the source/destination paths."""
     fs_payload = {
         "event_type": "import_task_files",
         "pushed_at": pushed_at,
@@ -142,11 +172,21 @@ async def test_event_fragment_merges_singleton_import_push_pair(client: AsyncCli
             {
                 "event_type": "import_task_files",
                 "pushed_at": pushed_at,
-                "track_fields": {"id": 21, "album_id": None, "path": "/music/loose song.mp3"},
+                "track_fields": {
+                    "id": 21,
+                    "album_id": None,
+                    "path": "/music/loose song.mp3",
+                    "title": "Loose Song",
+                    "album": "Loose Release",
+                },
             }
         ],
     }
-    track_payload = {"event_type": "item_imported", "pushed_at": pushed_at, "track_fields": {"id": 21}}
+    track_payload = {
+        "event_type": "item_imported",
+        "pushed_at": pushed_at,
+        "track_fields": {"id": 21, "title": "Loose Song", "album": "Loose Release"},
+    }
     assert (await client.post("/api/events/filesystem", json=fs_payload)).status_code == 201
     assert (await client.post("/api/events/track", json=track_payload)).status_code == 201
 
@@ -157,7 +197,10 @@ async def test_event_fragment_merges_singleton_import_push_pair(client: AsyncCli
     assert "Singleton imported" in body
     assert "import_task_files" not in body
     assert "item_imported" not in body
-    assert "21" in body
+    assert "<summary>Loose Release</summary>" in body
+    assert "beets album id: <code>—</code>" in body
+    assert "<summary>Loose Song</summary>" in body
+    assert "beets track id: <code>21</code>" in body
     assert "/inbox/loose song.mp3" in body
     assert "/music/loose song.mp3" in body
 

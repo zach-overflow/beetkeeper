@@ -21,7 +21,7 @@ Browse the full history of beets events — album/track import completion, file 
 The history stays complete whether an event originated in the UI, the API, or from beets operations run
 elsewhere (via the [beets plugin](./installation.md)).
 
-![Event tracking](../assets/images/events_example_0-0-3rc1.png){ width="80%" }
+![Event tracking](../assets/images/events_example_screenshot.png){ width="80%" }
 
 ## Search
 

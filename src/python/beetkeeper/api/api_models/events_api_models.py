@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, computed_field
 
 from beetkeeper.constants import BeetsEventType
 
@@ -24,17 +24,42 @@ class MultiItemEventIngestResponse(_BaseEventResponse):
     event_ingest_responses: list[EventIngestResponse] = Field(default_factory=list)
 
 
+class EventSubjectSummary(BaseModel):
+    """
+    One beets album or track referenced by a listener event: its beets id plus the name recorded at
+    push time (the album/release name, or the track title). Either part can be missing: rows ingested
+    before names were recorded have no name, and a singleton's release name has no beets album id.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    beets_id: int | None = None
+    name: str | None = None
+
+
 class ListenerEventDetails(_BaseEventResponse):
-    """One ingested beets listener event, with the beets album/track ids of its child rows and, for
-    `import_task_files` events, the import's source/destination filepaths (with `album_ids` holding the
-    imported tracks' distinct beets album ids, since those events have no album child rows of their own).
+    """
+    One ingested beets listener event, with the album/track summaries of its child rows and, for
+    `import_task_files` events, the import's source/destination filepaths (with `albums` holding the
+    imported tracks' distinct releases, since those events have no album child rows of their own).
+    `album_ids`/`track_ids` are derived views kept for response compatibility.
     """
 
     pushed_at: datetime
-    album_ids: list[int] = Field(default_factory=list)
-    track_ids: list[int] = Field(default_factory=list)
+    albums: list[EventSubjectSummary] = Field(default_factory=list)
+    tracks: list[EventSubjectSummary] = Field(default_factory=list)
     source_paths: list[str] = Field(default_factory=list)
     destination_paths: list[str] = Field(default_factory=list)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def album_ids(self) -> list[int]:
+        return [album.beets_id for album in self.albums if album.beets_id is not None]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def track_ids(self) -> list[int]:
+        return [track.beets_id for track in self.tracks if track.beets_id is not None]
 
 
 class EventDisplayRecord(BaseModel):
@@ -49,8 +74,8 @@ class EventDisplayRecord(BaseModel):
 
     event_label: str
     pushed_at: datetime
-    album_ids: list[int] = Field(default_factory=list)
-    track_ids: list[int] = Field(default_factory=list)
+    albums: list[EventSubjectSummary] = Field(default_factory=list)
+    tracks: list[EventSubjectSummary] = Field(default_factory=list)
     source_paths: list[str] = Field(default_factory=list)
     destination_paths: list[str] = Field(default_factory=list)
 
