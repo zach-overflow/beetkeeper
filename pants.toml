@@ -116,6 +116,15 @@ requirements = [
 ]
 xdist_enabled = false
 
+[ruff]
+version = "0.16.6"
+known_versions = [
+  "0.16.6|linux_arm64 |9b28fc0646a7379c5a25f68b559669c39bc000325bbad5b64b47fcf6a3b582ae|9592731",
+  "0.16.6|linux_x86_64|63740c5a1576dea4e1f2ff3f7427031188d23a11b7a4f78560749b8732a3b724|10337077",
+  "0.16.6|macos_arm64 |77513748c833b435b82453ba20e07db808ef6c5121945ede80a6cf21bee468a4|9331576",
+  "0.16.6|macos_x86_64|87cce7e591603efa979be9044ac00835638a5d9052947070b6e2e7c0cdb21940|9840296",
+]
+
 [update-build-files]
 fmt = true
 formatter = "ruff"
