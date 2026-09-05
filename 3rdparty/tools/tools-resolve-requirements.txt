@@ -1,6 +1,6 @@
 bandit>=1.9.4
 
-mypy>=2.3.0
+mypy>=2.3.1
 mypy-extensions>=1.1.0
 # `pydantic`/`fastapi` bounds kept equal to `src/python/pyproject.toml` by
 # `src/integration_tests/meta_tests/test_resolve_version_consistency.py` (Pants can't single-source across resolves).
@@ -11,9 +11,10 @@ pyproject-fmt>=2.25.2
 fastapi[standard]>=0.138.0
 pytest>=9.1.1
 pytest-mock>=3.15.1
-pytest-socket>=0.8.0
+pytest-socket>=0.8.1
 pytest-xdist>=3.8.0
 ruamel-yaml>=0.19.1
+ruff>=0.16.6
 tomlkit
 
 mike>=2.1.3

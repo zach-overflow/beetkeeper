@@ -296,7 +296,7 @@ class TestEventSearchRoutes:
             for index in range(2)
         ]
         album = library.add_album(items)
-        return BeetsLibrary(beets_config), album.id, [item.id for item in items]
+        return BeetsLibrary(beets_config), album.id, [item.id for item in items]  # type: ignore[return-value,misc]
 
     @pytest.fixture
     def app_dependency_overrides(
