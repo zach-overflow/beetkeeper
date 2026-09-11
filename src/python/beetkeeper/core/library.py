@@ -36,7 +36,7 @@ from anyio import CapacityLimiter, to_thread
 
 if TYPE_CHECKING:
     from beets.dbcore.db import Results
-    from beets.library import AnyLibModel, LibModel, Library
+    from beets.library import Album, AnyLibModel, LibModel, Library
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -99,11 +99,28 @@ def _load_plugins_once() -> None:
             _LOGGER.info(f"Loaded beets plugins: {', '.join(loaded)}")
 
 
+def _album_dir(album: Album) -> bytes | None:
+    """The directory holding the album's items, or None for an album with no items."""
+    try:
+        return album.item_dir()
+    except ValueError:
+        return None
+
+
 def _jsonify(model: LibModel) -> dict[str, Any]:
-    """Convert a beets `Item`/`Album` to a JSON-safe dict (bytes fields like `path`/`artpath` are decoded)."""
+    """
+    Convert a beets `Item`/`Album` to a JSON-safe dict (bytes fields like `path`/`artpath` are decoded).
+
+    An `Album` dict also carries a `path` key: beets exposes the album directory only as a computed getter
+    (`Album.item_dir`), which `dict(album)` omits, yet it is the album's location in the library.
+    """
+    from beets.library import Album
+
+    fields = dict(model)
+    if isinstance(model, Album):
+        fields["path"] = _album_dir(model)
     return {
-        key: (value.decode("utf-8", "replace") if isinstance(value, bytes) else value)
-        for key, value in dict(model).items()
+        key: (value.decode("utf-8", "replace") if isinstance(value, bytes) else value) for key, value in fields.items()
     }
 
 

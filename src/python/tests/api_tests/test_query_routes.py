@@ -68,6 +68,19 @@ async def test_fields_lists_known_query_fields(client: AsyncClient) -> None:
     assert isinstance(body["album_flexible_attributes"], list)
 
 
+@pytest.mark.anyio
+async def test_album_rows_carry_their_directory_as_path(client: AsyncClient, beets_library: BeetsLibrary) -> None:
+    """beets computes an album's `path` (its directory) lazily, so it must be added to the album JSON."""
+    from beets.library import Album, Item, Library
+
+    library = Library(str(beets_library._beets_config_filepath.parent / "lib.db"))
+    library.add_album([Item(album="An Album", title="Song", path=b"/music/An Album/01 song.mp3")])
+    library.add(Album(album="Empty Album"))
+
+    rows = (await client.get("/api/query/list", params={"albums": "true"})).json()
+    assert [row["path"] for row in rows] == ["/music/An Album", None]
+
+
 class TestListPagination:
     """Windowing is applied inside `BeetsLibrary` (not post-materialization); assert the pages line up."""
 

@@ -2,7 +2,8 @@
 
 `get_beets_library` is overridden with a `BeetsLibrary` pointed at a throwaway beets config (see this
 package's `conftest.py`), so the fragments exercise the actual beets query/stats/fields paths and render
-their templates.
+their templates. `get_session` is overridden onto a freshly-migrated temp beetkeeper DB, which the results
+fragment reads for the import source paths recorded by the plugin's `/api/events/filesystem` pushes.
 """
 
 from pathlib import Path
@@ -12,13 +13,59 @@ from httpx import AsyncClient
 
 from beetkeeper.api.dependencies import get_beets_library
 from beetkeeper.core import BeetsLibrary
+from beetkeeper.db.session import get_session
 
-from .conftest import DependencyOverrides
+from .conftest import DependencyOverrides, SessionOverride
 
 
 @pytest.fixture
-def app_dependency_overrides(beets_library: BeetsLibrary) -> DependencyOverrides:
-    return {get_beets_library: lambda: beets_library}
+def app_dependency_overrides(beets_library: BeetsLibrary, get_session_override: SessionOverride) -> DependencyOverrides:
+    return {get_beets_library: lambda: beets_library, get_session: get_session_override}
+
+
+@pytest.fixture
+def album_beets_library(tmp_path: Path) -> BeetsLibrary:
+    """A `BeetsLibrary` over a throwaway beets config holding one two-track album (album id 1, items 1-2)."""
+    from beets.library import Item, Library
+
+    beets_config = tmp_path / "beets.yaml"
+    beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n")
+    library = Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
+    library.add_album(
+        [
+            Item(
+                artist="Artist",
+                albumartist="Artist",
+                album="An Album",
+                title=f"Song {index}",
+                track=index,
+                year=2000,
+                path=f"/music/An Album/{index:02d} song.mp3".encode(),
+            )
+            for index in (1, 2)
+        ]
+    )
+    return BeetsLibrary(beets_config)
+
+
+def _filesystem_event_payload(
+    pushed_at: str, source_paths: list[str], track_ids: list[int], album_id: int | None
+) -> dict[str, object]:
+    """An `import_task_files` push recording `source_paths` for the given beets item ids (and album id)."""
+    return {
+        "event_type": "import_task_files",
+        "pushed_at": pushed_at,
+        "choice_flag": "APPLY",
+        "source_paths": source_paths,
+        "imported_items": [
+            {
+                "event_type": "import_task_files",
+                "pushed_at": pushed_at,
+                "track_fields": {"id": track_id, "album_id": album_id, "path": f"/music/{track_id}.mp3"},
+            }
+            for track_id in track_ids
+        ],
+    }
 
 
 @pytest.mark.anyio
@@ -84,8 +131,10 @@ class TestResultsFragmentPagination:
     """The results fragment must render bounded pages, never the full (potentially huge) match list."""
 
     @pytest.fixture
-    def app_dependency_overrides(self, populated_beets_library: BeetsLibrary) -> DependencyOverrides:
-        return {get_beets_library: lambda: populated_beets_library}
+    def app_dependency_overrides(
+        self, populated_beets_library: BeetsLibrary, get_session_override: SessionOverride
+    ) -> DependencyOverrides:
+        return {get_beets_library: lambda: populated_beets_library, get_session: get_session_override}
 
     @pytest.mark.anyio
     async def test_first_page_is_default_size_with_next_control(self, client: AsyncClient) -> None:
@@ -129,6 +178,88 @@ class TestResultsFragmentPagination:
         assert "query=artist%3AArtist" in body
         assert "page_size=5" in body
         assert "page=2" in body
+
+
+class TestResultsFragmentPaths:
+    """Every track row shows its library path and either its recorded import source path(s) or an explicit
+    "not recorded" marker (imports the beetkeeper plugin never reported), plus a page-level notice."""
+
+    @pytest.fixture
+    def app_dependency_overrides(
+        self, populated_beets_library: BeetsLibrary, get_session_override: SessionOverride
+    ) -> DependencyOverrides:
+        return {get_beets_library: lambda: populated_beets_library, get_session: get_session_override}
+
+    @pytest.mark.anyio
+    async def test_rows_without_recorded_import_are_flagged(self, client: AsyncClient) -> None:
+        response = await client.get("/fragment/search/results", params={"page_size": 5, "sort_by": "title+"})
+        assert response.status_code == 200
+        body = response.text
+        assert "<th>Source path(s)</th>" in body and "<th>Destination path</th>" in body
+        assert "<code>/music/song00.mp3</code>" in body
+        assert body.count(">Not recorded</em>") == 5
+        assert "5 of the tracks on this page have no recorded source path." in body
+        assert "beetkeeper beets plugin" in body
+
+    @pytest.mark.anyio
+    async def test_recorded_source_paths_render_per_track(self, client: AsyncClient, pushed_at: str) -> None:
+        # Items are added in title order, so "Song 00" and "Song 01" hold beets item ids 1 and 2.
+        payload = _filesystem_event_payload(pushed_at, ["/inbox/song00.flac", "/inbox/song00.cue"], [1], None)
+        assert (await client.post("/api/events/filesystem", json=payload)).status_code == 201
+        payload = _filesystem_event_payload(pushed_at, ["/inbox/song01.flac"], [2], None)
+        assert (await client.post("/api/events/filesystem", json=payload)).status_code == 201
+
+        response = await client.get("/fragment/search/results", params={"page_size": 5, "sort_by": "title+"})
+        assert response.status_code == 200
+        body = response.text
+        assert "<summary>2 paths</summary>" in body
+        assert "<code>/inbox/song00.flac</code>" in body and "<code>/inbox/song00.cue</code>" in body
+        assert "<code>/inbox/song01.flac</code>" in body
+        assert body.count(">Not recorded</em>") == 3
+        assert "3 of the tracks on this page have no recorded source path." in body
+
+    @pytest.mark.anyio
+    async def test_notice_is_omitted_when_every_row_has_a_source(self, client: AsyncClient, pushed_at: str) -> None:
+        payload = _filesystem_event_payload(pushed_at, ["/inbox/batch"], [1, 2], None)
+        assert (await client.post("/api/events/filesystem", json=payload)).status_code == 201
+
+        response = await client.get("/fragment/search/results", params={"page_size": 2, "sort_by": "title+"})
+        body = response.text
+        assert body.count("<code>/inbox/batch</code>") == 2
+        assert "Not recorded" not in body
+        assert "missing-source-notice" not in body
+
+
+class TestAlbumResultsFragmentPaths:
+    """Album rows show the album directory as their destination and the import's recorded source paths."""
+
+    @pytest.fixture
+    def app_dependency_overrides(
+        self, album_beets_library: BeetsLibrary, get_session_override: SessionOverride
+    ) -> DependencyOverrides:
+        return {get_beets_library: lambda: album_beets_library, get_session: get_session_override}
+
+    @pytest.mark.anyio
+    async def test_album_without_recorded_import_is_flagged(self, client: AsyncClient) -> None:
+        response = await client.get("/fragment/search/results", params={"albums": "true"})
+        assert response.status_code == 200
+        body = response.text
+        assert "Showing 1–1 of 1 albums." in body
+        assert "<code>/music/An Album</code>" in body
+        assert body.count(">Not recorded</em>") == 1
+        assert "1 of the albums on this page has no recorded source path." in body
+
+    @pytest.mark.anyio
+    async def test_album_source_paths_come_from_its_tracks_import(self, client: AsyncClient, pushed_at: str) -> None:
+        payload = _filesystem_event_payload(pushed_at, ["/inbox/An Album"], [1, 2], 1)
+        assert (await client.post("/api/events/filesystem", json=payload)).status_code == 201
+
+        response = await client.get("/fragment/search/results", params={"albums": "true"})
+        body = response.text
+        assert body.count("<code>/inbox/An Album</code>") == 1
+        assert "<code>/music/An Album</code>" in body
+        assert "Not recorded" not in body
+        assert "missing-source-notice" not in body
 
 
 @pytest.mark.anyio
