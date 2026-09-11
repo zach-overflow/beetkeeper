@@ -1,22 +1,60 @@
 {# Renders one page of /fragment/search/results (or a query error) for the search page. #}
+{% macro source_path_cell(paths) -%}
+    {%- if paths | length == 1 -%}
+    <code>{{ paths[0] }}</code>
+    {%- elif paths -%}
+    <details>
+        <summary>{{ paths | length }} paths</summary>
+        <ul>
+            {% for path in paths %}<li><code>{{ path }}</code></li>{% endfor %}
+        </ul>
+    </details>
+    {%- else -%}
+    <em title="No import event was recorded for this {{ 'album' if albums else 'track' }}, so its pre-import location is unknown.">Not recorded</em>
+    {%- endif -%}
+{%- endmacro %}
+{% macro destination_path_cell(path) -%}
+    {%- if path -%}<code>{{ path }}</code>{%- else -%}—{%- endif -%}
+{%- endmacro %}
 {% if error %}
 <p><strong>Query error:</strong> {{ error }}</p>
 {% elif results %}
 <p>Showing {{ start_index }}–{{ end_index }} of {{ total }} {{ "albums" if albums else "tracks" }}.</p>
+{% if missing_source_count %}
+<p id="missing-source-notice">
+    <em>{{ missing_source_count }} of the {{ "albums" if albums else "tracks" }} on this page {{ "has" if missing_source_count == 1 else "have" }} no recorded source path.</em>
+    Source paths are known only for imports reported by the beetkeeper beets plugin; these were likely
+    imported without it (or before it was configured).
+</p>
+{% endif %}
 <table>
     <thead>
         {% if albums %}
-        <tr><th>Album artist</th><th>Album</th><th>Year</th></tr>
+        <tr><th>Album artist</th><th>Album</th><th>Year</th><th>Source path(s)</th><th>Destination path</th></tr>
         {% else %}
-        <tr><th>Artist</th><th>Album</th><th>Title</th><th>Track</th><th>Year</th></tr>
+        <tr><th>Artist</th><th>Album</th><th>Title</th><th>Track</th><th>Year</th><th>Source path(s)</th><th>Destination path</th></tr>
         {% endif %}
     </thead>
     <tbody>
         {% for row in results %}
         {% if albums %}
-        <tr><td>{{ row['albumartist'] }}</td><td>{{ row['album'] }}</td><td>{{ row['year'] or "" }}</td></tr>
+        <tr>
+            <td>{{ row['albumartist'] }}</td>
+            <td>{{ row['album'] }}</td>
+            <td>{{ row['year'] or "" }}</td>
+            <td>{{ source_path_cell(source_paths_by_id.get(row['id'], [])) }}</td>
+            <td>{{ destination_path_cell(row['path']) }}</td>
+        </tr>
         {% else %}
-        <tr><td>{{ row['artist'] }}</td><td>{{ row['album'] }}</td><td>{{ row['title'] }}</td><td>{{ row['track'] or "" }}</td><td>{{ row['year'] or "" }}</td></tr>
+        <tr>
+            <td>{{ row['artist'] }}</td>
+            <td>{{ row['album'] }}</td>
+            <td>{{ row['title'] }}</td>
+            <td>{{ row['track'] or "" }}</td>
+            <td>{{ row['year'] or "" }}</td>
+            <td>{{ source_path_cell(source_paths_by_id.get(row['id'], [])) }}</td>
+            <td>{{ destination_path_cell(row['path']) }}</td>
+        </tr>
         {% endif %}
         {% endfor %}
     </tbody>
