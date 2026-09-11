@@ -73,10 +73,10 @@ jobs:
           version: '0.11.23'
           enable-cache: true
       - name: Initialize Pants
-        uses: pantsbuild/actions/init-pants@v8
+        uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: v0
-          named-caches-hash: ${{ hashFiles('uv.lock') }}
+          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
 
       - name: Build wheels
@@ -140,10 +140,10 @@ jobs:
           version: '0.11.23'
           enable-cache: true
       - name: Initialize Pants
-        uses: pantsbuild/actions/init-pants@v8
+        uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: image-${{ matrix.arch }}-v0
-          named-caches-hash: ${{ hashFiles('uv.lock') }}
+          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
 
       # Plain `pants package` builds for the host arch and loads the image into the local Docker daemon.
@@ -185,7 +185,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
       - name: Initialize Pants
-        uses: pantsbuild/actions/init-pants@v8
+        uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: docs-v0
           named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
@@ -301,7 +301,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
       - name: Initialize Pants
-        uses: pantsbuild/actions/init-pants@v8
+        uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: docs-v0
           named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}

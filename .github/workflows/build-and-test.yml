@@ -42,11 +42,11 @@ jobs:
           enable-cache: true
 
       - name: Initialize Pants
-        uses: pantsbuild/actions/init-pants@v8
+        uses: pantsbuild/actions/init-pants@v11
         with:
           # Bump to invalidate every Pants cache; re-fetch named caches when dependencies change.
           gha-cache-key: v0
-          named-caches-hash: ${{ hashFiles('uv.lock') }}
+          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
       
       - name: Check BUILD files are up to date
@@ -102,10 +102,10 @@ jobs:
           version: '0.11.23'
           enable-cache: true
       - name: Initialize Pants
-        uses: pantsbuild/actions/init-pants@v8
+        uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: image-${{ matrix.arch }}-v0
-          named-caches-hash: ${{ hashFiles('uv.lock') }}
+          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
       - name: Build image (native ${{ matrix.arch }}, no push)
         run: |
