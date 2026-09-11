@@ -70,7 +70,11 @@ Cocogitto's behavior is configured in `cog.toml` at the repo root:
   [GitHub releases page](https://github.com/zach-overflow/beetkeeper/releases) instead.
 - `post_bump_hooks` — `cog bump` itself is what pushes the new tag (the GitHub action wrapping it
   pushes nothing).
-- `[changelog]` — the `remote` template renders GitHub-linked changelog entries;
+- `[changelog]` — `template = ".cog/changelog-template.tera"` is a checked-in copy of cog's built-in `remote`
+  template ([Tera](https://keats.github.io/tera/docs/) syntax; see the
+  [cog changelog docs](https://docs.cocogitto.io/guide/changelog.html#custom-templates)) that renders
+  GitHub-linked changelog entries. Edit it to change the release-notes formatting (the per-commit
+  line format is the `remote` macro at the top of the file);
   `cog changelog --at vX.Y.Z` generates each GitHub release's body straight from git history.
 
 ## Cutting a release (runbook)

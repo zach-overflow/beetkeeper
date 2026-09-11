@@ -21,7 +21,7 @@ post_package_bump_hooks = []
 
 [changelog]
 path = "CHANGELOG.md"
-template = "remote"
+template = ".cog/changelog-template.tera"
 remote = "github.com"
 owner = "zach-overflow"
 repository = "beetkeeper"
