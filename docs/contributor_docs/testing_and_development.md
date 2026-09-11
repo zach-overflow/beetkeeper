@@ -118,6 +118,39 @@ verifies the docs build (`pants run docs:mkdocs-pex -- build --strict`). When mo
 
 NOTE: These are not substitutes for running the GitHub action changes in GitHub proper. They're intended for quicker detection of simple issues before pushing upstream.
 
+### Build caching in CI
+
+Every Pants job restores three GitHub Actions caches through `pantsbuild/actions/init-pants` before running
+`pants`, and saves them again at the end of the job:
+
+| Cache | Keyed on | Contents |
+| :---- | :------- | :------- |
+| Pants setup (`~/.cache/nce`) | `pants_version` in `pants.toml` | The Pants launcher, its interpreter and venv. |
+| Named caches (`~/.cache/pants/named_caches`) | The `3rdparty/` lockfiles (`named-caches-hash`) | pip/pex downloads and built wheels shared by every resolve. |
+| LMDB store (`~/.cache/pants/lmdb_store`) | The commit SHA, falling back to the latest `main` commit | Pants' fine-grained process cache: every sandboxed process result (tests, lint, mypy, PEX/wheel builds). |
+
+The LMDB store is what makes a warm run cheap: a branch push restores `main`'s store and only re-runs the
+processes whose inputs changed. Prefix `gha-cache-key` (for example `v0` -> `v1`) to discard all three caches
+at once.
+
+**Why the LMDB store rather than Pants' remote cache.** Pants can also talk to a remote cache service
+per process (`[GLOBAL].remote_cache_read`/`remote_cache_write`), and it ships an experimental provider
+that stores those entries in the GitHub Actions cache (`experimental-github-actions-cache`). We deliberately
+don't use it: GitHub caps a repository at 200 cache uploads and 1,500 downloads per minute, and Pants'
+per-process granularity blows through that on a cold run
+([pantsbuild/pants#20133](https://github.com/pantsbuild/pants/issues/20133), still open), turning the cache
+into a stream of rate-limit warnings. A hosted Remote Execution API (REAPI) cache would avoid that but adds a
+secret and an external dependency for a job whose Pants work already fits in about a minute. Revisit if the
+wall-clock of the `Static checks and tests` step grows well past the ~20s spent restoring the LMDB store.
+
+**Why caching can't corrupt a release.** The Publish workflow restores the same LMDB store the Release
+workflow's validation run saved for the tagged commit, so most of its work is a cache hit. That is safe
+because everything whose output depends on state outside the sandbox is uncacheable across runs
+(`ProcessCacheScope.PER_SESSION` in Pants): the `vcs_version` targets re-run setuptools-scm against the real
+checkout every time, so the tag is always seen, and the `docker_image` build always executes. Consumers of
+those results (the wheels, the image PEXes, the image) are then rebuilt automatically because their input
+digests change.
+
 ### Using `actionlint`
 
 `actionlint` checks the workflow YAML for syntax errors, invalid

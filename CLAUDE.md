@@ -4,7 +4,7 @@ Dev notes for `beetkeeper` — a self-hosted FastAPI web app for managing [beets
 Source root is `src/python` (package: `src/python/beetkeeper`).
 
 ## Build tooling
-- **Pants 2.32** is the build system (`pants.toml`). Run `pants <goal> ::` for everything.
+- **Pants 2.33** is the build system (`pants.toml`). Run `pants <goal> ::` for everything.
 - Pants resolves with **pex** (`[python] resolver = "pex"`, `enable_resolves = true`): app deps come from
   the `beetkeeper-resolve` lockfile, tools (mypy, bandit, pytest, ...) from `tools-resolve` — both under
   `3rdparty/`, regenerated with `pants generate-lockfiles`.

@@ -18,7 +18,7 @@ backend_packages = [
   "pants.backend.shell.lint.shfmt",
   "pants.backend.tools.taplo",
 ]
-pants_version = "2.32.0"
+pants_version = "2.33.1"
 build_patterns = ["BUILD", "BUILD.*"]
 build_file_prelude_globs = ["build_scripts/pants_macros.py"]
 colors = true
