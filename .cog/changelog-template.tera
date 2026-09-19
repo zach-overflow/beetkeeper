@@ -15,6 +15,7 @@
   {% endif -%}
   - {{ breaking_badge }}{%if commit.scope %}(**{{ commit.scope }}**) {% endif %}{{ commit.summary }} - ([{{shorthand}}]({{ commit_link }})) - {{ author }}{%- for footer in commit.footers -%}{%- if footer.github_co_authored_by -%}{%- if footer.github_co_authored_by.username -%}{%- set coauthor_link = platform ~ "/" ~ footer.github_co_authored_by.username -%}, [@{{ footer.github_co_authored_by.username }}]({{ coauthor_link }}){%- else -%}, {{ footer.github_co_authored_by.user }}{%- endif -%}{%- endif -%}{%- endfor -%}
 {%- endmacro remote -%}
+
 {% if version.tag and from.tag -%}
     ## [{{ version.tag }}]({{repository_url ~ "/compare/" ~ from.tag ~ ".." ~ version.tag}}) - {{ date | date(format="%Y-%m-%d") }}
 {% elif version.tag and from.id -%}
@@ -29,16 +30,14 @@
     ## Unreleased ([{{ from_shorthand ~ ".." ~ to_shorthand }}]({{repository_url ~ "/compare/" ~ from_shorthand ~ ".." ~ to_shorthand}}))
 {% endif -%}
 
-{% for value in commits | group_by_type-%}
-
+{% for value in commits | group_by_type %}
 #### {{ value.0 | upper_first }}
 {% for scope, scoped_commits in value.1 | group_by(attribute="scope") -%}
-{% for commit in scoped_commits | sort(attribute="scope") -%}
-{{self::remote(commit=commit)}}
-{% endfor -%}
-{% endfor -%}
-
-{% for commit in value.1 | unscoped -%}
-{{self::remote(commit=commit)}}
-{% endfor -%}
+    {%- for commit in scoped_commits %}
+{{ self::remote(commit=commit) }}
+    {%- endfor -%}
+{%- endfor -%}
+{%- for commit in value.1 | unscoped %}
+{{ self::remote(commit=commit) }}
+{%- endfor %}
 {% endfor -%}

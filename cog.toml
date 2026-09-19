@@ -8,6 +8,7 @@ generate_mono_repository_global_tag = true
 generate_mono_repository_package_tags = true
 branch_whitelist = ["main"]
 pre = "alpha.*"
+scopes = ["api", "dev", "search", "events", "plugin", "web-ui", "builds", "ci"]
 skip_ci = "[skip ci]"
 skip_untracked = false
 pre_bump_hooks = []
@@ -18,6 +19,17 @@ post_package_bump_hooks = []
 [git_hooks]
 
 [commit_types]
+feat = { changelog_title = "Features", order = 1 }
+fix = { changelog_title = "Bug Fixes", order = 2 }
+perf = { changelog_title = "Performance Improvements", order = 3 }
+docs = { changelog_title = "Documentation", order = 4 }
+build = { changelog_title = "Internal Tooling / Development", order = 5 }
+ci = { changelog_title = "Internal Tooling / Development", order = 5 }
+test = { changelog_title = "Internal Tooling / Development", order = 5 }
+chore = { changelog_title = "Internal Tooling / Development", order = 5 }
+style = { changelog_title = "Internal Tooling / Development", order = 5 }
+refactor = { changelog_title = "Internal Tooling / Development", order = 5 }
+revert = { changelog_title = "Revert", omit_from_changelog = true }
 
 [changelog]
 path = "CHANGELOG.md"
