@@ -16,7 +16,7 @@ from beetkeeper.api.api_models import AlbumEventBody, ImportTaskFilesEventBody, 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from beets.plugins import EventType  # pants: no-infer-dep
+    from beets.events import EventType  # pants: no-infer-dep
     from pydantic import BaseModel
     from pytest_mock import MockerFixture, MockType
 

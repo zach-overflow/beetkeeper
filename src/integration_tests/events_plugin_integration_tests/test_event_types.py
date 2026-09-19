@@ -1,7 +1,5 @@
-from typing import get_args
-
 import pytest
-from beets.plugins import EventType
+from beets.events import ALL_EVENTS
 
 from beetkeeper.constants import BeetsEventType
 from beetsplug.beetkeeper_plugin.beetkeeper_plugin import BeetkeeperPlugin
@@ -19,7 +17,7 @@ def plugin_event_types() -> tuple[str, ...]:
 
 @pytest.fixture(scope="module")
 def beets_event_types() -> set[str]:
-    return set(get_args(EventType))
+    return set(ALL_EVENTS)
 
 
 def test_event_types_match_between_beetkeeper_components(
@@ -45,12 +43,12 @@ def test_event_types_consistent_with_beets(
 ) -> None:
     """
     Ensures the `beetkeeper_plugin.BeetKeeperPlugin._EVENT_PAYLOAD_KEYS` /
-    `beetkeeper.constants.BeetsEventType` are valid subsets of `beets.plugins.EventType` literals.
+    `beetkeeper.constants.BeetsEventType` are valid subsets of `beets.events.EventType` literals.
     If this fails, it indicates that one or more `beetkeeper` / `beetkeeper_plugin` components are not compliant with
-    beets' `beets.plugins.EventType` literals, and the beetkeeper event API may fail to collect event history data.
+    beets' `beets.events.EventType` literals, and the beetkeeper event API may fail to collect event history data.
     """
     test_case_id = request.node.callspec.id
     bk_event_types = set(request.getfixturevalue(bk_fixture_name))
     assert bk_event_types.issubset(beets_event_types), (
-        f"{test_case_id} event types must be a subset of the official `beets.plugins.EventTypes` literals."
+        f"{test_case_id} event types must be a subset of the official `beets.events.EventType` literals."
     )

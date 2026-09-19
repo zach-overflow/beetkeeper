@@ -100,7 +100,7 @@ Additionally, [this beets blog post](https://beets.io/blog/sqlite-nightmare.html
   (not under `beetkeeper.api`) because `beetkeeper.api.__init__` pulls in the whole FastAPI app, whose
   routers import `beetkeeper.db.models` — the db layer importing it from `beetkeeper.api.*` would be a
   circular import. Integration tests (`src/integration_tests/events_plugin_integration_tests/`) keep it
-  in sync with the plugin's `_EVENT_PAYLOAD_KEYS` and beets' own `beets.plugins.EventType` literals.
+  in sync with the plugin's `_EVENT_PAYLOAD_KEYS` and beets' own `beets.events.EventType` literals.
 
 ## Relevant public docs
 - Pants: https://www.pantsbuild.org/stable/docs/introduction/welcome-to-pants

@@ -8,7 +8,7 @@ from requests.exceptions import RequestException
 from beetsplug.beetkeeper_plugin.beetkeeper_plugin import BeetkeeperPlugin, _APIToken
 
 if TYPE_CHECKING:
-    from beets.plugins import EventType  # pants: no-infer-dep
+    from beets.events import EventType  # pants: no-infer-dep
     from pytest_mock import MockerFixture, MockType
 
 
