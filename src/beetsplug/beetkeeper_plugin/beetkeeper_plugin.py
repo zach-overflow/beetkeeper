@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from beets.importer import ImportSession, ImportTask  # pants: no-infer-dep  noqa: TC002
 from beets.library import Album, Item  # pants: no-infer-dep
-from beets.plugins import BeetsPlugin, EventType  # pants: no-infer-dep  noqa: TC002
+from beets.plugins import BeetsPlugin  # pants: no-infer-dep
 from beetsplug._utils.requests import (  # type: ignore[import-untyped]
     RequestHandler,  # pants: no-infer-dep
     TimeoutAndRetrySession,  # pants: no-infer-dep
@@ -22,6 +22,7 @@ from requests.exceptions import RequestException
 from beetsplug.beetkeeper_plugin._bk_plugin_settings import load_config_section
 
 if TYPE_CHECKING:
+    from beets.events import EventType  # pants: no-infer-dep
     from requests import PreparedRequest, Response
 
 
@@ -62,7 +63,8 @@ class BeetkeeperPlugin(BeetsPlugin):
         )
         self.log.debug("Registering beetkeeper_plugin listeners ...")
         for event_type, payload_key in self._EVENT_PAYLOAD_KEYS.items():
-            self.register_listener(event_type, partial(self._handle_event, event_type, payload_key))
+            # beets types `register_listener` with per-event literal overloads, which a dynamic loop can't satisfy.
+            self.register_listener(event_type, partial(self._handle_event, event_type, payload_key))  # type: ignore[arg-type]
 
     @cached_property
     def log(self) -> logging.Logger:

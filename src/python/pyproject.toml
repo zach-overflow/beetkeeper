@@ -8,12 +8,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "beetkeeper"
 dynamic = ["version"]
-requires-python = ">=3.14,<3.16"
+requires-python = ">=3.14,<3.15"
 dependencies = [
   "anyio>=4.15.1",
   "aiosqlite>=0.21",
   "alembic>=1.18.5",
-  "beets>=2.12",
+  "beets>=2.14.1",
   "beetkeeper-plugin",
   "click>=8.4.1",
   "fastapi>=0.138.0",
@@ -22,7 +22,7 @@ dependencies = [
   "httpx>=0.28.1",
   "jinja2",
   "jinja2-fragments>=1.12.0",
-  "pydantic>=2.13.4",
+  "pydantic>=2.13.5",
   "pydantic-settings>=2.14.2",
   "PyYAML>=6.0.3",
   "sqlalchemy",

@@ -30,7 +30,7 @@ from anyio.from_thread import BlockingPortal
 # runtime imports (not TYPE_CHECKING): beets inspects listener signatures on registration, evaluating the
 # parameter annotations.
 from beets.importer import Action, DuplicateAction, ImportSession
-from beets.library import Album, Item  # noqa: TC002
+from beets.library import Album, Item, Library  # noqa: TC002
 from beets.plugins import BeetsPlugin
 from beets.util import bytestring_path
 
@@ -487,11 +487,11 @@ class _ImportEventsPlugin(BeetsPlugin):
         self.register_listener("album_imported", self._on_album_imported)
         self.register_listener("item_imported", self._on_item_imported)
 
-    def _on_album_imported(self, album: Album) -> None:
+    def _on_album_imported(self, lib: Library, album: Album) -> None:
         if self.narrator is not None:
             self.narrator.album_imported(album)
 
-    def _on_item_imported(self, item: Item) -> None:
+    def _on_item_imported(self, lib: Library, item: Item) -> None:
         if self.narrator is not None:
             self.narrator.item_imported(item)
 

@@ -12,7 +12,7 @@
     "mkdocs>=1.6.1",
     "mypy-extensions>=1.1.0",
     "mypy>=2.3.1",
-    "pydantic>=2.13.4",
+    "pydantic>=2.13.5",
     "pyproject-fmt>=2.25.2",
     "pytest-mock>=3.15.1",
     "pytest-socket>=0.8.1",

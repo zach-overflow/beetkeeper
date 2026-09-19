@@ -31,8 +31,8 @@ def test_send_routes_events_to_the_active_narrator_and_narrates_output() -> None
     narrator = _ImportNarrator(output)
     events.narrator = narrator
     try:
-        plugins.send("album_imported", lib=None, album=_album(7, [11, 12]))
-        plugins.send("item_imported", lib=None, item=_Attrs(id=99, artist="Solo Artist", title="Solo Track"))
+        plugins.send("album_imported", lib=None, album=_album(7, [11, 12]))  # type: ignore[call-overload]
+        plugins.send("item_imported", lib=None, item=_Attrs(id=99, artist="Solo Artist", title="Solo Track"))  # type: ignore[call-overload]
     finally:
         events.narrator = None
 
@@ -48,8 +48,8 @@ def test_events_with_no_active_narrator_are_ignored() -> None:
 
     # Fires the registered listeners with no narrator installed (e.g. an import run by another beets
     # client in-process while the worker is idle); nothing should be narrated anywhere or raise.
-    plugins.send("album_imported", lib=None, album=_album(1, [2]))
-    plugins.send("item_imported", lib=None, item=_Attrs(id=3, artist="A", title="T"))
+    plugins.send("album_imported", lib=None, album=_album(1, [2]))  # type: ignore[call-overload]
+    plugins.send("item_imported", lib=None, item=_Attrs(id=3, artist="A", title="T"))  # type: ignore[call-overload]
 
     assert events.narrator is None
 
@@ -59,10 +59,10 @@ def test_deactivated_narrator_stops_receiving_events() -> None:
     narrator = _ImportNarrator(_OutputBuffer())
     events.narrator = narrator
     try:
-        plugins.send("album_imported", lib=None, album=_album(5, [6]))
+        plugins.send("album_imported", lib=None, album=_album(5, [6]))  # type: ignore[call-overload]
     finally:
         events.narrator = None
-    plugins.send("album_imported", lib=None, album=_album(8, [9]))
+    plugins.send("album_imported", lib=None, album=_album(8, [9]))  # type: ignore[call-overload]
 
     assert narrator.imported_count == 1
 
