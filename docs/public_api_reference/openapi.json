@@ -479,6 +479,48 @@
         }
       }
     },
+    "/api/import/reimport": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Start Reimport",
+        "description": "Enqueue a library-mode reimport (`beet import -L`) of the entries matching `query`.\n\nThe job runs through the same lifecycle as a path import (poll it, answer its decisions, abort it via\nthe routes below). Once it ends, its `reimport_report` diffs each reimported entry's prior library data\nagainst the new \u2014 flagging fields that lost their value \u2014 and lists entries skipped because their files\nno longer exist on disk.",
+        "operationId": "start_reimport_api_import_reimport_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReimportSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/import/{job_id}": {
       "get": {
         "tags": [
@@ -2165,6 +2207,49 @@
         "title": "EventsListResponse",
         "description": "Response payload for the events listing: recently ingested listener events, newest first."
       },
+      "FieldChange": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "old": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old"
+          },
+          "new": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New"
+          },
+          "dropped": {
+            "type": "boolean",
+            "title": "Dropped",
+            "description": "True when the reimport lost information: the field held a value before and is blank now.",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "field",
+          "dropped"
+        ],
+        "title": "FieldChange",
+        "description": "One library field whose value differs between the prior library entry and the reimported one."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2495,10 +2580,67 @@
             "type": "object",
             "title": "Set Fields"
           },
+          "query": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "singletons": {
+            "type": "boolean",
+            "title": "Singletons",
+            "default": false
+          },
+          "move_files": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Move Files"
+          },
+          "write_tags": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Write Tags"
+          },
+          "reimport_report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReimportReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_reimport": {
+            "type": "boolean",
+            "title": "Is Reimport",
+            "description": "Whether this job reimports existing library entries (library mode) instead of importing paths.",
+            "readOnly": true
+          },
           "source_label": {
             "type": "string",
             "title": "Source Label",
-            "description": "Display name for the import source: the basename(s) of the path(s) (e.g. the album folder).",
+            "description": "Display name for the import source: the path basename(s), or the library query for a reimport.",
             "readOnly": true
           }
         },
@@ -2508,6 +2650,7 @@
           "status",
           "paths",
           "created_at",
+          "is_reimport",
           "source_label"
         ],
         "title": "ImportJob",
@@ -2700,6 +2843,177 @@
         },
         "type": "object",
         "title": "LogoutResponseBody"
+      },
+      "MissingFilesEntry": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Paths"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "paths"
+        ],
+        "title": "MissingFilesEntry",
+        "description": "A library album/track skipped by a reimport because its file(s) no longer exist on disk."
+      },
+      "ReimportEntry": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "shared_changes": {
+            "items": {
+              "$ref": "#/components/schemas/FieldChange"
+            },
+            "type": "array",
+            "title": "Shared Changes"
+          },
+          "tracks": {
+            "items": {
+              "$ref": "#/components/schemas/TrackChange"
+            },
+            "type": "array",
+            "title": "Tracks"
+          },
+          "left_behind": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Left Behind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "ReimportEntry",
+        "description": "Prior-vs-new diff for one reimported album (or singleton track).\n\n`shared_changes` are the changes every track has in common (album-level edits such as a corrected album\ntitle), hoisted out of `tracks` so they are reported once. `left_behind` lists tracks of the original\nalbum that the chosen match did not cover: beets leaves their library entries under the old album."
+      },
+      "ReimportReport": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ReimportEntry"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "missing_files": {
+            "items": {
+              "$ref": "#/components/schemas/MissingFilesEntry"
+            },
+            "type": "array",
+            "title": "Missing Files"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "description": "True when entries beyond the report cap were omitted.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ReimportReport",
+        "description": "What a library reimport changed, plus the entries it had to skip because their files are gone."
+      },
+      "ReimportSubmitRequest": {
+        "properties": {
+          "query": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Query",
+            "description": "beets query parts (like the CLI args, e.g. `[\"albumartist:Beatles\", \"year:1969\"]`) selecting the library entries to reimport. Required; an explicit empty list reimports the ENTIRE library. See https://beets.readthedocs.io/en/stable/reference/query.html"
+          },
+          "singletons": {
+            "type": "boolean",
+            "title": "Singletons",
+            "description": "Match (and retag) individual tracks instead of whole albums, like `beet import -L -s`.",
+            "default": false
+          },
+          "quiet": {
+            "type": "boolean",
+            "title": "Quiet",
+            "description": "Run non-interactively (like `beet import -q`). See `ImportSubmitRequest.quiet`."
+          },
+          "move_files": {
+            "type": "boolean",
+            "title": "Move Files",
+            "description": "Move the files so the library's directory structure reflects the new tags. `false` retags in place, leaving every file where it is (`beet import -C -M`) \u2014 useful when players/music servers get confused by a path and tags changing at once."
+          },
+          "write_tags": {
+            "type": "boolean",
+            "title": "Write Tags",
+            "description": "Write the new tags to the files (`-w`); `false` only updates the beets database (`-W`)."
+          },
+          "logpath": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logpath",
+            "description": "Corresponds to the `-l` option, or the config's `import.log` option."
+          },
+          "set_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Set Fields",
+            "description": "Corresponds to the `--set field=value` option for beets' `import` CLI command."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "ReimportSubmitRequest",
+        "description": "Body for starting a library-mode reimport (`beet import -L`): re-run the importer over entries that are\nalready in the beets library, selected by a beets query instead of filesystem paths. Option defaults\ncome from the `beets.config` values if left unspecified.\n\nSee https://beets.readthedocs.io/en/stable/reference/cli.html#reimporting"
+      },
+      "TrackChange": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/FieldChange"
+            },
+            "type": "array",
+            "title": "Changes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "path"
+        ],
+        "title": "TrackChange",
+        "description": "The field-level changes a reimport made to one track (`path` is its pre-reimport location)."
       },
       "ValidationError": {
         "properties": {

@@ -32,6 +32,15 @@ def import_config_logpath() -> Path | None:
         return None
 
 
+def import_config_moves_files() -> bool:
+    """Whether the beets config relocates reimported library files to match their new tags.
+
+    Per beets' reimport docs, `copy` moves (never duplicates) a file that is already in the library, so
+    either `copy` or `move` being on means a reimport relocates files.
+    """
+    return import_config_flag("copy") or import_config_flag("move")
+
+
 class ImportSubmitRequest(BaseModel):
     """
     Body for starting an import: the filesystem path(s) beets should import. All default values come from the
@@ -63,4 +72,52 @@ class ImportSubmitRequest(BaseModel):
     set_fields: dict[str, str] = Field(
         default_factory=import_config_set_fields,
         description="Corresponds to the `--set field=value` option for beets' `import` CLI command. Can set multiple key-value pairs.",
+    )
+
+
+class ReimportSubmitRequest(BaseModel):
+    """
+    Body for starting a library-mode reimport (`beet import -L`): re-run the importer over entries that are
+    already in the beets library, selected by a beets query instead of filesystem paths. Option defaults
+    come from the `beets.config` values if left unspecified.
+
+    See https://beets.readthedocs.io/en/stable/reference/cli.html#reimporting
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    query: list[str] = Field(
+        description=(
+            'beets query parts (like the CLI args, e.g. `["albumartist:Beatles", "year:1969"]`) selecting the '
+            "library entries to reimport. Required; an explicit empty list reimports the ENTIRE library. "
+            "See https://beets.readthedocs.io/en/stable/reference/query.html"
+        )
+    )
+    singletons: bool = Field(
+        default=False,
+        description="Match (and retag) individual tracks instead of whole albums, like `beet import -L -s`.",
+    )
+    quiet: bool = Field(
+        default_factory=partial(import_config_flag, "quiet"),
+        description="Run non-interactively (like `beet import -q`). See `ImportSubmitRequest.quiet`.",
+    )
+    move_files: bool = Field(
+        default_factory=import_config_moves_files,
+        description=(
+            "Move the files so the library's directory structure reflects the new tags. `false` retags in "
+            "place, leaving every file where it is (`beet import -C -M`) — useful when players/music servers "
+            "get confused by a path and tags changing at once."
+        ),
+    )
+    write_tags: bool = Field(
+        default_factory=partial(import_config_flag, "write"),
+        description="Write the new tags to the files (`-w`); `false` only updates the beets database (`-W`).",
+    )
+    logpath: Path | None = Field(
+        default_factory=import_config_logpath,
+        description="Corresponds to the `-l` option, or the config's `import.log` option.",
+    )
+    set_fields: dict[str, str] = Field(
+        default_factory=import_config_set_fields,
+        description="Corresponds to the `--set field=value` option for beets' `import` CLI command.",
     )

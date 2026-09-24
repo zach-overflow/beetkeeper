@@ -11,13 +11,18 @@ Threading bridge (unchanged from before): beets' importer is a multi-threaded pi
 interactive `choose_*` hooks run in beets' own threads. Those reach the event loop through a
 `BlockingPortal`; from the loop, decisions are exchanged through the DB (so a decision POST handled by ANY
 process is seen by the leader). beets dev docs: https://beets.readthedocs.io/en/v2.12.0/dev/importer.html
+
+A job is either a path import or a library-mode reimport (`ImportJob.query`, i.e. `beet import -L`): the same
+session and decision flow, fed by a library query instead of paths, plus a prior-vs-new diff of what changed
+(`core.reimport_diff`). https://beets.readthedocs.io/en/stable/reference/cli.html#reimporting
 """
 
+import copy
 import logging
 import os
 import socket
 import threading
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 from uuid import uuid4
@@ -26,10 +31,10 @@ import anyio
 from anyio import to_thread
 from anyio.from_thread import BlockingPortal
 
-# Subclassing requires the class at definition time; beets is a hard dependency. `Album`/`Item` must be
-# runtime imports (not TYPE_CHECKING): beets inspects listener signatures on registration, evaluating the
-# parameter annotations.
-from beets.importer import Action, DuplicateAction, ImportSession
+# Subclassing requires the class at definition time; beets is a hard dependency. `Album`/`Item`/`ImportTask`
+# must be runtime imports (not TYPE_CHECKING): beets inspects listener signatures on registration, evaluating
+# the parameter annotations.
+from beets.importer import Action, DuplicateAction, ImportSession, ImportTask
 from beets.library import Album, Item, Library  # noqa: TC002
 from beets.plugins import BeetsPlugin
 from beets.util import bytestring_path
@@ -43,8 +48,10 @@ from beetkeeper.core.import_jobs import (  # pants: no-infer-dep
     ImportJobStatus,
 )
 from beetkeeper.core.library import failed_plugin_names, library_write_limiter, open_library
+from beetkeeper.core.reimport_diff import ReimportDiffCollector
 
 if TYPE_CHECKING:
+    from beetkeeper.core.import_jobs import ReimportReport
     from beetkeeper.core.import_store import ImportStore
 
 _LOGGER = logging.getLogger(__name__)
@@ -54,6 +61,7 @@ _DUPLICATE_NARRATIVES: Final[dict[DuplicateAction, str]] = {
     DuplicateAction.KEEP: "keeping both",
     DuplicateAction.REMOVE: "replacing the existing entry",
     DuplicateAction.MERGE: "merging them",
+    DuplicateAction.UPGRADE: "keeping whichever copy of each track has the higher bitrate",
 }
 
 # Leader lease length and how often the holder renews it (renew well within the lease).
@@ -184,6 +192,31 @@ def _album_label(task: Any) -> str:
     return f"{getattr(task, 'cur_artist', None) or '?'} - {getattr(task, 'cur_album', None) or '?'}"
 
 
+def _track_label(item: Any) -> str:
+    """Human-readable `artist - title` label for a singleton task's item."""
+    return f"{getattr(item, 'artist', None) or '?'} - {getattr(item, 'title', None) or '?'}"
+
+
+def _build_track_diff(task: Any, match: Any) -> list[str]:
+    """Human-readable diff of what applying `match` (a beets `TrackMatch`) changes for a singleton track.
+
+    The singleton counterpart of `_build_album_diff`, with the same defensive attribute access.
+    """
+    info = getattr(match, "info", None)
+    if info is None:
+        return []
+    distance = getattr(match, "distance", None)
+    similarity = f" ({(1.0 - float(distance)) * 100:.1f}% match)" if distance is not None else ""
+    source = f" [{info.data_source}]" if getattr(info, "data_source", None) else ""
+    lines = [f"  Match: {getattr(info, 'artist', '?')} - {getattr(info, 'title', '?')}{source}{similarity}"]
+    item = getattr(task, "item", None)
+    for attr, heading in (("artist", "Artist"), ("title", "Title")):
+        current, new = getattr(item, attr, None), getattr(info, attr, None)
+        if current and current != new:
+            lines.append(f"    {heading}: {current} -> {new}")
+    return lines
+
+
 def _candidate_str(info: Any, attr: str) -> str | None:
     """A candidate `AlbumInfo` attribute as a non-empty string, else None.
 
@@ -192,6 +225,61 @@ def _candidate_str(info: Any, attr: str) -> str | None:
     """
     value = getattr(info, attr, None)
     return str(value) if value else None
+
+
+def _album_candidate(index: int, match: Any) -> ImportCandidate:
+    """Map a beets `AlbumMatch` to a candidate carrying the release attributes that tell editions apart."""
+    info = getattr(match, "info", None)
+    distance = getattr(match, "distance", None)
+    tracks = getattr(info, "tracks", None)
+    return ImportCandidate(
+        index=index,
+        label=f"{getattr(info, 'artist', '?')} - {getattr(info, 'album', '?')}",
+        similarity=(1.0 - float(distance)) if distance is not None else None,
+        data_source=_candidate_str(info, "data_source"),
+        year=getattr(info, "year", None) or None,
+        country=_candidate_str(info, "country"),
+        media=_candidate_str(info, "media"),
+        record_label=_candidate_str(info, "label"),
+        catalognum=_candidate_str(info, "catalognum"),
+        disambiguation=_candidate_str(info, "albumdisambig"),
+        track_count=len(tracks) if tracks else None,
+        album_id=_candidate_str(info, "album_id"),
+        release_url=_candidate_str(info, "data_url"),
+    )
+
+
+def _track_candidate(index: int, match: Any) -> ImportCandidate:
+    """Map a beets `TrackMatch` to a candidate (`album_id` carries the source's track id for the link column)."""
+    info = getattr(match, "info", None)
+    distance = getattr(match, "distance", None)
+    return ImportCandidate(
+        index=index,
+        label=f"{getattr(info, 'artist', '?')} - {getattr(info, 'title', '?')}",
+        similarity=(1.0 - float(distance)) if distance is not None else None,
+        data_source=_candidate_str(info, "data_source"),
+        album_id=_candidate_str(info, "track_id"),
+        release_url=_candidate_str(info, "data_url"),
+    )
+
+
+def _session_config_overrides(job: ImportJob) -> dict[str, object]:
+    """The job's overrides for the `import` config keys beets reads from `ImportSession.config`.
+
+    `move_files=False` is `beet import -C -M` (retag in place). `move_files=True` forces `move`: beets
+    relocates an already-in-library file to match its new tags under both `copy` and `move`, so this only
+    makes the relocation independent of which one the beets config happens to enable.
+    """
+    overrides: dict[str, object] = {"group_albums": job.group_albums, "flat": job.flat}
+    if job.query is not None:
+        overrides["singletons"] = job.singletons
+    if job.move_files is True:
+        overrides["move"] = True
+    elif job.move_files is False:
+        overrides.update(dict.fromkeys(("copy", "move", "link", "hardlink", "reflink"), False))
+    if job.write_tags is not None:
+        overrides["write"] = job.write_tags
+    return overrides
 
 
 def _apply_job_import_config(job: ImportJob) -> None:
@@ -288,54 +376,97 @@ class WebImportSession(ImportSession):
         output: _OutputBuffer,
         quiet: bool = False,
         loghandler: logging.Handler | None = None,
+        query: Sequence[str] | None = None,
+        config_overrides: Mapping[str, object] | None = None,
     ) -> None:
         """Construct the beets session and stash the async-bridge handles used by the decision hooks.
 
-        `loghandler`, when given, becomes the session logger's handler — beets' `-l` import log.
+        `loghandler`, when given, becomes the session logger's handler — beets' `-l` import log. A non-None
+        `query` (beets query parts; empty matches everything) runs the session in library mode (`-L`),
+        reimporting the matching library entries instead of `paths`. `config_overrides` are applied to the
+        session's detached `import` config (see `set_config`).
         """
         # beets stores paths as bytes; `ImportSession.__init__(lib, loghandler, paths, query)`.
-        super().__init__(library, loghandler, [bytestring_path(p) for p in paths], None)
+        super().__init__(
+            library, loghandler, [bytestring_path(p) for p in paths], list(query) if query is not None else None
+        )
         self._job_id = job_id
         self._portal = portal
         self._bridge = bridge
         self._store = store
         self._output = output
         self._quiet = quiet
+        self._config_overrides = dict(config_overrides or {})
+
+    def set_config(self, config: Any) -> None:
+        """Run the session on a detached copy of beets' `import` config, with the job's overrides applied.
+
+        beets reads these keys live for the whole run (`copy`/`move`/`write` once per task), and its global
+        config is mutated underneath a running import: every `open_library` re-applies the user's config
+        file on top, which would silently undo a job's overrides (e.g. flip a retag-in-place reimport back
+        to moving files). The copy also keeps beets' own implied edits here (`resume`, `incremental`,
+        `copy`, ...) from leaking into later jobs. `config` is ignored: beets always passes the global view.
+        """
+        from beets import config as beets_config
+
+        detached = copy.deepcopy(beets_config)["import"]
+        for key, value in self._config_overrides.items():
+            detached[key] = value
+        super().set_config(detached)
 
     # beets interactive hooks below execute in beets' pipeline threads, not the event loop.
 
     def choose_match(self, task: Any) -> Any:
         """Ask the UI which candidate to apply for an album `task` (or to skip / import as-is)."""
-        album_label = _album_label(task)
+        return self._choose(
+            task, _album_label(task), "Choose a match for this album.", _album_candidate, _build_album_diff
+        )
+
+    def choose_item(self, task: Any) -> Any:
+        """Ask the UI which candidate to apply for a singleton track `task` (or to skip / import as-is)."""
+        label = _track_label(getattr(task, "item", None))
+        return self._choose(task, label, "Choose a match for this track.", _track_candidate, _build_track_diff)
+
+    def _choose(
+        self,
+        task: Any,
+        label: str,
+        prompt: str,
+        to_candidate: Callable[[int, Any], ImportCandidate],
+        build_diff: Callable[[Any, Any], list[str]],
+    ) -> Any:
+        """Shared album/singleton decision flow: honor abort + quiet mode, else park on the UI's answer."""
         if self._portal.call(self._store.is_abort_requested, self._job_id):
-            self._output.append(f"Skipping '{album_label}' (abort requested).")
+            self._output.append(f"Skipping '{label}' (abort requested).")
             return Action.SKIP
 
         if self._quiet:
             # Non-interactive (`beet import -q`): decide without prompting the UI.
-            return self._quiet_choice(task, album_label)
+            return self._quiet_choice(task, label, build_diff)
 
-        request = self._build_decision_request(task)
-        self._output.append(f"Matching '{album_label}' — {len(request.candidates)} candidate(s); awaiting decision.")
+        request = self._build_decision_request(task, prompt, to_candidate)
+        self._output.append(f"Matching '{label}' — {len(request.candidates)} candidate(s); awaiting decision.")
         # Blocks THIS beets thread until the UI answers (the portal runs `bridge.request` on the loop).
         decision = self._portal.call(self._bridge.request, request)
 
         if decision.action is ImportAction.SKIP:
-            self._output.append(f"Skipped '{album_label}'.")
+            self._output.append(f"Skipped '{label}'.")
             return Action.SKIP
         if decision.action is ImportAction.ASIS:
-            self._output.append(f"Importing '{album_label}' as-is (tags unchanged).")
+            self._output.append(f"Importing '{label}' as-is (tags unchanged).")
             return Action.ASIS
         # TODO[Claude]: validate `candidate_index` against `task.candidates`; handle empty/None.
         index = decision.candidate_index or 0
         chosen = request.candidates[index].label if index < len(request.candidates) else f"#{index}"
         match = task.candidates[index]
-        self._output.append(f"Applying candidate '{chosen}' to '{album_label}':")
-        for line in _build_album_diff(task, match):
+        self._output.append(f"Applying candidate '{chosen}' to '{label}':")
+        for line in build_diff(task, match):
             self._output.append(line)
         return match
 
-    def _quiet_choice(self, task: Any, album_label: str) -> Any:
+    def _quiet_choice(
+        self, task: Any, album_label: str, build_diff: Callable[[Any, Any], list[str]] = _build_album_diff
+    ) -> Any:
         """Decide a match without prompting (the `beet import -q` rule).
 
         Apply the best candidate iff beets rates the match a *strong* recommendation; otherwise fall back to
@@ -348,7 +479,7 @@ class WebImportSession(ImportSession):
         if candidates and getattr(task, "rec", None) is Recommendation.strong:
             match = candidates[0]  # beets sorts candidates best-first
             self._output.append(f"Quiet import: applying strong match for '{album_label}':")
-            for line in _build_album_diff(task, match):
+            for line in build_diff(task, match):
                 self._output.append(line)
             return match
 
@@ -383,8 +514,9 @@ class WebImportSession(ImportSession):
         if action is DuplicateAction.ASK:
             action = DuplicateAction.SKIP
             suffix = " ('ask' is not supported in web imports yet)"
+        label = _album_label(task) if getattr(task, "is_album", True) else _track_label(getattr(task, "item", None))
         self._output.append(
-            f"'{_album_label(task)}' duplicates an existing library entry — {_DUPLICATE_NARRATIVES[action]}{suffix}."
+            f"'{label}' duplicates an existing library entry — {_DUPLICATE_NARRATIVES[action]}{suffix}."
         )
         return action
 
@@ -393,41 +525,23 @@ class WebImportSession(ImportSession):
         # TODO[Claude]: surface resume as a decision instead of always declining.
         return False
 
-    def _build_decision_request(self, task: Any) -> DecisionRequest:
-        """Map a beets album `task` and its candidates into a serializable `DecisionRequest`.
+    def _build_decision_request(
+        self,
+        task: Any,
+        prompt: str = "Choose a match for this album.",
+        to_candidate: Callable[[int, Any], ImportCandidate] = _album_candidate,
+    ) -> DecisionRequest:
+        """Map a beets `task` and its candidates into a serializable `DecisionRequest`.
 
-        Each candidate carries the differentiating release attributes from beets' `AlbumInfo` (year,
-        country, media, label/catalognum, disambiguation, track count, source + id) so the UI can tell
-        otherwise-identical candidates apart. All attribute access is defensive (beets-internal objects).
+        `to_candidate` builds each `ImportCandidate` (`_album_candidate` carries the differentiating release
+        attributes so the UI can tell otherwise-identical candidates apart; `_track_candidate` is the
+        singleton counterpart). All attribute access is defensive (beets-internal objects).
         """
-        candidates = []
-        for index, match in enumerate(getattr(task, "candidates", [])):
-            info = getattr(match, "info", None)
-            label = f"{getattr(info, 'artist', '?')} - {getattr(info, 'album', '?')}"
-            distance = getattr(match, "distance", None)
-            similarity = (1.0 - float(distance)) if distance is not None else None
-            tracks = getattr(info, "tracks", None)
-            candidates.append(
-                ImportCandidate(
-                    index=index,
-                    label=label,
-                    similarity=similarity,
-                    data_source=_candidate_str(info, "data_source"),
-                    year=getattr(info, "year", None) or None,
-                    country=_candidate_str(info, "country"),
-                    media=_candidate_str(info, "media"),
-                    record_label=_candidate_str(info, "label"),
-                    catalognum=_candidate_str(info, "catalognum"),
-                    disambiguation=_candidate_str(info, "albumdisambig"),
-                    track_count=len(tracks) if tracks else None,
-                    album_id=_candidate_str(info, "album_id"),
-                    release_url=_candidate_str(info, "data_url"),
-                )
-            )
+        candidates = [to_candidate(index, match) for index, match in enumerate(getattr(task, "candidates", []))]
         return DecisionRequest(
             job_id=self._job_id,
             task_id=str(id(task)),
-            prompt="Choose a match for this album.",
+            prompt=prompt,
             candidates=candidates,
             allowed_actions=[ImportAction.APPLY, ImportAction.ASIS, ImportAction.SKIP],
         )
@@ -442,11 +556,12 @@ class _ImportNarrator:
     job (it POSTs them to `/api/events`); the server never records import events on its own.
     """
 
-    def __init__(self, output: _OutputBuffer) -> None:
+    def __init__(self, output: _OutputBuffer, *, reimport: bool = False) -> None:
         """Bind the narrator to the job's output buffer (for the per-event narrative lines)."""
         self._lock = threading.Lock()
         self._output = output
         self._imported_count = 0
+        self._verb = "Reimported" if reimport else "Imported"
 
     def album_imported(self, album: Album) -> None:
         """Narrate one imported album and its track count."""
@@ -454,14 +569,14 @@ class _ImportNarrator:
         with self._lock:
             self._imported_count += 1
         self._output.append(
-            f"Imported album: {album.albumartist or '?'} - {album.album or '?'} ({item_count} track(s))."
+            f"{self._verb} album: {album.albumartist or '?'} - {album.album or '?'} ({item_count} track(s))."
         )
 
     def item_imported(self, item: Item) -> None:
         """Narrate one imported standalone (singleton) track."""
         with self._lock:
             self._imported_count += 1
-        self._output.append(f"Imported standalone track: {item.artist or '?'} - {item.title or '?'}.")
+        self._output.append(f"{self._verb} standalone track: {item.artist or '?'} - {item.title or '?'}.")
 
     @property
     def imported_count(self) -> int:
@@ -471,21 +586,26 @@ class _ImportNarrator:
 
 
 class _ImportEventsPlugin(BeetsPlugin):
-    """Routes beets' `album_imported`/`item_imported` events to the currently-running job's narrator.
+    """Routes beets' import events to the currently-running job's narrator and reimport diff collector.
 
     beets dispatches events from the process-global `BeetsPlugin.listeners` registry, which has no
     unregister API — so exactly one instance is created lazily (`_import_events`) and lives for the
     process, forwarding to whichever narrator is installed on `self.narrator`. The worker runs at most
     one import at a time per process, so a single slot suffices; events with no narrator installed
-    (imports run by other beets clients while we're idle) are ignored.
+    (imports run by other beets clients while we're idle) are ignored. The per-task events
+    (`import_task_created`/`_choice`/`_files`) feed `self.reimport_diff`, installed only for reimport jobs.
     """
 
     def __init__(self) -> None:
         """Register the import-event listeners (a one-time, process-global side effect)."""
         super().__init__(name="beetkeeper")
         self.narrator: _ImportNarrator | None = None
+        self.reimport_diff: ReimportDiffCollector | None = None
         self.register_listener("album_imported", self._on_album_imported)
         self.register_listener("item_imported", self._on_item_imported)
+        self.register_listener("import_task_created", self._on_task_created)
+        self.register_listener("import_task_choice", self._on_task_choice)
+        self.register_listener("import_task_files", self._on_task_files)
 
     def _on_album_imported(self, lib: Library, album: Album) -> None:
         if self.narrator is not None:
@@ -494,6 +614,18 @@ class _ImportEventsPlugin(BeetsPlugin):
     def _on_item_imported(self, lib: Library, item: Item) -> None:
         if self.narrator is not None:
             self.narrator.item_imported(item)
+
+    def _on_task_created(self, session: ImportSession, task: ImportTask) -> list[ImportTask] | None:
+        # beets replaces the task with whatever a listener returns; None leaves it untouched.
+        return self.reimport_diff.task_created(task) if self.reimport_diff is not None else None
+
+    def _on_task_choice(self, session: ImportSession, task: ImportTask) -> None:
+        if self.reimport_diff is not None:
+            self.reimport_diff.task_choice(task)
+
+    def _on_task_files(self, session: ImportSession, task: ImportTask) -> None:
+        if self.reimport_diff is not None:
+            self.reimport_diff.task_files(task)
 
 
 # The singleton lives in a dict so it can be set without `global` (mirrors `library._plugins_state`).
@@ -565,6 +697,7 @@ class ImportWorker:
 
     async def _run_job(self, job: ImportJob, portal: BlockingPortal) -> None:
         output = _OutputBuffer()
+        reimport_diff = ReimportDiffCollector(output.append) if job.query is not None else None
         failure: Exception | None = None
         async with anyio.create_task_group() as task_group:
             task_group.start_soon(self._renew_lease_until_cancelled)
@@ -575,7 +708,9 @@ class ImportWorker:
                 # concurrently so we keep leadership across long imports / decision waits. Holding
                 # `library_write_limiter` for the duration upholds the app-wide invariant that at most
                 # one beets-library writer exists (the UI's modify/remove wait until the import ends).
-                await to_thread.run_sync(self._run_import_blocking, job, portal, output, limiter=library_write_limiter)
+                await to_thread.run_sync(
+                    self._run_import_blocking, job, portal, output, reimport_diff, limiter=library_write_limiter
+                )
             except Exception as exc:  # keep the worker alive; the failure lands on the job below
                 failure = exc
             finally:
@@ -593,12 +728,25 @@ class ImportWorker:
         if failure is not None:
             _LOGGER.error(f"Import job {job.id} failed.", exc_info=failure)
             output.append(f"Import failed: {failure}")
-        await self._finalize_job(job.id, output, status, error=str(failure) if failure is not None else None)
+        await self._finalize_job(
+            job.id,
+            output,
+            status,
+            error=str(failure) if failure is not None else None,
+            # Persisted for failed/aborted jobs too: the entries reimported before the stop still changed.
+            reimport_report=reimport_diff.report() if reimport_diff is not None else None,
+        )
 
     async def _finalize_job(
-        self, job_id: str, output: _OutputBuffer, status: ImportJobStatus, *, error: str | None
+        self,
+        job_id: str,
+        output: _OutputBuffer,
+        status: ImportJobStatus,
+        *,
+        error: str | None,
+        reimport_report: ReimportReport | None = None,
     ) -> None:
-        """Persist the job's final output and terminal status, retrying transient DB errors.
+        """Persist the job's final output, reimport report (if any) and terminal status, retrying DB errors.
 
         Losing the terminal write would leave the job RUNNING forever: `claim_next` only claims PENDING
         jobs and `recover_orphans` spares this worker's own claims, so nothing else could repair it while
@@ -607,6 +755,8 @@ class ImportWorker:
         for attempt in range(1, _FINALIZE_ATTEMPTS + 1):
             try:
                 await self._store.set_output(job_id, output.snapshot()[1])
+                if reimport_report is not None:
+                    await self._store.set_reimport_report(job_id, reimport_report)
                 await self._store.set_status(job_id, status, error=error)
                 return
             except Exception:
@@ -655,15 +805,25 @@ class ImportWorker:
                 continue
             last_version = version
 
-    def _run_import_blocking(self, job: ImportJob, portal: BlockingPortal, output: _OutputBuffer) -> None:
-        """Open the library, run the beets import to completion, and narrate what it added.
+    def _run_import_blocking(
+        self,
+        job: ImportJob,
+        portal: BlockingPortal,
+        output: _OutputBuffer,
+        reimport_diff: ReimportDiffCollector | None = None,
+    ) -> None:
+        """Open the library, run the beets import (or library reimport) to completion, and narrate it.
 
         Executes in a worker thread (beets connections are thread-local). The added albums/items are
         narrated through beets' own `album_imported`/`item_imported` events (fired by the pipeline as each
         task lands — see `_ImportEventsPlugin`). beets warnings/errors during the run are funneled into
         `output` alongside the session's own narrative lines.
         """
-        output.append(f"Starting import of: {', '.join(job.paths)}")
+        if job.query is not None:
+            scope = "singleton tracks" if job.singletons else "albums"
+            output.append(f"Starting reimport of library {scope} matching: {' '.join(job.query) or '(entire library)'}")
+        else:
+            output.append(f"Starting import of: {', '.join(job.paths)}")
         handler = _BufferLogHandler(output)
         handler.setLevel(logging.WARNING)  # only surface beets warnings/errors; our hooks emit the narrative
         handler.setFormatter(logging.Formatter("beets %(levelname)s: %(message)s"))
@@ -686,17 +846,25 @@ class ImportWorker:
                 output=output,
                 quiet=job.quiet,
                 loghandler=loghandler,
+                query=job.query,
+                config_overrides=_session_config_overrides(job),
             )
             events = _import_events()
-            narrator = _ImportNarrator(output)
+            narrator = _ImportNarrator(output, reimport=job.query is not None)
             events.narrator = narrator
+            events.reimport_diff = reimport_diff
             try:
                 session.run()  # blocks until beets' pipeline finishes (or drains via cooperative SKIP on abort)
             finally:
                 events.narrator = None
+                events.reimport_diff = None
                 if loghandler is not None:
                     loghandler.close()
             if narrator.imported_count == 0:
-                output.append("No new items were added to the library.")
+                output.append(
+                    "No library entries were reimported."
+                    if job.query is not None
+                    else "No new items were added to the library."
+                )
         finally:
             beets_logger.removeHandler(handler)

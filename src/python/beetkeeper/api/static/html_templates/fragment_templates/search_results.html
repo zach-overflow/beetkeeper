@@ -30,9 +30,9 @@
 <table>
     <thead>
         {% if albums %}
-        <tr><th>Album artist</th><th>Album</th><th>Year</th><th>Source path(s)</th><th>Destination path</th></tr>
+        <tr><th>Album artist</th><th>Album</th><th>Year</th><th>Source path(s)</th><th>Destination path</th><th></th></tr>
         {% else %}
-        <tr><th>Artist</th><th>Album</th><th>Title</th><th>Track</th><th>Year</th><th>Source path(s)</th><th>Destination path</th></tr>
+        <tr><th>Artist</th><th>Album</th><th>Title</th><th>Track</th><th>Year</th><th>Source path(s)</th><th>Destination path</th><th></th></tr>
         {% endif %}
     </thead>
     <tbody>
@@ -44,6 +44,7 @@
             <td>{{ row['year'] or "" }}</td>
             <td>{{ source_path_cell(source_paths_by_id.get(row['id'], [])) }}</td>
             <td>{{ destination_path_cell(row['path']) }}</td>
+            <td><a href="{{ url_for('import_page') }}?reimport_query=id:{{ row['id'] }}#reimport">Reimport</a></td>
         </tr>
         {% else %}
         <tr>
@@ -54,6 +55,8 @@
             <td>{{ row['year'] or "" }}</td>
             <td>{{ source_path_cell(source_paths_by_id.get(row['id'], [])) }}</td>
             <td>{{ destination_path_cell(row['path']) }}</td>
+            {# Only standalone tracks: a singleton reimport of an album track would detach it from its album. #}
+            <td>{% if not row['album_id'] %}<a href="{{ url_for('import_page') }}?reimport_query=id:{{ row['id'] }}&reimport_singletons=true#reimport">Reimport</a>{% endif %}</td>
         </tr>
         {% endif %}
         {% endfor %}

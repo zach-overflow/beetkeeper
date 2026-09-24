@@ -12,6 +12,10 @@
         <pre style="max-height: 20rem; overflow: auto; white-space: pre-wrap;">{{ job.output or '(no output yet.)' }}</pre>
     </details>
 
+    {% if job.reimport_report %}
+        {% include "fragment_templates/reimport_report.html" %}
+    {% endif %}
+
     {% if job.status in ('pending', 'running') %}
         <button hx-post="{{ url_for('import_job_abort', job_id=job.id) }}"
                 hx-target="#import-job-{{ job.id }}" hx-swap="outerHTML">Abort</button>

@@ -12,7 +12,13 @@ from beets.autotag import Recommendation
 from beets.importer import Action
 
 from beetkeeper.core.import_jobs import ImportAction, ImportCandidate, ImportDecision
-from beetkeeper.core.import_worker import WebImportSession, _build_album_diff, _OutputBuffer
+from beetkeeper.core.import_worker import (
+    WebImportSession,
+    _build_album_diff,
+    _build_track_diff,
+    _OutputBuffer,
+    _track_candidate,
+)
 
 
 class _Attrs:
@@ -247,3 +253,73 @@ def test_quiet_mode_skips_when_no_strong_match() -> None:
     # Default `quiet_fallback` is "skip"; nothing is applied and no decision is ever requested.
     assert result is Action.SKIP
     assert "skipping" in session._output.snapshot()[1].lower()
+
+
+def _singleton_session(portal_results: Sequence[Any], *, quiet: bool = False) -> WebImportSession:
+    session = WebImportSession.__new__(WebImportSession)
+    session._job_id = "job-1"
+    session._output = _OutputBuffer()
+    session._quiet = quiet
+    session._portal = _FakePortal(portal_results)  # type: ignore[assignment]
+    session._bridge = _Attrs(request=lambda _request: None)  # type: ignore[assignment]
+    session._store = _Attrs(is_abort_requested=lambda _job_id: None)  # type: ignore[assignment]
+    return session
+
+
+def _track_candidate_match() -> _Attrs:
+    info = _Attrs(
+        artist="Burial", title="Archangel", data_source="MusicBrainz", track_id=1234, data_url="https://mb/track/1234"
+    )
+    return _Attrs(info=info, distance=0.05)
+
+
+def test_track_diff_reports_artist_and_title_changes() -> None:
+    task = _Attrs(item=_Attrs(artist="burial", title="archangel"))
+
+    assert _build_track_diff(task, _track_candidate_match()) == [
+        "  Match: Burial - Archangel [MusicBrainz] (95.0% match)",
+        "    Artist: burial -> Burial",
+        "    Title: archangel -> Archangel",
+    ]
+
+
+def test_choose_item_builds_a_track_decision_and_applies_the_choice() -> None:
+    """Singleton tasks (`-s`) park on the same decision flow as albums, with track-shaped candidates."""
+    session = _singleton_session([False, ImportDecision(action=ImportAction.APPLY, candidate_index=0)])
+    match = _track_candidate_match()
+    task = _Attrs(item=_Attrs(artist="burial", title="archangel"), candidates=[match])
+
+    request = session._build_decision_request(task, "Choose a match for this track.", _track_candidate)
+    assert request.prompt == "Choose a match for this track."
+    assert request.candidates == [
+        ImportCandidate(
+            index=0,
+            label="Burial - Archangel",
+            similarity=0.95,
+            data_source="MusicBrainz",
+            album_id="1234",
+            release_url="https://mb/track/1234",
+        )
+    ]
+
+    assert session.choose_item(task) is match
+    output = session._output.snapshot()[1]
+    assert "Applying candidate 'Burial - Archangel' to 'burial - archangel':" in output
+    assert "Title: archangel -> Archangel" in output
+
+
+def test_choose_item_quiet_applies_a_strong_match_with_the_track_diff() -> None:
+    session = _singleton_session([False], quiet=True)
+    match = _track_candidate_match()
+    task = _Attrs(item=_Attrs(artist="burial", title="archangel"), candidates=[match], rec=Recommendation.strong)
+
+    assert session.choose_item(task) is match
+    assert "Artist: burial -> Burial" in session._output.snapshot()[1]
+
+
+def test_choose_item_skip() -> None:
+    session = _singleton_session([False, ImportDecision(action=ImportAction.SKIP)])
+    task = _Attrs(item=_Attrs(artist="a", title="t"), candidates=[])
+
+    assert session.choose_item(task) is Action.SKIP
+    assert "Skipped 'a - t'." in session._output.snapshot()[1]

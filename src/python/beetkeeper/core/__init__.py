@@ -8,7 +8,8 @@ importer. See `beetkeeper.core.library` for the rationale and concurrency rules.
   * `library`        — async facade for one-shot ops (query / modify / remove / stats).
   * `import_jobs`    — job status/action enums + decision DTOs + the `ImportJob` view (no beets imports).
   * `import_store`   — DB-backed, cross-process job store + the leader lock.
-  * `import_worker`  — the leader-elected worker that runs interactive imports.
+  * `import_worker`  — the leader-elected worker that runs interactive imports (and library reimports).
+  * `reimport_diff`  — prior-vs-new field diffing for reimports (`ReimportReport`).
 
 beets dev docs: https://beets.readthedocs.io/en/v2.12.0/dev/
 
@@ -29,6 +30,7 @@ from beetkeeper.core.import_jobs import (
     ImportDecision,
     ImportJob,
     ImportJobStatus,
+    ReimportReport,
 )
 from beetkeeper.core.import_store import ImportStore
 from beetkeeper.core.import_worker import ImportWorker
@@ -44,4 +46,5 @@ __all__ = [
     "ImportJobStatus",
     "ImportStore",
     "ImportWorker",
+    "ReimportReport",
 ]

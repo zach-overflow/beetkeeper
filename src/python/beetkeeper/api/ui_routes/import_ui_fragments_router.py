@@ -3,6 +3,8 @@ HTMX fragment routes for the interactive import flow.
 
 These return HTML partials (not JSON) for the `/import` page:
   * `POST /fragment/import`                    — start an import from the page form, render the job fragment.
+  * `POST /fragment/import/reimport`           — start a library reimport (`beet import -L`) from its form.
+  * `GET  /fragment/import/reimport-preview`   — show which library entries a reimport query matches.
   * `GET  /fragment/import/{job_id}`           — poll a job's current state (the fragment self-refreshes).
   * `POST /fragment/import/{job_id}/decision`  — answer the match decision the job is parked on.
   * `POST /fragment/import/{job_id}/abort`     — cooperatively cancel a running import.
@@ -13,6 +15,7 @@ All state goes through the cross-process `ImportStore`. The single `import_job.h
 
 import logging
 import os
+import shlex
 from collections.abc import Callable, Sequence
 from typing import Annotated, Any
 
@@ -20,7 +23,7 @@ from anyio import Path as AsyncPath
 from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 
-from beetkeeper.api.dependencies import ImportStoreDep
+from beetkeeper.api.dependencies import BeetsLibraryDep, ImportStoreDep
 from beetkeeper.api.jinja_driver import get_templates
 from beetkeeper.core import ImportAction, ImportCandidate, ImportDecision, ImportJob, ImportJobStatus
 
@@ -30,6 +33,8 @@ import_ui_fragments_router = APIRouter(prefix="/fragment/import")
 _JOB_FRAGMENT = "fragment_templates/import_job.html"
 _JOB_LIST_FRAGMENT = "fragment_templates/import_job_list.html"
 _PATH_SUGGESTIONS_FRAGMENT = "fragment_templates/path_suggestions.html"
+_REIMPORT_PREVIEW_FRAGMENT = "fragment_templates/reimport_preview.html"
+_REIMPORT_PREVIEW_LIMIT = 10
 _ACTIVE_STATUSES = frozenset({ImportJobStatus.PENDING, ImportJobStatus.RUNNING, ImportJobStatus.AWAITING_DECISION})
 _MAX_PATH_SUGGESTIONS = 25
 _MAX_DIR_SCAN = 500  # hard cap on entries scanned per directory, to bound work on huge folders
@@ -46,7 +51,15 @@ def _job_entry(job: ImportJob) -> dict[str, object]:
 
 def _job_settings_summary(job: ImportJob) -> str:
     """One-line summary of the job's non-default import settings (empty when it uses none of them)."""
-    flags = ((job.quiet, "quiet"), (job.group_albums, "group albums"), (job.flat, "flat"))
+    flags = (
+        (job.quiet, "quiet"),
+        (job.group_albums, "group albums"),
+        (job.flat, "flat"),
+        (job.singletons, "singletons"),
+        (job.move_files is True, "move files"),
+        (job.move_files is False, "retag in place"),
+        (job.write_tags is False, "no tag writes"),
+    )
     parts = [label for enabled, label in flags if enabled]
     if job.logpath:
         parts.append(f"log: {job.logpath}")
@@ -70,6 +83,14 @@ def _parse_set_fields(raw: str) -> dict[str, str]:
             )
         fields[key.strip()] = value.strip()
     return fields
+
+
+def _split_query(query: str) -> list[str]:
+    """Split a free-text beets query into parts like the beets CLI would (honours quoted phrases)."""
+    try:
+        return shlex.split(query)
+    except ValueError:
+        return query.split()
 
 
 def _under_import_root(path: str) -> bool:
@@ -240,6 +261,71 @@ async def import_submit(
         set_fields=_parse_set_fields(set_fields),
     )
     return _render_job(request, job)
+
+
+@import_ui_fragments_router.post("/reimport", response_class=HTMLResponse)
+async def import_reimport_submit(
+    request: Request,
+    store: ImportStoreDep,
+    query: Annotated[str, Form()] = "",
+    entire_library: Annotated[bool, Form()] = False,
+    singletons: Annotated[bool, Form()] = False,
+    quiet: Annotated[bool, Form()] = False,
+    move_files: Annotated[bool, Form()] = False,
+    write_tags: Annotated[bool, Form()] = False,
+    logpath: Annotated[str, Form()] = "",
+    set_fields: Annotated[str, Form()] = "",
+) -> HTMLResponse:
+    """Start a library reimport of the entries matching `query` and render its job fragment.
+
+    An empty beets query matches everything, so an empty `query` is rejected unless `entire_library` is
+    ticked: reimporting the whole library must be a deliberate choice, never a blank-field accident.
+    """
+    parts = _split_query(query)
+    if not parts and not entire_library:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Provide a query, or tick the option to reimport the entire library.",
+        )
+    job = await store.create(
+        [],
+        quiet=quiet,
+        logpath=logpath.strip() or None,
+        set_fields=_parse_set_fields(set_fields),
+        query=parts,
+        singletons=singletons,
+        move_files=move_files,
+        write_tags=write_tags,
+    )
+    return _render_job(request, job)
+
+
+@import_ui_fragments_router.get("/reimport-preview", response_class=HTMLResponse)
+async def reimport_preview(
+    request: Request, library: BeetsLibraryDep, query: str = "", singletons: bool = False
+) -> HTMLResponse:
+    """Render how many library albums (or tracks, in singleton mode) `query` matches, with the first few.
+
+    Defined before `/{job_id}` so the literal route wins over the job-status path parameter.
+    """
+    parts = _split_query(query)
+    error: str | None = None
+    matches: list[dict[str, Any]] = []
+    total = 0
+    try:
+        query_method = library.query_items if singletons else library.query_albums
+        matches, total = await query_method(parts, limit=_REIMPORT_PREVIEW_LIMIT)
+    except Exception as exc:  # surface invalid-query errors in the UI instead of a 500
+        _LOGGER.debug(f"Reimport preview query failed: {exc}")
+        error = str(exc)
+    context = {
+        "matches": matches,
+        "total": total,
+        "singletons": singletons,
+        "entire_library": not parts,
+        "error": error,
+    }
+    return get_templates().TemplateResponse(request=request, name=_REIMPORT_PREVIEW_FRAGMENT, context=context)
 
 
 @import_ui_fragments_router.get("/path-suggestions", response_class=HTMLResponse)

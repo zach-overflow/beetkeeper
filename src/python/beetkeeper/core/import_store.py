@@ -28,7 +28,7 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col
 
-from beetkeeper.core.import_jobs import DecisionRequest, ImportDecision, ImportJob, ImportJobStatus
+from beetkeeper.core.import_jobs import DecisionRequest, ImportDecision, ImportJob, ImportJobStatus, ReimportReport
 from beetkeeper.db.models import ImportJobRecord, ImportLock
 from beetkeeper.db.session import shielded_session
 
@@ -89,6 +89,13 @@ class ImportStore:
             group_albums=record.group_albums,
             flat=record.flat,
             set_fields=json.loads(record.set_fields_json) if record.set_fields_json else {},
+            query=json.loads(record.query_json) if record.query_json is not None else None,
+            singletons=record.singletons,
+            move_files=record.move_files,
+            write_tags=record.write_tags,
+            reimport_report=(
+                ReimportReport.model_validate_json(record.reimport_report_json) if record.reimport_report_json else None
+            ),
         )
 
     async def create(
@@ -100,12 +107,21 @@ class ImportStore:
         group_albums: bool = False,
         flat: bool = False,
         set_fields: Mapping[str, str] | None = None,
+        query: Sequence[str] | None = None,
+        singletons: bool = False,
+        move_files: bool | None = None,
+        write_tags: bool | None = None,
     ) -> ImportJob:
         """Insert a new PENDING job and return its view.
 
         The keyword arguments are the per-job import settings, mirroring `beet import` flags: `quiet` runs
         non-interactively (`-q`), plus `logpath` (`-l`), `group_albums`, `flat`, and `set_fields` (`--set`).
         Each job keeps the values it was submitted with, so concurrent/ad-hoc imports can differ.
+
+        A non-None `query` makes the job a library-mode reimport (`-L`) of the entries matching those beets
+        query parts (`paths` is then empty, and an empty query matches the whole library). `singletons`
+        (`-s`) matches tracks instead of albums; `move_files`/`write_tags` override the beets config's file
+        handling (None defers to it).
         """
         _LOGGER.debug("Creating ImportJob ...")
         now = _utcnow()
@@ -120,6 +136,10 @@ class ImportStore:
             group_albums=group_albums,
             flat=flat,
             set_fields_json=json.dumps(dict(set_fields)) if set_fields else None,
+            query_json=json.dumps(list(query)) if query is not None else None,
+            singletons=singletons,
+            move_files=move_files,
+            write_tags=write_tags,
         )
         async with self._session() as session:
             session.add(record)
@@ -159,6 +179,16 @@ class ImportStore:
                 update(ImportJobRecord)
                 .where(col(ImportJobRecord.id) == job_id)
                 .values(output=output, updated_at=_utcnow())
+            )
+            await session.commit()
+
+    async def set_reimport_report(self, job_id: str, report: ReimportReport) -> None:
+        """Persist a reimport job's prior-vs-new diff report (the leader writes this as the job ends)."""
+        async with self._session() as session:
+            await session.execute(
+                update(ImportJobRecord)
+                .where(col(ImportJobRecord.id) == job_id)
+                .values(reimport_report_json=report.model_dump_json(), updated_at=_utcnow())
             )
             await session.commit()
 
