@@ -20,7 +20,13 @@ from beetkeeper.api.api_models.events_api_models import (
     MultiItemEventIngestResponse,
     TrackEventBody,
 )
-from beetkeeper.api.api_models.import_api_models import ImportSubmitRequest, ReimportSubmitRequest
+from beetkeeper.api.api_models.import_api_models import (
+    FindMissingSourcePathRequest,
+    FindMissingSourcePathRequestParams,
+    FindMissingSourcePathResponse,
+    ImportSubmitRequest,
+    ReimportSubmitRequest,
+)
 
 __all__ = [
     "APIAlbum",
@@ -32,6 +38,9 @@ __all__ = [
     "EventSearchResult",
     "EventSubjectSummary",
     "EventsListResponse",
+    "FindMissingSourcePathRequest",
+    "FindMissingSourcePathRequestParams",
+    "FindMissingSourcePathResponse",
     "ImportSubmitRequest",
     "ImportTaskFilesEventBody",
     "ListQueryParams",

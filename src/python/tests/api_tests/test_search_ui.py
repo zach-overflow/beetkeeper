@@ -8,12 +8,19 @@ fragment reads for the import source paths recorded by the plugin's `/api/events
 
 from pathlib import Path
 
+import httpx
 import pytest
 from httpx import AsyncClient
 
-from beetkeeper.api.dependencies import get_beets_library
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from beetkeeper.api.adapters import record_inferred_source_path
+from beetkeeper.api.constants import LibrarySubject
+from beetkeeper.api.dependencies import get_beets_library, get_downloader_hook
 from beetkeeper.core import BeetsLibrary
 from beetkeeper.db.session import get_session
+from beetkeeper.hooks import DownloaderHook
+from beetkeeper.settings import DownloaderHookConfSection
 
 from .conftest import DependencyOverrides, SessionOverride
 
@@ -250,9 +257,27 @@ class TestAlbumResultsFragmentPaths:
         assert "1 of the albums on this page has no recorded source path." in body
 
     @pytest.mark.anyio
+    async def test_no_downloader_lookup_button_without_the_hook(self, client: AsyncClient) -> None:
+        body = (await client.get("/fragment/search/results", params={"albums": "true"})).text
+        assert "Find via downloader" not in body
+
+    @pytest.mark.anyio
     async def test_album_row_links_to_its_reimport(self, client: AsyncClient) -> None:
         body = (await client.get("/fragment/search/results", params={"albums": "true"})).text
         assert "/import?reimport_query=id:1#reimport" in body
+
+    @pytest.mark.anyio
+    async def test_recorded_source_paths_take_precedence_over_an_inference(
+        self, client: AsyncClient, session_factory: async_sessionmaker[AsyncSession], pushed_at: str
+    ) -> None:
+        async with session_factory() as session:
+            await record_inferred_source_path(session, LibrarySubject.TRACK, 1, "/dl/guess", {"name": "x"})
+        payload = _filesystem_event_payload(pushed_at, ["/inbox/recorded"], [1], 1)
+        assert (await client.post("/api/events/filesystem", json=payload)).status_code == 201
+
+        body = (await client.get("/fragment/search/results")).text
+        assert "<code>/inbox/recorded</code>" in body
+        assert "/dl/guess" not in body
 
     @pytest.mark.anyio
     async def test_album_tracks_offer_no_singleton_reimport(self, client: AsyncClient) -> None:
@@ -301,3 +326,84 @@ async def test_fields_fragment_lists_known_fields(client: AsyncClient) -> None:
     assert response.status_code == 200
     assert "artist" in response.text
     assert "Item fields" in response.text
+
+
+class TestDownloaderSourcePathLookup:
+    @pytest.fixture
+    def downloader_hook(self) -> DownloaderHook:
+        # Album lookups (no `title` param — albums have no title field) match; track lookups do not.
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.params.get("name") == "An Album" and "title" not in request.url.params:
+                return httpx.Response(200, json=[{"save_path": "/dl/An Album [FLAC]"}])
+            return httpx.Response(200, json=[])
+
+        config = DownloaderHookConfSection(
+            base_url="http://dl.local",
+            search_endpoint_path="/search",
+            beets_field_names_to_query_param_names={"album": "name", "title": "title"},
+            filepath_json_key="save_path",
+        )
+        return DownloaderHook(config, Path("/downloads"), transport=httpx.MockTransport(handler))
+
+    @pytest.fixture
+    def app_dependency_overrides(
+        self, album_beets_library: BeetsLibrary, get_session_override: SessionOverride, downloader_hook: DownloaderHook
+    ) -> DependencyOverrides:
+        return {
+            get_beets_library: lambda: album_beets_library,
+            get_session: get_session_override,
+            get_downloader_hook: lambda: downloader_hook,
+        }
+
+    @pytest.mark.anyio
+    async def test_unrecorded_rows_offer_the_lookup(self, client: AsyncClient) -> None:
+        body = (await client.get("/fragment/search/results", params={"albums": "true"})).text
+        assert "Not recorded" in body
+        assert "/fragment/search/source-path?beets_album_id=1" in body
+        assert 'hx-target="closest td"' in body
+
+    @pytest.mark.anyio
+    async def test_recorded_rows_do_not_offer_the_lookup(self, client: AsyncClient, pushed_at: str) -> None:
+        payload = _filesystem_event_payload(pushed_at, ["/inbox/An Album"], [1, 2], 1)
+        assert (await client.post("/api/events/filesystem", json=payload)).status_code == 201
+        body = (await client.get("/fragment/search/results", params={"albums": "true"})).text
+        assert "Find via downloader" not in body
+
+    @pytest.mark.anyio
+    async def test_lookup_fragment_links_to_an_import_of_the_found_folder(self, client: AsyncClient) -> None:
+        body = (await client.get("/fragment/search/source-path", params={"beets_album_id": 1})).text
+        assert "<code>/dl/An Album [FLAC]</code>" in body
+        assert "(inferred via downloader)" in body
+        assert "/import?path=/dl/An%20Album%20%5BFLAC%5D" in body
+
+    @pytest.mark.anyio
+    async def test_a_stored_inference_shows_on_later_loads_for_the_album_and_its_tracks(
+        self, client: AsyncClient
+    ) -> None:
+        await client.get("/fragment/search/source-path", params={"beets_album_id": 1})
+
+        albums = (await client.get("/fragment/search/results", params={"albums": "true"})).text
+        assert "<code>/dl/An Album [FLAC]</code>" in albums
+        assert "Not recorded" not in albums and "Find via downloader" not in albums
+        assert "missing-source-notice" not in albums
+
+        tracks = (await client.get("/fragment/search/results")).text
+        assert tracks.count("<code>/dl/An Album [FLAC]</code>") == 2
+        assert "Not recorded" not in tracks
+
+    @pytest.mark.anyio
+    async def test_lookup_fragment_reports_no_match(self, client: AsyncClient) -> None:
+        body = (await client.get("/fragment/search/source-path", params={"beets_item_id": 1})).text
+        assert "Not found via downloader" in body
+        assert 'title="No search results."' in body
+
+    @pytest.mark.anyio
+    async def test_lookup_fragment_for_unknown_entry(self, client: AsyncClient) -> None:
+        body = (await client.get("/fragment/search/source-path", params={"beets_album_id": 99})).text
+        assert "Library entry not found." in body
+
+
+@pytest.mark.anyio
+async def test_import_page_prefills_the_path(client: AsyncClient) -> None:
+    html = (await client.get("/import", params={"path": "/downloads/An Album"})).text
+    assert 'value="/downloads/An Album"' in html

@@ -2,9 +2,14 @@
 
 from functools import partial
 from pathlib import Path
+from typing import Annotated, Self
 
 from beets import config
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import Query
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from beetkeeper.api.constants import LibrarySubject
+from beetkeeper.hooks import DownloaderSearchResult
 
 
 def import_config_flag(key: str) -> bool:
@@ -121,3 +126,95 @@ class ReimportSubmitRequest(BaseModel):
         default_factory=import_config_set_fields,
         description="Corresponds to the `--set field=value` option for beets' `import` CLI command.",
     )
+
+
+class FindMissingSourcePathRequest(BaseModel):
+    """Query parameters of `GET /api/import/reimport/find_missing_source_path`: exactly one beets id."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    beets_album_id: int | None = Field(
+        default=None,
+        description=(
+            "The beets library id of the album beetkeeper is missing source filepath data for. Mutually "
+            "exclusive with `beets_item_id`."
+        ),
+    )
+    beets_item_id: int | None = Field(
+        default=None,
+        description=(
+            "The beets library id of the item (track) beetkeeper is missing source filepath data for. Mutually "
+            "exclusive with `beets_album_id`."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_mutually_exclusive_beets_ids(self) -> Self:
+        """Enforces that the request must have exactly one of `beets_album_id` or `beets_item_id` set."""
+        err_msg_prefix = "Exactly 1 of 'beets_album_id' or 'beets_item_id' must be set"
+        if self.beets_album_id is None and self.beets_item_id is None:
+            raise ValueError(f"{err_msg_prefix}, but neither was provided.")
+        if self.beets_album_id is not None and self.beets_item_id is not None:
+            raise ValueError(f"{err_msg_prefix}, but both were provided.")
+        return self
+
+    @property
+    def is_album(self) -> bool:
+        """`True` if this search pertains to an Album. `False` if for a beets item."""
+        return self.beets_album_id is not None
+
+    @property
+    def subject(self) -> LibrarySubject:
+        """The kind of library entry the provided id names."""
+        return LibrarySubject.ALBUM if self.is_album else LibrarySubject.TRACK
+
+    @property
+    def beets_id(self) -> int:
+        """The one id that was provided."""
+        beets_id = self.beets_album_id if self.is_album else self.beets_item_id
+        assert beets_id is not None  # guaranteed by the validator
+        return beets_id
+
+
+# https://fastapi.tiangolo.com/tutorial/query-param-models/#query-parameters-with-a-pydantic-model
+FindMissingSourcePathRequestParams = Annotated[FindMissingSourcePathRequest, Query()]
+
+
+class FindMissingSourcePathResponse(BaseModel):
+    """Response model for the `/reimport/find_missing_source_path` endpoint."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    found_match: bool = Field(description="True if the missing source path search returned a matching result.")
+    search_status_code: int | None = Field(
+        default=None, description="The HTTP status code of the downloader API search, when one was made."
+    )
+    source_directory: str | None = Field(
+        default=None,
+        description="The source directory (as mounted on the app container) from the matched search, if any.",
+    )
+    query_params: dict[str, str] = Field(
+        default_factory=dict, description="The query params the search was made with (the renamed beets fields)."
+    )
+    detail: str = Field(default="", description="Why no match was found, when `found_match` is false.")
+    recorded_inference: bool = Field(
+        default=False,
+        description=(
+            "True when the match was stored as the entry's *inferred* source path (shown as such on the search "
+            "page; kept apart from source paths recorded from the beetkeeper plugin's events)."
+        ),
+    )
+
+    @classmethod
+    def from_search(
+        cls, result: DownloaderSearchResult, query_params: dict[str, str], *, recorded_inference: bool = False
+    ) -> Self:
+        """Build the response from the downloader hook's search result."""
+        return cls(
+            found_match=result.found,
+            search_status_code=result.status_code,
+            source_directory=result.source_path,
+            query_params=query_params,
+            detail=result.detail,
+            recorded_inference=recorded_inference,
+        )

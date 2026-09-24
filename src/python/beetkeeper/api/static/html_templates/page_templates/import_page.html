@@ -11,7 +11,7 @@
          and the datalist only suggests real subfolders under /downloads as you type. (HTMX validates the
          form POST against the pattern but not the GET autocomplete, so suggestions still work mid-type.) -->
     <input type="text" id="path" name="path" size="60" list="path-options" autocomplete="off"
-           value="/downloads/" required pattern="/downloads/.+"
+           value="{{ import_path or '/downloads/' }}" required pattern="/downloads/.+"
            title="The import path must be a folder under /downloads/"
            placeholder="/downloads/some-album"
            hx-get="{{ url_for('path_suggestions') }}"

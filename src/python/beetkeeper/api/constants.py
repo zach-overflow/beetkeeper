@@ -16,6 +16,15 @@ class RouteTag(StrEnum):
     MONITOR = "monitoring"
     IMPORT = "imports"
     QUERY = "query"
+    WEBHOOK = "webhooks"
+
+
+@unique
+class LibrarySubject(StrEnum):
+    """The beets library entity kinds an inferred source path can belong to."""
+
+    ALBUM = "album"
+    TRACK = "track"
 
 
 @unique

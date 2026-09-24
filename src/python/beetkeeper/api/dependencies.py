@@ -1,12 +1,14 @@
 """Shared FastAPI dependencies for the API + UI routers."""
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import Depends, Request
 
 from beetkeeper.api.security import AuthSessionStore
 from beetkeeper.core import BeetsLibrary, ImportStore
-from beetkeeper.settings import UserConfig
+from beetkeeper.hooks import DownloaderHook
+from beetkeeper.settings import DownloaderHookConfSection, UserConfig
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -48,3 +50,19 @@ def get_auth_session_store(request: Request) -> AuthSessionStore:
 
 
 AuthSessionStoreDep = Annotated[AuthSessionStore, Depends(get_auth_session_store)]
+
+
+def get_downloader_hook(request: Request) -> DownloaderHook:
+    """
+    Returns the `DownloaderHook` instance set on the application lifespan. Used to fetch missing source filepath
+    information from the downloader client, if configured. An app running without the lifespan (tests) gets
+    a disabled hook, so routes that only consult `enabled` need no override.
+    """
+    hook = getattr(request.app.state, "downloader_hook", None)
+    if hook is None:
+        hook = DownloaderHook(DownloaderHookConfSection(), Path("/downloads"))
+        request.app.state.downloader_hook = hook
+    return cast("DownloaderHook", hook)
+
+
+DownloaderHookDep = Annotated[DownloaderHook, Depends(get_downloader_hook)]

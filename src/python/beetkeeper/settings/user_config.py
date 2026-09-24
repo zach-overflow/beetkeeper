@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any, Final, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, FilePath, SecretStr, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, FilePath, HttpUrl, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
 # beets' own convention: `BEETSDIR` names the *directory* holding the beets config, and the config file
@@ -84,6 +84,11 @@ class AuthConfSection(BaseModel):
             )
         return self
 
+    @classmethod
+    def default(cls) -> Self:
+        """Default factory when this config section is not present."""
+        return cls()
+
 
 class DatabaseConfSection(BaseModel):
     """
@@ -122,6 +127,75 @@ class DatabaseConfSection(BaseModel):
         return f"sqlite:///{self.resolved_sqlite_path}"
 
 
+class DownloaderHookConfSection(BaseModel):
+    """
+    The optional config section pertaining to the user's downloader client REST API. Used when attempting to resolve
+    the source filepath on entries which are missing such info (see `beetkeeper.hooks.DownloaderHook`).
+
+    Setting `base_url` enables the hook; the search settings are then required.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="ignore")
+
+    base_url: HttpUrl | None = Field(
+        default=None, description="The base URL of the downloader's REST API, including the port number."
+    )
+    search_endpoint_path: str | None = Field(
+        default=None, description="The endpoint route (relative to `base_url`) to submit GET search requests to."
+    )
+    beets_field_names_to_query_param_names: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "The beets field name(s) of the library entry being looked up, mapped to the query param name(s) they "
+            "are sent as in the downloader API search request (e.g. `{album: name}`)."
+        ),
+    )
+    filepath_json_key: str | None = Field(
+        default=None,
+        description="The JSON key expected in each downloader API search result holding the download's filepath.",
+    )
+    replace_downloader_paths_prefix: str = Field(
+        default="",
+        description=(
+            "The common path prefix of the downloader's filepath responses which is replaced with beetkeeper's "
+            "`downloads_path`. Typically only required if beetkeeper and/or the downloader run in containers with "
+            "differing volume mounts. Leave empty when both see the same paths."
+        ),
+    )
+    api_key: SecretStr | None = Field(
+        default=None,
+        description="The API key for authenticating to the downloader's API, if any. Sent as a Bearer token.",
+    )
+
+    @property
+    def enabled(self) -> bool:
+        """Returns `True` if the `base_url` is set, meaning the app can attempt to query the downloader API."""
+        return self.base_url is not None
+
+    @model_validator(mode="after")
+    def search_settings_required_when_enabled(self) -> Self:
+        """An enabled hook needs every setting the search request and response parsing depend on."""
+        if not self.enabled:
+            return self
+        missing = [
+            name
+            for name, value in (
+                ("search_endpoint_path", self.search_endpoint_path),
+                ("filepath_json_key", self.filepath_json_key),
+                ("beets_field_names_to_query_param_names", self.beets_field_names_to_query_param_names),
+            )
+            if not value
+        ]
+        if missing:
+            raise ValueError(f"`downloader_hook.base_url` is set, so these settings are required: {', '.join(missing)}")
+        return self
+
+    @classmethod
+    def default(cls) -> Self:
+        """Default factory when this config section is not present."""
+        return cls()
+
+
 class UserConfig(BaseSettings):
     """
     Beetkeeper's settings, read from the `beetkeeper` section of the beets config.
@@ -130,10 +204,14 @@ class UserConfig(BaseSettings):
 
     model_config = SettingsConfigDict(frozen=True, extra="ignore")
     beets_config_filepath: FilePath
+    # The pre-import staging root beetkeeper imports from (the container's `/downloads` mount); downloader
+    # hook paths are mapped into it.
+    downloads_path: Path = Path("/downloads")
     log_level: Literal["CRITICAL", "DEBUG", "ERROR", "INFO", "NOTSET", "WARNING"]
     server: ServerConfSection
     database: DatabaseConfSection
-    auth: AuthConfSection = AuthConfSection()
+    downloader_hook: DownloaderHookConfSection = Field(default_factory=DownloaderHookConfSection.default)
+    auth: AuthConfSection = Field(default_factory=AuthConfSection.default)
 
     @model_validator(mode="after")
     def final_config_checks(self) -> Self:

@@ -12,6 +12,9 @@ At a high level, the API lets you:
   entries matching a beets query (`beet import -L`). It is tracked like any other import job, and the
   finished job carries a `reimport_report`: a before/after diff per album, flagging fields that lost their
   value and listing entries skipped because their files are gone.
+- **Recover an unrecorded source folder** — `GET /api/import/reimport/find_missing_source_path` asks your
+  configured [download client](../configuration.md#downloader-hook) where a library entry was downloaded
+  to, for entries imported before beetkeeper was tracking them.
 - **Read the event history** — query the record of album/track imports, file changes, and removals, so an
   external system can react to what beetkeeper (and beets) has done.
 - **Search the library** — run [beets queries](https://beets.readthedocs.io/en/stable/reference/query.html)

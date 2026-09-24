@@ -28,6 +28,14 @@ beetkeeper:
     enable_login_protection: true
     username: admin
     password: change-me
+  # Optional: let beetkeeper ask your download client where a library entry came from (off by default).
+  downloader_hook:
+    base_url: http://qbittorrent:8080
+    search_endpoint_path: /api/v2/torrents/info
+    beets_field_names_to_query_param_names:
+      album: name
+    filepath_json_key: content_path
+    replace_downloader_paths_prefix: /data/torrents/complete
 ```
 
 ## Settings
@@ -44,6 +52,13 @@ beetkeeper:
 | `auth.username`           | string  | —       | Login username. Required when `enable_login_protection` is `true`. |
 | `auth.password`           | string  | —       | Login password. Required when `enable_login_protection` is `true`. |
 | `auth.session_ttl_hours`  | int     | `168`   | How long a login session stays valid before a new login is required. |
+| `downloads_path`          | path    | `/downloads` | The pre-import staging folder beetkeeper imports from (the container's `/downloads` mount). Downloader hook paths are mapped into it. |
+| `downloader_hook.base_url` | URL    | —       | Base URL (with port) of your download client's REST API. Setting it enables the hook; the next three settings are then required. |
+| `downloader_hook.search_endpoint_path` | string | — | Endpoint (relative to `base_url`) beetkeeper sends GET search requests to. |
+| `downloader_hook.beets_field_names_to_query_param_names` | map | — | beets fields of the library entry being looked up → the query param name each is sent as (e.g. `album: name`). Empty fields are left out. |
+| `downloader_hook.filepath_json_key` | string | — | JSON key in each search result holding the download's path (e.g. qBittorrent's `content_path`). beetkeeper uses the first result. |
+| `downloader_hook.replace_downloader_paths_prefix` | string | `""` | Path prefix the download client reports which beetkeeper replaces with `downloads_path` — needed when the two run in containers with different mounts. Leave empty when both see the same paths. |
+| `downloader_hook.api_key`  | string | —       | Bearer token sent in the `Authorization` header, if the client's API needs one. |
 
 ## Login protection
 
@@ -58,6 +73,29 @@ everything).
 - The login endpoints, API docs, `/api/health`, and static assets stay reachable without a session.
 
 Sessions are stored (hashed) in beetkeeper's database, so they survive restarts.
+
+## Downloader hook
+
+beetkeeper only knows where a library entry was imported *from* when the beetkeeper beets plugin reported
+that import. Entries imported before beetkeeper was set up show **Not recorded** on the search page — and
+without a source folder they cannot be imported afresh (say, to recover a track file beets dropped).
+
+The optional `downloader_hook` section lets beetkeeper ask your download client instead. It is deliberately
+generic — any client with a REST search endpoint can be wired up through config alone:
+
+1. beetkeeper looks the entry up in the beets library and takes the fields named in
+   `beets_field_names_to_query_param_names`, renaming each to its query param name.
+2. It sends `GET <base_url><search_endpoint_path>?<params>` (with `Authorization: Bearer <api_key>` when
+   set). The full request shape is documented as the `search-missing-source-path` webhook in the API docs.
+3. The client answers with a JSON list of results (or a single object). beetkeeper reads
+   `filepath_json_key` from the first one and maps the path onto `downloads_path` via
+   `replace_downloader_paths_prefix`.
+
+Run a lookup through `GET /api/import/reimport/find_missing_source_path`, or the **Find via downloader**
+button on unrecorded search rows. A match is stored as the entry's **inferred** source path: the search page
+shows it labelled *(inferred via downloader)* — for the album and each of its tracks — with an **Import from
+here** link, and a later lookup replaces it. Inferred paths are kept in their own table, apart from source
+paths *recorded* from the beetkeeper plugin's events; a recorded path always takes precedence.
 
 !!! tip "Authoritative source"
     The table above is a friendly summary. For the exact field definitions, validation, and defaults, see the

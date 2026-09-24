@@ -1,0 +1,7 @@
+{# Macros shared by the search results table and the downloader lookup fragment. #}
+{% macro inferred_path_cell(path) -%}
+<code>{{ path }}</code>
+<small title="Inferred by asking your download client (the beetkeeper plugin did not record this import), so it is a best guess rather than a record.">(inferred via downloader)</small>
+<br>
+<a href="{{ url_for('import_page') }}?path={{ path | urlencode }}">Import from here</a>
+{%- endmacro %}

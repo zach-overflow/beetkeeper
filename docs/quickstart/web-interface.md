@@ -39,6 +39,14 @@ by all tracks, per-track changes, fields whose previous **value was lost**, and 
 not cover. Library entries whose files no longer exist on disk are never touched; they are listed separately
 so you can restore the files or remove the entries.
 
+A reimport works from the files already in the library, so it cannot recover a track file that an earlier
+import dropped. That needs a fresh import of the original download folder — which beetkeeper only knows for
+imports its plugin reported. For older entries, configure the optional
+[downloader hook](../configuration.md#downloader-hook): unrecorded rows on the search page then gain a
+**Find via downloader** button that asks your download client for the folder. A match is remembered as the
+entry's *inferred* source path (labelled as such, since it is a best guess rather than a record) and offers
+**Import from here**.
+
 ## Events
 
 Browse the full history of beets events — album/track import completion, file modifications, and removals.

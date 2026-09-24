@@ -1,0 +1,11 @@
+{# The downloader hook's answer for one library entry's unrecorded source folder (swapped into its cell).
+   A match has been stored as the entry's inferred source path, so it renders exactly as the results table
+   will on the next load. #}
+{% from "fragment_templates/source_path_cells.html" import inferred_path_cell with context %}
+{% if lookup is none %}
+<em>Library entry not found.</em>
+{% elif lookup.found_match %}
+{{ inferred_path_cell(lookup.source_directory) }}
+{% else %}
+<em title="{{ lookup.detail }}">Not found via downloader</em>
+{% endif %}

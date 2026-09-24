@@ -16,6 +16,7 @@ from beetkeeper._version import __version__ as beetkeeper_version
 from beetkeeper.api.constants import OPENAPI_TAG_METADATA, STATIC_DIRPATH
 from beetkeeper.core import ImportStore, ImportWorker
 from beetkeeper.db.session import make_engine, make_sessionmaker
+from beetkeeper.hooks import DownloaderHook
 from beetkeeper.settings import BEETS_CONFIG_FILENAME, BEETS_DIR_ENVVAR, load_config
 
 
@@ -24,6 +25,7 @@ def create_app() -> FastAPI:
     from beetkeeper.api.api_routes import api_router
     from beetkeeper.api.security import LoginProtectionMiddleware
     from beetkeeper.api.ui_routes import ui_router
+    from beetkeeper.api.webhooks import webhook_router
 
     beetkeeper_app = FastAPI(
         title="beetkeeper",
@@ -37,6 +39,8 @@ def create_app() -> FastAPI:
     beetkeeper_app.mount("/static", StaticFiles(directory=STATIC_DIRPATH, html=True), name="static")
     beetkeeper_app.include_router(api_router)
     beetkeeper_app.include_router(ui_router)
+    # Documentation-only: describes the outgoing downloader search (see `api.webhooks`).
+    beetkeeper_app.webhooks.include_router(webhook_router)
     beetkeeper_app.add_middleware(LoginProtectionMiddleware)
     return beetkeeper_app
 
@@ -55,12 +59,15 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.db_engine = engine
     sessionmaker = make_sessionmaker(engine)
     app.state.db_sessionmaker = sessionmaker
-
     # Import state lives in the DB (shared across processes); each process runs the import worker, but only
     # the lease holder runs imports. `run()` serves a `BlockingPortal` for beets' pipeline threads.
     worker = ImportWorker(user_config.beets_config_filepath, ImportStore(sessionmaker))
     try:
-        async with anyio.create_task_group() as task_group:
+        async with (
+            anyio.create_task_group() as task_group,
+            DownloaderHook(user_config.downloader_hook, user_config.downloads_path) as downloader_hook,
+        ):
+            app.state.downloader_hook = downloader_hook
             task_group.start_soon(worker.run)
             yield
             # Shutdown: cancel the worker's scope here (after `yield`) so the task group absorbs the

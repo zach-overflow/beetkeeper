@@ -1,3 +1,4 @@
+# https://www.pantsbuild.org/stable/docs/using-pants/validating-dependencies
 __dependencies_rules__(("*", "*"))
 
 file(name="pyproject", source="pyproject.toml")

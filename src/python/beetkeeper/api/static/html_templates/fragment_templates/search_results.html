@@ -1,5 +1,6 @@
 {# Renders one page of /fragment/search/results (or a query error) for the search page. #}
-{% macro source_path_cell(paths) -%}
+{% from "fragment_templates/source_path_cells.html" import inferred_path_cell with context %}
+{% macro source_path_cell(paths, row_id) -%}
     {%- if paths | length == 1 -%}
     <code>{{ paths[0] }}</code>
     {%- elif paths -%}
@@ -9,8 +10,15 @@
             {% for path in paths %}<li><code>{{ path }}</code></li>{% endfor %}
         </ul>
     </details>
+    {%- elif row_id in inferred_by_id -%}
+    {{ inferred_path_cell(inferred_by_id[row_id]) }}
     {%- else -%}
     <em title="No import event was recorded for this {{ 'album' if albums else 'track' }}, so its pre-import location is unknown.">Not recorded</em>
+    {%- if downloader_hook_enabled %}
+    <br>
+    <button type="button" hx-get="{{ url_for('source_path_lookup_fragment') }}?{{ 'beets_album_id' if albums else 'beets_item_id' }}={{ row_id }}"
+            hx-target="closest td" hx-swap="innerHTML">Find via downloader</button>
+    {%- endif -%}
     {%- endif -%}
 {%- endmacro %}
 {% macro destination_path_cell(path) -%}
@@ -42,7 +50,7 @@
             <td>{{ row['albumartist'] }}</td>
             <td>{{ row['album'] }}</td>
             <td>{{ row['year'] or "" }}</td>
-            <td>{{ source_path_cell(source_paths_by_id.get(row['id'], [])) }}</td>
+            <td>{{ source_path_cell(source_paths_by_id.get(row['id'], []), row['id']) }}</td>
             <td>{{ destination_path_cell(row['path']) }}</td>
             <td><a href="{{ url_for('import_page') }}?reimport_query=id:{{ row['id'] }}#reimport">Reimport</a></td>
         </tr>
@@ -53,7 +61,7 @@
             <td>{{ row['title'] }}</td>
             <td>{{ row['track'] or "" }}</td>
             <td>{{ row['year'] or "" }}</td>
-            <td>{{ source_path_cell(source_paths_by_id.get(row['id'], [])) }}</td>
+            <td>{{ source_path_cell(source_paths_by_id.get(row['id'], []), row['id']) }}</td>
             <td>{{ destination_path_cell(row['path']) }}</td>
             {# Only standalone tracks: a singleton reimport of an album track would detach it from its album. #}
             <td>{% if not row['album_id'] %}<a href="{{ url_for('import_page') }}?reimport_query=id:{{ row['id'] }}&reimport_singletons=true#reimport">Reimport</a>{% endif %}</td>

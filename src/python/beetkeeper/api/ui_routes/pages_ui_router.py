@@ -30,12 +30,14 @@ async def events_page(request: Request) -> HTMLResponse:
 
 
 @pages_ui_router.get("/import", response_class=HTMLResponse)
-async def import_page(request: Request, reimport_query: str = "", reimport_singletons: bool = False) -> HTMLResponse:
+async def import_page(
+    request: Request, path: str = "", reimport_query: str = "", reimport_singletons: bool = False
+) -> HTMLResponse:
     """The import page. The form's option controls are prefilled from the beets config's `import` section,
     so submitting the untouched form matches a plain `beet import` (and any change is an explicit override).
 
-    `reimport_query`/`reimport_singletons` prefill the reimport form, so other pages (e.g. a search result)
-    can link straight to "reimport this".
+    `path` prefills the import form and `reimport_query`/`reimport_singletons` the reimport form, so other
+    pages (e.g. a search result) can link straight to "import from here" / "reimport this".
     """
     logpath = import_config_logpath()
     import_defaults = {
@@ -49,6 +51,7 @@ async def import_page(request: Request, reimport_query: str = "", reimport_singl
     }
     context = {
         "import_defaults": import_defaults,
+        "import_path": path,
         "reimport_query": reimport_query,
         "reimport_singletons": reimport_singletons,
     }
