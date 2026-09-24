@@ -1,7 +1,18 @@
 {# Macros shared by the search results table and the downloader lookup fragment. #}
-{% macro inferred_path_cell(path) -%}
+{% macro clean_slate_link(path, album_id=None, item_id=None) -%}
+    {%- if album_id -%}
+    <a href="{{ url_for('import_page') }}?clean_slate_album_id={{ album_id }}&clean_slate_source={{ path | urlencode }}#clean-slate"
+       title="Remove this album from the library, then import this folder afresh.">Clean-slate import from here</a>
+    {%- elif item_id -%}
+    <a href="{{ url_for('import_page') }}?clean_slate_item_id={{ item_id }}&clean_slate_source={{ path | urlencode }}#clean-slate"
+       title="Remove this track from the library, then import this file afresh.">Clean-slate import from here</a>
+    {%- else -%}
+    <a href="{{ url_for('import_page') }}?path={{ path | urlencode }}">Import from here</a>
+    {%- endif -%}
+{%- endmacro %}
+{% macro inferred_path_cell(path, album_id=None, item_id=None) -%}
 <code>{{ path }}</code>
 <small title="Inferred by asking your download client (the beetkeeper plugin did not record this import), so it is a best guess rather than a record.">(inferred via downloader)</small>
 <br>
-<a href="{{ url_for('import_page') }}?path={{ path | urlencode }}">Import from here</a>
+{{ clean_slate_link(path, album_id, item_id) }}
 {%- endmacro %}

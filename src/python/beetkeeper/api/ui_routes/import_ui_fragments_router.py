@@ -2,12 +2,12 @@
 HTMX fragment routes for the interactive import flow.
 
 These return HTML partials (not JSON) for the `/import` page:
-  * `POST /fragment/import`                    — start an import from the page form, render the job fragment.
-  * `POST /fragment/import/reimport`           — start a library reimport (`beet import -L`) from its form.
-  * `GET  /fragment/import/reimport-preview`   — show which library entries a reimport query matches.
-  * `GET  /fragment/import/{job_id}`           — poll a job's current state (the fragment self-refreshes).
-  * `POST /fragment/import/{job_id}/decision`  — answer the match decision the job is parked on.
-  * `POST /fragment/import/{job_id}/abort`     — cooperatively cancel a running import.
+  * `POST /fragment/import`                       — start an import from the page form, render the job fragment.
+  * `POST /fragment/import/clean-slate`           — start a clean-slate import from its form (remove, then import).
+  * `GET  /fragment/import/clean-slate-preview`   — dry-run a clean slate: what it would delete and import.
+  * `GET  /fragment/import/{job_id}`              — poll a job's current state (the fragment self-refreshes).
+  * `POST /fragment/import/{job_id}/decision`     — answer the match decision the job is parked on.
+  * `POST /fragment/import/{job_id}/abort`        — cooperatively cancel a running import.
 
 All state goes through the cross-process `ImportStore`. The single `import_job.html` fragment dispatches on
 `job.status` (poll while running, show candidate buttons while awaiting a decision).
@@ -15,17 +15,20 @@ All state goes through the cross-process `ImportStore`. The single `import_job.h
 
 import logging
 import os
-import shlex
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import Annotated, Any
 
 from anyio import Path as AsyncPath
 from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
+from pydantic import ValidationError
 
-from beetkeeper.api.dependencies import BeetsLibraryDep, ImportStoreDep
+from beetkeeper.api.api_models import CleanSlatePreviewRequest
+from beetkeeper.api.dependencies import BeetsLibraryDep, ImportStoreDep, UserConfigDep
 from beetkeeper.api.jinja_driver import get_templates
-from beetkeeper.core import ImportAction, ImportCandidate, ImportDecision, ImportJob, ImportJobStatus
+from beetkeeper.core import CleanSlatePreview, ImportAction, ImportCandidate, ImportDecision, ImportJob, ImportJobStatus
+from beetkeeper.core.clean_slate import CleanSlateError
 
 _LOGGER = logging.getLogger(__name__)
 import_ui_fragments_router = APIRouter(prefix="/fragment/import")
@@ -33,14 +36,10 @@ import_ui_fragments_router = APIRouter(prefix="/fragment/import")
 _JOB_FRAGMENT = "fragment_templates/import_job.html"
 _JOB_LIST_FRAGMENT = "fragment_templates/import_job_list.html"
 _PATH_SUGGESTIONS_FRAGMENT = "fragment_templates/path_suggestions.html"
-_REIMPORT_PREVIEW_FRAGMENT = "fragment_templates/reimport_preview.html"
-_REIMPORT_PREVIEW_LIMIT = 10
+_CLEAN_SLATE_PREVIEW_FRAGMENT = "fragment_templates/clean_slate_preview.html"
 _ACTIVE_STATUSES = frozenset({ImportJobStatus.PENDING, ImportJobStatus.RUNNING, ImportJobStatus.AWAITING_DECISION})
 _MAX_PATH_SUGGESTIONS = 25
 _MAX_DIR_SCAN = 500  # hard cap on entries scanned per directory, to bound work on huge folders
-# Imports are pinned to this root (the container's `/downloads` mount): autocomplete and submitted paths
-# must live under it. Keep in sync with the prefilled value/pattern in `page_templates/import_page.html`.
-_IMPORT_ROOT = "/downloads"
 
 
 def _job_entry(job: ImportJob) -> dict[str, object]:
@@ -55,12 +54,13 @@ def _job_settings_summary(job: ImportJob) -> str:
         (job.quiet, "quiet"),
         (job.group_albums, "group albums"),
         (job.flat, "flat"),
-        (job.singletons, "singletons"),
-        (job.move_files is True, "move files"),
-        (job.move_files is False, "retag in place"),
-        (job.write_tags is False, "no tag writes"),
+        (job.clean_slate_allow_fewer_files, "allow fewer files"),
     )
     parts = [label for enabled, label in flags if enabled]
+    if job.clean_slate_album_id is not None:
+        parts.insert(0, f"replaces album #{job.clean_slate_album_id}")
+    elif job.clean_slate_item_id is not None:
+        parts.insert(0, f"replaces track #{job.clean_slate_item_id}")
     if job.logpath:
         parts.append(f"log: {job.logpath}")
     if job.set_fields:
@@ -85,37 +85,36 @@ def _parse_set_fields(raw: str) -> dict[str, str]:
     return fields
 
 
-def _split_query(query: str) -> list[str]:
-    """Split a free-text beets query into parts like the beets CLI would (honours quoted phrases)."""
-    try:
-        return shlex.split(query)
-    except ValueError:
-        return query.split()
-
-
-def _under_import_root(path: str) -> bool:
+def _under_import_root(path: str, import_root: Path) -> bool:
     """Whether `path` is the import root or a path inside it, with any `..`/`.` segments resolved away."""
+    root = os.path.normpath(str(import_root))
     normalized = os.path.normpath(path.strip())
-    return normalized == _IMPORT_ROOT or normalized.startswith(_IMPORT_ROOT + os.sep)
+    return normalized == root or normalized.startswith(root + os.sep)
 
 
-async def _dir_suggestions(raw_path: str) -> list[str]:
-    """Real subdirectories matching the partial path being typed, restricted to under `_IMPORT_ROOT`.
+def _split_typed_path(text: str, import_root: Path) -> tuple[AsyncPath, str]:
+    """The folder to list and the leaf prefix to filter by, for a partially-typed path under the root."""
+    root = os.path.normpath(str(import_root))
+    if text.endswith("/"):
+        return AsyncPath(text), ""
+    if os.path.normpath(text) == root:
+        return AsyncPath(root), ""
+    typed = AsyncPath(text)
+    return typed.parent, typed.name
 
-    Autocomplete is offered only for paths inside the import root (`/downloads`); anything else — or a `..`
-    that would escape the root — yields no suggestions. A trailing `/` lists everything in that folder; a
-    leaf filters (case-insensitively) by prefix. Only directories are returned; FS errors yield nothing.
+
+async def _dir_suggestions(raw_path: str, import_root: Path) -> list[str]:
+    """Real subdirectories matching the partial path being typed, restricted to under `import_root`.
+
+    Autocomplete is offered only for paths inside the import root (beetkeeper's `downloads_path`); anything
+    else — or a `..` that would escape the root — yields no suggestions. A trailing `/` lists everything in
+    that folder; a leaf filters (case-insensitively) by prefix. Only directories are returned; FS errors
+    yield nothing.
     """
     text = raw_path.strip()
-    if not _under_import_root(text):  # only browse within the import root (also blocks `..` escapes)
+    if not _under_import_root(text, import_root):  # only browse within the import root (also blocks `..` escapes)
         return []
-    if text.endswith("/"):
-        parent, prefix = AsyncPath(text), ""
-    elif text == _IMPORT_ROOT:
-        parent, prefix = AsyncPath(_IMPORT_ROOT), ""
-    else:
-        typed = AsyncPath(text)
-        parent, prefix = typed.parent, typed.name
+    parent, prefix = _split_typed_path(text, import_root)
     prefix_lower = prefix.lower()
     matches: list[str] = []
     scanned = 0
@@ -216,6 +215,36 @@ async def _require_job(store: ImportStoreDep, job_id: str) -> ImportJob:
     return job
 
 
+def _clean_slate_request(
+    beets_album_id: int | None, beets_item_id: int | None, source_path: str, allow_fewer_files: bool
+) -> CleanSlatePreviewRequest:
+    """Validate the clean-slate form fields into the shared request model; 422 on a bad combination."""
+    try:
+        return CleanSlatePreviewRequest(
+            beets_album_id=beets_album_id,
+            beets_item_id=beets_item_id,
+            source_path=source_path.strip(),
+            allow_fewer_files=allow_fewer_files,
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+async def _clean_slate_preview(
+    library: BeetsLibraryDep, user_config: UserConfigDep, request: CleanSlatePreviewRequest
+) -> CleanSlatePreview:
+    try:
+        return await library.clean_slate_preview(
+            request.clean_slate_target,
+            request.source_path,
+            downloads_path=user_config.downloads_path,
+            allow_fewer_files=request.allow_fewer_files,
+        )
+    except CleanSlateError as exc:
+        code = status.HTTP_404_NOT_FOUND if exc.kind == "not_found" else status.HTTP_422_UNPROCESSABLE_ENTITY
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
+
+
 @import_ui_fragments_router.get("", response_class=HTMLResponse)
 async def import_active_list(request: Request, store: ImportStoreDep) -> HTMLResponse:
     """Render every currently-active import job (newest first).
@@ -233,6 +262,7 @@ async def import_active_list(request: Request, store: ImportStoreDep) -> HTMLRes
 async def import_submit(
     request: Request,
     store: ImportStoreDep,
+    user_config: UserConfigDep,
     path: Annotated[str, Form()],
     quiet: Annotated[bool, Form()] = False,
     group_albums: Annotated[bool, Form()] = False,
@@ -240,7 +270,7 @@ async def import_submit(
     logpath: Annotated[str, Form()] = "",
     set_fields: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
-    """Start an import of a single path (which must live under `_IMPORT_ROOT`) and render its job fragment.
+    """Start an import of a single path (which must live under `downloads_path`) and render its job fragment.
 
     The remaining form fields are the per-job import settings (see `ImportStore.create`); the page's form
     prefills them from the beets config, and unchecked checkboxes simply arrive absent (i.e. off).
@@ -248,9 +278,10 @@ async def import_submit(
     cleaned = path.strip()
     if not cleaned:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Provide a path to import.")
-    if not _under_import_root(cleaned):
+    if not _under_import_root(cleaned, user_config.downloads_path):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Import path must be under {_IMPORT_ROOT}."
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Import path must be under {user_config.downloads_path}.",
         )
     job = await store.create(
         [cleaned],
@@ -263,78 +294,76 @@ async def import_submit(
     return _render_job(request, job)
 
 
-@import_ui_fragments_router.post("/reimport", response_class=HTMLResponse)
-async def import_reimport_submit(
+@import_ui_fragments_router.post("/clean-slate", response_class=HTMLResponse)
+async def import_clean_slate_submit(
     request: Request,
     store: ImportStoreDep,
-    query: Annotated[str, Form()] = "",
-    entire_library: Annotated[bool, Form()] = False,
-    singletons: Annotated[bool, Form()] = False,
+    library: BeetsLibraryDep,
+    user_config: UserConfigDep,
+    source_path: Annotated[str, Form()],
+    beets_album_id: Annotated[int | None, Form()] = None,
+    beets_item_id: Annotated[int | None, Form()] = None,
+    allow_fewer_files: Annotated[bool, Form()] = False,
     quiet: Annotated[bool, Form()] = False,
-    move_files: Annotated[bool, Form()] = False,
-    write_tags: Annotated[bool, Form()] = False,
     logpath: Annotated[str, Form()] = "",
     set_fields: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
-    """Start a library reimport of the entries matching `query` and render its job fragment.
+    """Start a clean-slate import (remove the entry, then import `source_path`) and render its job fragment.
 
-    An empty beets query matches everything, so an empty `query` is rejected unless `entire_library` is
-    ticked: reimporting the whole library must be a deliberate choice, never a blank-field accident.
+    Mirrors `POST /api/import/clean_slate`: the preview runs first, and a blocking error (422) or a source
+    with fewer files than the entry has on disk without the opt-in (409) refuses the job.
     """
-    parts = _split_query(query)
-    if not parts and not entire_library:
+    clean_slate = _clean_slate_request(beets_album_id, beets_item_id, source_path, allow_fewer_files)
+    plan = await _clean_slate_preview(library, user_config, clean_slate)
+    if plan.errors:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=" ".join(plan.errors))
+    if plan.needs_confirmation:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Provide a query, or tick the option to reimport the entire library.",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The source holds fewer audio files than the entry has on disk; tick the opt-in to proceed.",
         )
     job = await store.create(
-        [],
+        [clean_slate.source_path],
         quiet=quiet,
         logpath=logpath.strip() or None,
         set_fields=_parse_set_fields(set_fields),
-        query=parts,
-        singletons=singletons,
-        move_files=move_files,
-        write_tags=write_tags,
+        clean_slate_album_id=clean_slate.beets_album_id,
+        clean_slate_item_id=clean_slate.beets_item_id,
+        clean_slate_allow_fewer_files=clean_slate.allow_fewer_files,
     )
     return _render_job(request, job)
 
 
-@import_ui_fragments_router.get("/reimport-preview", response_class=HTMLResponse)
-async def reimport_preview(
-    request: Request, library: BeetsLibraryDep, query: str = "", singletons: bool = False
+@import_ui_fragments_router.get("/clean-slate-preview", response_class=HTMLResponse)
+async def clean_slate_preview(
+    request: Request,
+    library: BeetsLibraryDep,
+    user_config: UserConfigDep,
+    source_path: str = "",
+    beets_album_id: int | None = None,
+    beets_item_id: int | None = None,
+    allow_fewer_files: bool = False,
 ) -> HTMLResponse:
-    """Render how many library albums (or tracks, in singleton mode) `query` matches, with the first few.
+    """Render the clean-slate dry run: what would be deleted, what the source holds, warnings and errors.
 
     Defined before `/{job_id}` so the literal route wins over the job-status path parameter.
     """
-    parts = _split_query(query)
-    error: str | None = None
-    matches: list[dict[str, Any]] = []
-    total = 0
+    context: dict[str, Any] = {"preview": None, "error": None}
     try:
-        query_method = library.query_items if singletons else library.query_albums
-        matches, total = await query_method(parts, limit=_REIMPORT_PREVIEW_LIMIT)
-    except Exception as exc:  # surface invalid-query errors in the UI instead of a 500
-        _LOGGER.debug(f"Reimport preview query failed: {exc}")
-        error = str(exc)
-    context = {
-        "matches": matches,
-        "total": total,
-        "singletons": singletons,
-        "entire_library": not parts,
-        "error": error,
-    }
-    return get_templates().TemplateResponse(request=request, name=_REIMPORT_PREVIEW_FRAGMENT, context=context)
+        clean_slate = _clean_slate_request(beets_album_id, beets_item_id, source_path, allow_fewer_files)
+        context["preview"] = await _clean_slate_preview(library, user_config, clean_slate)
+    except HTTPException as exc:  # surface the problem in the UI instead of an empty swap
+        context["error"] = str(exc.detail)
+    return get_templates().TemplateResponse(request=request, name=_CLEAN_SLATE_PREVIEW_FRAGMENT, context=context)
 
 
 @import_ui_fragments_router.get("/path-suggestions", response_class=HTMLResponse)
-async def path_suggestions(request: Request, path: str = "") -> HTMLResponse:
+async def path_suggestions(request: Request, user_config: UserConfigDep, path: str = "") -> HTMLResponse:
     """Autocomplete `<option>`s of real subdirectories for the partial filesystem `path` being typed.
 
     Defined before `/{job_id}` so the literal route wins over the job-status path parameter.
     """
-    context = {"paths": await _dir_suggestions(path)}
+    context = {"paths": await _dir_suggestions(path, user_config.downloads_path)}
     return get_templates().TemplateResponse(request=request, name=_PATH_SUGGESTIONS_FRAGMENT, context=context)
 
 

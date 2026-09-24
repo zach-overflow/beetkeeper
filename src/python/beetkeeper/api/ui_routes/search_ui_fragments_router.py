@@ -3,22 +3,24 @@ HTMX fragment routes backing the `/search` page — the UI counterpart of the `/
 
 Both call the same `core.BeetsLibrary` adapter; these return HTML partials for HTMX to swap in:
   * `GET /fragment/search/results` — run a beets list-style query, render the matching tracks/albums
-    alongside each one's library location and the import source path(s) the beetkeeper plugin recorded.
+    alongside each one's library location, file health, and the import source path(s) the beetkeeper plugin
+    recorded (each a starting point for a clean-slate import).
   * `GET /fragment/search/stats`   — run a beets stats-style query over the same inputs (`beet stats`).
   * `GET /fragment/search/fields`  — render the available query fields reference (`beet fields`).
-  * `GET /fragment/search/source-path` — ask the configured downloader client for an entry's unrecorded
-    source folder (the `find_missing_source_path` API route's HTMX counterpart).
+  * `POST /fragment/search/source-path` — ask the configured downloader client for an entry's unrecorded
+    source folder (the `find_missing_source_path` API route's HTMX counterpart; a POST since a match is stored).
 
 The `/search` page lets the user dispatch the same form inputs to either `results` (list) or `stats`.
 """
 
 import logging
 import shlex
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
+from pydantic import ValidationError
 
 from beetkeeper.api.adapters import (
     find_missing_source_path,
@@ -26,7 +28,7 @@ from beetkeeper.api.adapters import (
     import_source_paths_by_track_id,
     inferred_source_paths,
 )
-from beetkeeper.api.api_models import FindMissingSourcePathRequestParams, SearchResultsQueryParams
+from beetkeeper.api.api_models import FindMissingSourcePathRequest, SearchResultsQueryParams
 from beetkeeper.api.constants import LibrarySubject
 from beetkeeper.api.dependencies import BeetsLibraryDep, DownloaderHookDep
 from beetkeeper.api.jinja_driver import get_templates
@@ -51,19 +53,17 @@ def _build_query_parts(query: str, filepath: str | None, sort_by: str | None = N
 
 @search_ui_fragments_router.get("/results", response_class=HTMLResponse)
 async def search_results_fragment(
-    request: Request,
-    library: BeetsLibraryDep,
-    session: SessionDep,
-    downloader: DownloaderHookDep,
-    params: SearchResultsQueryParams,
+    request: Request, library: BeetsLibraryDep, session: SessionDep, params: SearchResultsQueryParams
 ) -> HTMLResponse:
     """
     `beet list`-style query: render one page of the matching tracks/albums as a table.
 
-    Each row also shows the subject's current library path (its destination) and the import source path(s)
-    recorded by the beetkeeper plugin's `import_task_files` push, looked up in the beetkeeper DB by beets
-    id. Subjects with no recorded import fall back to an *inferred* source path (see `hooks_adapters`) —
-    a track inherits its album's inference — and are otherwise flagged as unrecorded rather than shown blank.
+    Each row also shows the subject's current library path (its destination), whether its file(s) are still
+    on disk (an album row: files missing and tracks short of the release's total), and the import source
+    path(s) recorded by the beetkeeper plugin's `import_task_files` push, looked up in the beetkeeper DB by
+    beets id. Subjects with no recorded import fall back to an *inferred* source path (see `hooks_adapters`)
+    — a track inherits its album's inference — and are otherwise flagged as unrecorded rather than shown
+    blank. Every known source path links to a clean-slate import of the entry from that folder.
     """
     parts = _build_query_parts(params.query, params.filepath, params.sort_by)
     error: str | None = None
@@ -71,6 +71,8 @@ async def search_results_fragment(
     total = 0
     source_paths_by_id: dict[int, list[str]] = {}
     inferred_by_id: dict[int, str] = {}
+    health_by_id: dict[int, Any] = {}
+    missing_item_ids: set[int] = set()
     try:
         query_method = library.query_albums if params.albums else library.query_items
         page_results, total = await query_method(parts, offset=params.offset, limit=params.page_size)
@@ -78,9 +80,14 @@ async def search_results_fragment(
         _LOGGER.debug(f"Search query failed: {exc}")
         error = str(exc)
     else:
+        row_ids = [row["id"] for row in page_results]
         source_paths_lookup = import_source_paths_by_album_id if params.albums else import_source_paths_by_track_id
-        source_paths_by_id = await source_paths_lookup(session, [row["id"] for row in page_results])
+        source_paths_by_id = await source_paths_lookup(session, row_ids)
         inferred_by_id = await _inferred_source_paths_for_rows(session, page_results, albums=params.albums)
+        if params.albums:
+            health_by_id = await library.album_file_health(row_ids)
+        else:
+            missing_item_ids = await library.missing_item_files(row_ids)
 
     base_params = urlencode(
         {
@@ -98,6 +105,8 @@ async def search_results_fragment(
             "results": page_results,
             "source_paths_by_id": source_paths_by_id,
             "inferred_by_id": inferred_by_id,
+            "health_by_id": health_by_id,
+            "missing_item_ids": missing_item_ids,
             "missing_source_count": sum(
                 1 for row in page_results if row["id"] not in source_paths_by_id and row["id"] not in inferred_by_id
             ),
@@ -108,23 +117,39 @@ async def search_results_fragment(
             "start_index": params.offset + 1,
             "end_index": params.offset + len(page_results),
             "base_params": base_params,
-            "downloader_hook_enabled": downloader.enabled,
         },
     )
 
 
-@search_ui_fragments_router.get("/source-path", response_class=HTMLResponse)
+@search_ui_fragments_router.post("/source-path", response_class=HTMLResponse)
 async def source_path_lookup_fragment(
     request: Request,
     library: BeetsLibraryDep,
     downloader: DownloaderHookDep,
     session: SessionDep,
-    req_params: FindMissingSourcePathRequestParams,
+    beets_album_id: Annotated[int | None, Form()] = None,
+    beets_item_id: Annotated[int | None, Form()] = None,
 ) -> HTMLResponse:
-    """Render the downloader's answer for an entry's source folder (persisted as an inference on a match)."""
-    response = await find_missing_source_path(library, downloader, session, req_params)
+    """Render the downloader's answer for an entry's source folder (persisted as an inference on a match).
+
+    The button is offered on every unrecorded row; without a configured hook the cell explains how to enable
+    it. The rendered cell links a match to a clean-slate import of the entry; for an album track that means
+    the track's album, so its album id is looked up alongside.
+    """
+    try:
+        req = FindMissingSourcePathRequest(beets_album_id=beets_album_id, beets_item_id=beets_item_id)
+    except ValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    response = await find_missing_source_path(library, downloader, session, req)
+    album_id: int | None = req.beets_album_id
+    item_id: int | None = None
+    if not req.is_album and response is not None:
+        track = (await library.get_tracks([req.beets_id])).get(req.beets_id)
+        album_id = track.get("album_id") if track else None
+        item_id = None if album_id else req.beets_id
+    context = {"lookup": response, "hook_enabled": downloader.enabled, "album_id": album_id, "item_id": item_id}
     return get_templates().TemplateResponse(
-        request=request, name="fragment_templates/source_path_lookup.html", context={"lookup": response}
+        request=request, name="fragment_templates/source_path_lookup.html", context=context
     )
 
 

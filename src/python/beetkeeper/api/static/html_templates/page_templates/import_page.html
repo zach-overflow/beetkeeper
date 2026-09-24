@@ -1,19 +1,19 @@
 {% extends "base_template.html" %}
 {% block content %}
 <h1>Import</h1>
-<p>Start a beets import, or <a href="#reimport">reimport music already in your library</a>. The importer runs interactively — when it needs a decision, candidate matches
+<p>Start a beets import, or <a href="#clean-slate">clean-slate an entry that is already in your library</a>. The importer runs interactively — when it needs a decision, candidate matches
    appear below for you to apply, import as-is, or skip.</p>
 
 <form hx-post="{{ url_for('import_submit') }}" hx-target="#active-imports" hx-swap="afterbegin">
-    <label for="path">Path to import (must be under <code>/downloads</code>):</label>
+    <label for="path">Path to import (must be under <code>{{ downloads_path }}</code>):</label>
     <br>
-    <!-- Pinned to /downloads: the value is prefilled, the pattern blocks submitting anything outside it,
-         and the datalist only suggests real subfolders under /downloads as you type. (HTMX validates the
+    <!-- Pinned to the configured downloads_path: the value is prefilled, the pattern blocks submitting anything
+         outside it, and the datalist only suggests real subfolders under it as you type. (HTMX validates the
          form POST against the pattern but not the GET autocomplete, so suggestions still work mid-type.) -->
     <input type="text" id="path" name="path" size="60" list="path-options" autocomplete="off"
-           value="{{ import_path or '/downloads/' }}" required pattern="/downloads/.+"
-           title="The import path must be a folder under /downloads/"
-           placeholder="/downloads/some-album"
+           value="{{ import_path or downloads_path ~ '/' }}" required pattern="{{ downloads_path }}/.+"
+           title="The import path must be a folder under {{ downloads_path }}/"
+           placeholder="{{ downloads_path }}/some-album"
            hx-get="{{ url_for('path_suggestions') }}"
            hx-trigger="keyup changed delay:200ms, focus"
            hx-target="#path-options" hx-swap="innerHTML">
@@ -53,69 +53,58 @@
     <button type="submit">Start import</button>
 </form>
 
-<h2 id="reimport">Reimport from library</h2>
-<p>Re-run the importer over music that is <em>already in your library</em> (<code>beet import -L</code>), to
-   change a match you regret, recover tags an earlier import dropped, or tag something you imported as-is.
-   Entries are replaced in place — never duplicated — and their flexible attributes and added-date are kept.
-   When the reimport finishes, its card shows what changed versus the previous data.
-   <a href="https://beets.readthedocs.io/en/stable/reference/cli.html#reimporting" target="_blank" rel="noopener">beets docs</a></p>
+<h2 id="clean-slate">Clean-slate import</h2>
+<p>Remove a library entry (like <code>beet remove -d</code>) and import its original download folder afresh.
+   Nothing carries over, and the entry is removed <em>before</em> the import runs. <strong>Preview</strong>
+   first to see what would be deleted.</p>
 
-<form hx-post="{{ url_for('import_reimport_submit') }}" hx-target="#active-imports" hx-swap="afterbegin">
-    <label for="reimport-query">Library <a href="https://beets.readthedocs.io/en/stable/reference/query.html" target="_blank" rel="noopener">query</a> selecting what to reimport:</label>
+{% if clean_slate and clean_slate.source %}
+<form hx-post="{{ url_for('import_clean_slate_submit') }}" hx-target="#active-imports" hx-swap="afterbegin">
+    <p>Entry: <strong>{{ clean_slate.label }}</strong> <small>({{ clean_slate.subject }} #{{ clean_slate.beets_id }})</small></p>
+    <input type="hidden" name="{{ 'beets_album_id' if clean_slate.subject == 'album' else 'beets_item_id' }}" value="{{ clean_slate.beets_id }}">
+    <label for="clean-slate-source">Source folder (the entry's recorded or inferred download location):</label>
     <br>
-    <input type="text" id="reimport-query" name="query" size="60" autocomplete="off"
-           value="{{ reimport_query }}" placeholder="albumartist:&quot;Boards of Canada&quot; year:1998">
-    <br>
-    <label>
-        <input type="checkbox" name="singletons"{% if reimport_singletons %} checked{% endif %}>
-        Singletons — match standalone tracks instead of albums (<code>-s</code>). Tracks that belong to an
-        album are skipped, since this mode would detach them from it.
-    </label>
+    <input type="text" id="clean-slate-source" name="source_path" size="60" readonly value="{{ clean_slate.source }}">
     <br>
     <label>
-        <input type="checkbox" name="entire_library">
-        Reimport the <strong>entire library</strong> (required when the query is empty)
+        <input type="checkbox" name="allow_fewer_files">
+        Proceed even if the source holds fewer audio files than the library currently has on disk
     </label>
     <br>
-    <button type="button" hx-get="{{ url_for('reimport_preview') }}" hx-include="closest form"
-            hx-target="#reimport-preview" hx-swap="innerHTML">Preview matches</button>
-    <div id="reimport-preview"></div>
+    <button type="button" hx-get="{{ url_for('clean_slate_preview') }}" hx-include="closest form"
+            hx-target="#clean-slate-preview" hx-swap="innerHTML">Preview</button>
+    <div id="clean-slate-preview"></div>
 
     <details>
-        <summary>Reimport options</summary>
+        <summary>Import options</summary>
         <p><small>Prefilled from your beets config's <code>import</code> section; changes apply to this
-           reimport only.</small></p>
+           import only.</small></p>
         <fieldset>
-            <label>
-                <input type="checkbox" name="move_files"{% if import_defaults.move_files %} checked{% endif %}>
-                Move files to match the new tags. Untick to retag in place, leaving every file where it is
-                (<code>-C -M</code>) — you can run <code>beet move</code> later.
-            </label>
-            <br>
-            <label>
-                <input type="checkbox" name="write_tags"{% if import_defaults.write_tags %} checked{% endif %}>
-                Write the new tags to the files (<code>-w</code>). Untick to update only the beets database
-                (<code>-W</code>).
-            </label>
-            <br>
             <label>
                 <input type="checkbox" name="quiet"{% if import_defaults.quiet %} checked{% endif %}>
                 Quiet — non-interactive, like <code>beet import -q</code> (no match prompts)
             </label>
             <br>
-            <label for="reimport-logpath">Log file path (<code>-l</code>; leave empty for no log file):</label>
+            <label for="clean-slate-logpath">Log file path (<code>-l</code>; leave empty for no log file):</label>
             <br>
-            <input type="text" id="reimport-logpath" name="logpath" size="60" value="{{ import_defaults.logpath }}"
+            <input type="text" id="clean-slate-logpath" name="logpath" size="60" value="{{ import_defaults.logpath }}"
                    placeholder="/path/to/import.log">
             <br>
-            <label for="reimport-set-fields">Set fields (<code>--set</code>; one <code>field=value</code> per line):</label>
+            <label for="clean-slate-set-fields">Set fields (<code>--set</code>; one <code>field=value</code> per line):</label>
             <br>
-            <textarea id="reimport-set-fields" name="set_fields" rows="2" cols="60" placeholder="genre=Jazz">{{ import_defaults.set_fields }}</textarea>
+            <textarea id="clean-slate-set-fields" name="set_fields" rows="2" cols="60" placeholder="genre=Jazz">{{ import_defaults.set_fields }}</textarea>
         </fieldset>
     </details>
 
-    <button type="submit">Start reimport</button>
+    <button type="submit">Delete entry and import from source</button>
 </form>
+{% elif clean_slate %}
+<p><em>No source folder is known for <strong>{{ clean_slate.label }}</strong>. Use <strong>Find via downloader</strong>
+   on the <a href="{{ url_for('search_page') }}">search page</a> to look it up first.</em></p>
+{% else %}
+<p><em>Start from the <a href="{{ url_for('search_page') }}">search page</a>: entries with a known source folder
+   offer a <strong>Clean-slate import from here</strong> link.</em></p>
+{% endif %}
 
 <h2>Active imports</h2>
 <p><small>Each import is shown as a card below. Click an import's title to expand or collapse its output log.</small></p>

@@ -6,8 +6,9 @@ An import is modeled as a long-running *job* that the leader-elected import work
 user decision (which candidate match to apply, how to resolve a duplicate); the worker publishes a
 `DecisionRequest`, the job parks in `AWAITING_DECISION`, and the UI answers with an `ImportDecision`.
 
-A job is either a path import or a library-mode *reimport* (`ImportJob.query`, the `beet import -L`
-equivalent); a reimport additionally yields a `ReimportReport` diffing the prior library data against the new.
+A job is a path import, optionally preceded by a *clean slate*: the removal of one existing library entry
+(`ImportJob.clean_slate_album_id` / `clean_slate_item_id`) before its raw source folder is imported afresh
+(see `beetkeeper.core.clean_slate`). `CleanSlatePreview` is the read-only dry run of that removal.
 
 This module deliberately imports NO beets internals — these are plain DTOs. Mapping to/from beets'
 `Action`/`AlbumMatch` types happens in `import_worker`; persistence + cross-process coordination live in
@@ -16,10 +17,10 @@ This module deliberately imports NO beets internals — these are plain DTOs. Ma
 
 import logging
 import os
-import re
+from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum, unique
-from typing import Final
+from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -116,69 +117,78 @@ class ImportDecision(BaseModel):
     candidate_index: int | None = Field(default=None, description="Required when `action` is APPLY.")
 
 
-# beets formats an unset numeric field as its zero default, padded per field type (`0`, `00`, `0000`, `0.0`).
-_BLANK_VALUE: Final[re.Pattern[str]] = re.compile(r"\s*(0+(\.0+)?|False)?\s*")
+CleanSlateSubject = Literal["album", "track"]
 
 
-def is_blank_value(value: str | None) -> bool:
-    """Whether a formatted beets field value carries no information (unset, empty, zero, or `False`)."""
-    return value is None or _BLANK_VALUE.fullmatch(value) is not None
+@dataclass(frozen=True)
+class CleanSlateTarget:
+    """The library entry a clean slate removes: an album, or a standalone track."""
+
+    subject: CleanSlateSubject
+    beets_id: int
+
+    @classmethod
+    def from_ids(cls, album_id: int | None, item_id: int | None) -> Self:
+        """Build the target from a job's `clean_slate_album_id` / `clean_slate_item_id` (exactly one set)."""
+        if (album_id is None) == (item_id is None):
+            raise ValueError("Exactly one of album_id or item_id must be given.")
+        if album_id is not None:
+            return cls("album", album_id)
+        assert item_id is not None
+        return cls("track", item_id)
 
 
-class FieldChange(BaseModel):
-    """One library field whose value differs between the prior library entry and the reimported one."""
+class CleanSlatePreview(BaseModel):
+    """The dry run of a clean-slate import: what removing the library entry and importing its source would do.
 
-    model_config = ConfigDict(frozen=True)
-    field: str
-    old: str | None = None
-    new: str | None = None
-
-    @computed_field  # type: ignore[prop-decorator]  # mypy limitation: @computed_field stacks on @property
-    @property
-    def dropped(self) -> bool:
-        """True when the reimport lost information: the field held a value before and is blank now."""
-        return not is_blank_value(self.old) and is_blank_value(self.new)
-
-
-class TrackChange(BaseModel):
-    """The field-level changes a reimport made to one track (`path` is its pre-reimport location)."""
-
-    model_config = ConfigDict(frozen=True)
-    label: str
-    path: str
-    changes: list[FieldChange] = Field(default_factory=list)
-
-
-class ReimportEntry(BaseModel):
-    """Prior-vs-new diff for one reimported album (or singleton track).
-
-    `shared_changes` are the changes every track has in common (album-level edits such as a corrected album
-    title), hoisted out of `tracks` so they are reported once. `left_behind` lists tracks of the original
-    album that the chosen match did not cover: beets leaves their library entries under the old album.
+    Produced read-only by `core.clean_slate.preview` for the API/UI preview, and again by the worker as the
+    guard before it removes anything. `errors` lists the conditions that block the job outright; `warnings`
+    are worth a look but do not block. `needs_confirmation` is set when the source folder holds fewer audio
+    files than the entry currently has on disk — proceeding would delete files the source cannot replace,
+    so the caller must opt in explicitly (`allow_fewer_files`).
     """
 
     model_config = ConfigDict(frozen=True)
-    label: str
-    shared_changes: list[FieldChange] = Field(default_factory=list)
-    tracks: list[TrackChange] = Field(default_factory=list)
-    left_behind: list[str] = Field(default_factory=list)
+    subject: CleanSlateSubject
+    beets_id: int
+    label: str = Field(description="`albumartist - album` for an album, `artist - title` for a standalone track.")
+    item_count: int = Field(description="Library rows the entry holds (1 for a standalone track).")
+    files_present: int = Field(description="How many of those rows still have their file on disk.")
+    missing_paths: list[str] = Field(default_factory=list, description="Library paths whose file is gone.")
+    expected_tracks: int | None = Field(
+        default=None, description="Track total the album's tags claim (beets' `albumtotal`), when known."
+    )
+    files_to_delete: list[str] = Field(
+        default_factory=list, description="Library files the removal deletes (inside the beets directory)."
+    )
+    files_kept_outside_library: list[str] = Field(
+        default_factory=list, description="Entry files left on disk because they live outside the beets directory."
+    )
+    art_to_delete: str | None = Field(default=None, description="The album art file the removal deletes, if any.")
+    flexible_attributes_lost: list[str] = Field(
+        default_factory=list, description="Flexible attribute names on the entry that a clean slate does not keep."
+    )
+    source_path: str
+    source_audio_files: int = Field(default=0, description="Readable audio files found under the source path.")
+    source_album_groups: int = Field(default=0, description="Album folders beets would import from the source.")
+    warnings: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    needs_confirmation: bool = Field(
+        default=False,
+        description="The source has fewer audio files than the entry has on disk and `allow_fewer_files` was not set.",
+    )
 
+    @computed_field  # type: ignore[prop-decorator]  # mypy limitation: @computed_field stacks on @property
+    @property
+    def ok(self) -> bool:
+        """Whether the clean slate may run as previewed (no blocking error and no outstanding confirmation)."""
+        return not self.errors and not self.needs_confirmation
 
-class MissingFilesEntry(BaseModel):
-    """A library album/track skipped by a reimport because its file(s) no longer exist on disk."""
-
-    model_config = ConfigDict(frozen=True)
-    label: str
-    paths: list[str]
-
-
-class ReimportReport(BaseModel):
-    """What a library reimport changed, plus the entries it had to skip because their files are gone."""
-
-    model_config = ConfigDict(frozen=True)
-    entries: list[ReimportEntry] = Field(default_factory=list)
-    missing_files: list[MissingFilesEntry] = Field(default_factory=list)
-    truncated: bool = Field(default=False, description="True when entries beyond the report cap were omitted.")
+    @computed_field  # type: ignore[prop-decorator]  # mypy limitation: @computed_field stacks on @property
+    @property
+    def files_missing(self) -> int:
+        """How many of the entry's rows point at a file that no longer exists."""
+        return self.item_count - self.files_present
 
 
 class ImportJob(BaseModel):
@@ -202,25 +212,23 @@ class ImportJob(BaseModel):
     group_albums: bool = False
     flat: bool = False
     set_fields: dict[str, str] = Field(default_factory=dict)
-    # Library-mode reimport (`beet import -L`): beets query parts selecting the library entries to reimport.
-    # None means a regular path import; an empty list matches the entire library.
-    query: list[str] | None = None
-    singletons: bool = False
-    # Reimport file handling; None defers to the beets config. `move_files=False` is `-C -M` (retag in place).
-    move_files: bool | None = None
-    write_tags: bool | None = None
-    reimport_report: ReimportReport | None = None
+    # Clean slate: the library album (or standalone track) removed before `paths` (its source folder) is
+    # imported. At most one is set; both None means a plain path import.
+    clean_slate_album_id: int | None = None
+    clean_slate_item_id: int | None = None
+    # The submitter's opt-in to a source holding fewer audio files than the entry has on disk (see
+    # `CleanSlatePreview.needs_confirmation`); the worker re-runs the preview with it before removing anything.
+    clean_slate_allow_fewer_files: bool = False
 
     @computed_field  # type: ignore[prop-decorator]  # mypy limitation: @computed_field stacks on @property
     @property
-    def is_reimport(self) -> bool:
-        """Whether this job reimports existing library entries (library mode) instead of importing paths."""
-        return self.query is not None
+    def is_clean_slate(self) -> bool:
+        """Whether this job removes an existing library entry before importing its source afresh."""
+        return self.clean_slate_album_id is not None or self.clean_slate_item_id is not None
 
     @computed_field  # type: ignore[prop-decorator]  # mypy limitation: @computed_field stacks on @property
     @property
     def source_label(self) -> str:
-        """Display name for the import source: the path basename(s), or the library query for a reimport."""
-        if self.query is not None:
-            return f"reimport: {' '.join(self.query)}" if self.query else "reimport: entire library"
-        return ", ".join(os.path.basename(path.rstrip("/")) or path for path in self.paths)
+        """Display name for the import source: the path basename(s), prefixed for a clean-slate import."""
+        label = ", ".join(os.path.basename(path.rstrip("/")) or path for path in self.paths)
+        return f"clean slate: {label}" if self.is_clean_slate else label

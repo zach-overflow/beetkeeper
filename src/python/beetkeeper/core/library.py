@@ -23,10 +23,15 @@ Concurrency:
     uses it (we open per operation here; caching is a future optimization).
   * beets' plugin registry is process-global, so the configured plugins are loaded once (guarded by a lock)
     on the first `open_library` and shared thereafter (see `_load_plugins_once`).
+  * beets' global config is likewise process-global: the user's config file is applied to it once, on the
+    first `open_library` (see `_apply_config_file_once`), so editing it requires a server restart — just
+    like the plugin list. Re-applying it per call would pile up config sources and silently re-prioritise the
+    file over a running import job's per-job settings.
 """
 
 import logging
 import threading
+from collections import defaultdict
 from collections.abc import Callable, Sequence
 from itertools import islice
 from pathlib import Path
@@ -36,7 +41,10 @@ from anyio import CapacityLimiter, to_thread
 
 if TYPE_CHECKING:
     from beets.dbcore.db import Results
-    from beets.library import Album, AnyLibModel, LibModel, Library
+    from beets.library import Album, AnyLibModel, Item, LibModel, Library
+
+    from beetkeeper.core.clean_slate import AlbumFileHealth
+    from beetkeeper.core.import_jobs import CleanSlatePreview, CleanSlateTarget
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,6 +58,10 @@ library_write_limiter: Final[CapacityLimiter] = CapacityLimiter(1)
 _plugins_lock = threading.Lock()
 _plugins_state: dict[str, bool] = {"loaded": False}
 _failed_plugin_names: list[str] = []
+# The config file last applied to beets' global config (see `_apply_config_file_once`); keyed by path so a
+# different file (tests open several throwaway configs per process) is still applied.
+_config_lock = threading.Lock()
+_config_state: dict[str, Path | None] = {"file": None}
 
 _T = TypeVar("_T")
 
@@ -62,6 +74,24 @@ def failed_plugin_names() -> tuple[str, ...]:
     this list to users instead of leaving the failures buried in the server log.
     """
     return tuple(_failed_plugin_names)
+
+
+def _apply_config_file_once(beets_config_filepath: Path) -> None:
+    """Point beets' global config at the user's file, once per process (per distinct path).
+
+    confuse's `set_file` *prepends* a source on every call: repeating it per `open_library` would grow the
+    source list without bound and, worse, re-prioritise the file over the per-job `import` keys the worker
+    sets on the global config (`set_fields`) while an import is running.
+    """
+    if _config_state["file"] == beets_config_filepath:
+        return
+    from beets import config as beets_config
+
+    with _config_lock:
+        if _config_state["file"] == beets_config_filepath:
+            return
+        beets_config.set_file(str(beets_config_filepath))
+        _config_state["file"] = beets_config_filepath
 
 
 def _load_plugins_once() -> None:
@@ -145,10 +175,10 @@ def open_library(beets_config_filepath: Path) -> Library:
     from beets import config as beets_config
     from beets.library import Library
 
-    # Point beets' confuse config at the user's file, load the plugins it lists (once per process, before
+    # Point beets' confuse config at the user's file, load the plugins it lists (both once per process, before
     # opening the Library so plugin-provided field types/queries are registered), then open the Library at
     # the configured db path + music directory.
-    beets_config.set_file(str(beets_config_filepath))
+    _apply_config_file_once(beets_config_filepath)
     _load_plugins_once()
     db_path = beets_config["library"].as_filename()
     directory = beets_config["directory"].as_filename()
@@ -259,6 +289,54 @@ class BeetsLibrary:
                 "item_flexible_attributes": sorted(item_flex),
                 "album_flexible_attributes": sorted(album_flex),
             }
+
+        return await self._read(_do)
+
+    async def album_file_health(self, beets_album_ids: Sequence[int]) -> dict[int, AlbumFileHealth]:
+        """Rows vs. files-on-disk vs. claimed track total for each album id (ids with no items are omitted).
+
+        One items query covers the whole page; the per-file existence checks run in the worker thread.
+        """
+        if not beets_album_ids:
+            return {}
+
+        def _do(lib: Library) -> dict[int, AlbumFileHealth]:
+            from beets.dbcore.query import InQuery
+
+            from beetkeeper.core.clean_slate import file_health
+
+            items_by_album: defaultdict[int, list[Item]] = defaultdict(list)
+            for item in lib.items(InQuery(field_name="album_id", pattern=tuple(set(beets_album_ids)))):
+                if item.album_id is not None:
+                    items_by_album[item.album_id].append(item)
+            return {album_id: file_health(items) for album_id, items in items_by_album.items()}
+
+        return await self._read(_do)
+
+    async def missing_item_files(self, beets_item_ids: Sequence[int]) -> set[int]:
+        """The subset of item ids whose file no longer exists on disk."""
+        if not beets_item_ids:
+            return set()
+
+        def _do(lib: Library) -> set[int]:
+            from beets.dbcore.query import InQuery
+
+            from beetkeeper.core.clean_slate import file_exists, saved_id
+
+            query = InQuery(field_name="id", pattern=tuple(set(beets_item_ids)))
+            return {saved_id(item) for item in lib.items(query) if not file_exists(item)}
+
+        return await self._read(_do)
+
+    async def clean_slate_preview(
+        self, target: CleanSlateTarget, source_path: str, *, downloads_path: Path, allow_fewer_files: bool = False
+    ) -> CleanSlatePreview:
+        """Dry-run a clean slate of `target` from `source_path` (see `core.clean_slate.preview`); read-only."""
+
+        def _do(lib: Library) -> CleanSlatePreview:
+            from beetkeeper.core.clean_slate import preview
+
+            return preview(lib, target, source_path, downloads_path=downloads_path, allow_fewer_files=allow_fewer_files)
 
         return await self._read(_do)
 

@@ -1,0 +1,42 @@
+{# The clean-slate dry run (`CleanSlatePreview`) rendered under the clean-slate form, or the lookup error. #}
+{% if error %}
+<p><strong>Preview failed:</strong> {{ error }}</p>
+{% elif preview %}
+<p>
+    <strong>{{ preview.label }}</strong> ({{ preview.subject }} #{{ preview.beets_id }}):
+    {{ preview.item_count }} library row(s), {{ preview.files_present }} file(s) on disk,
+    {% if preview.files_missing %}<mark>{{ preview.files_missing }} missing</mark>{% else %}none missing{% endif %}{% if preview.expected_tracks %}; the album's tags list {{ preview.expected_tracks }} tracks{% endif %}.
+    The source <code>{{ preview.source_path }}</code> holds <strong>{{ preview.source_audio_files }}</strong> readable audio file(s){% if preview.source_album_groups > 1 %} in {{ preview.source_album_groups }} album folders{% endif %}.
+</p>
+{% if preview.errors %}
+<p><strong>Cannot run:</strong></p>
+<ul>{% for problem in preview.errors %}<li><mark>{{ problem }}</mark></li>{% endfor %}</ul>
+{% endif %}
+{% if preview.warnings %}
+<ul>{% for warning in preview.warnings %}<li><em>{{ warning }}</em></li>{% endfor %}</ul>
+{% endif %}
+{% if preview.needs_confirmation %}
+<p><mark>Tick the option to proceed even though the source holds fewer files than the library has on disk.</mark></p>
+{% endif %}
+<details open>
+    <summary>What the removal deletes</summary>
+    {% if preview.files_to_delete %}
+    <p>{{ preview.files_to_delete | length }} library file(s):</p>
+    <ul>{% for path in preview.files_to_delete %}<li><code>{{ path }}</code></li>{% endfor %}</ul>
+    {% else %}
+    <p>No library files (none of the entry's files are on disk inside the beets directory).</p>
+    {% endif %}
+    {% if preview.art_to_delete %}<p>Album art: <code>{{ preview.art_to_delete }}</code></p>{% endif %}
+    {% if preview.missing_paths %}
+    <p>{{ preview.missing_paths | length }} row(s) whose file is already gone:</p>
+    <ul>{% for path in preview.missing_paths %}<li><code>{{ path }}</code></li>{% endfor %}</ul>
+    {% endif %}
+    {% if preview.files_kept_outside_library %}
+    <p>Left untouched (outside the beets directory):</p>
+    <ul>{% for path in preview.files_kept_outside_library %}<li><code>{{ path }}</code></li>{% endfor %}</ul>
+    {% endif %}
+    {% if preview.flexible_attributes_lost %}
+    <p>Flexible attributes that will <mark>not</mark> carry over: {% for name in preview.flexible_attributes_lost %}<code>{{ name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+    {% endif %}
+</details>
+{% endif %}

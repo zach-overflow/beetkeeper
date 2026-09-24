@@ -113,6 +113,33 @@ def beets_library(tmp_path: Path) -> BeetsLibrary:
 
 
 @pytest.fixture
+def downloads_path(tmp_path: Path) -> Path:
+    """A throwaway `downloads_path` (the pre-import staging root the import forms are pinned to)."""
+    path = tmp_path / "downloads"
+    path.mkdir(exist_ok=True)
+    return path
+
+
+@pytest.fixture
+def user_config(tmp_path: Path, db_file: Path, downloads_path: Path) -> UserConfig:
+    """A `UserConfig` (login protection off) whose `downloads_path` is the throwaway staging root.
+
+    Routes reading `UserConfigDep` need `app.state.user_config`, which only the lifespan sets; override
+    `get_user_config` with this instead.
+    """
+    config_path = tmp_path / "beets.yaml"
+    if not config_path.exists():
+        config_path.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n", encoding="utf-8")
+    return UserConfig(
+        beets_config_filepath=config_path,
+        downloads_path=downloads_path,
+        log_level="INFO",
+        server={"hostname": "127.0.0.1"},
+        database={"sqlite_path": db_file},
+    )
+
+
+@pytest.fixture
 def populated_beets_library(tmp_path: Path) -> BeetsLibrary:
     """A `BeetsLibrary` over a throwaway beets config whose library holds 30 synthetic tracks."""
     from beets.library import Item, Library

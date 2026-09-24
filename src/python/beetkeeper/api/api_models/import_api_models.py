@@ -9,6 +9,7 @@ from fastapi import Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from beetkeeper.api.constants import LibrarySubject
+from beetkeeper.core import CleanSlateTarget
 from beetkeeper.hooks import DownloaderSearchResult
 
 
@@ -35,15 +36,6 @@ def import_config_logpath() -> Path | None:
         return Path(config["import"]["log"].as_filename()) if config["import"]["log"].get() else None
     except Exception:  # config missing/unreadable — behave as if no log path is configured
         return None
-
-
-def import_config_moves_files() -> bool:
-    """Whether the beets config relocates reimported library files to match their new tags.
-
-    Per beets' reimport docs, `copy` moves (never duplicates) a file that is already in the library, so
-    either `copy` or `move` being on means a reimport relocates files.
-    """
-    return import_config_flag("copy") or import_config_flag("move")
 
 
 class ImportSubmitRequest(BaseModel):
@@ -80,72 +72,16 @@ class ImportSubmitRequest(BaseModel):
     )
 
 
-class ReimportSubmitRequest(BaseModel):
-    """
-    Body for starting a library-mode reimport (`beet import -L`): re-run the importer over entries that are
-    already in the beets library, selected by a beets query instead of filesystem paths. Option defaults
-    come from the `beets.config` values if left unspecified.
-
-    See https://beets.readthedocs.io/en/stable/reference/cli.html#reimporting
-    """
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    query: list[str] = Field(
-        description=(
-            'beets query parts (like the CLI args, e.g. `["albumartist:Beatles", "year:1969"]`) selecting the '
-            "library entries to reimport. Required; an explicit empty list reimports the ENTIRE library. "
-            "See https://beets.readthedocs.io/en/stable/reference/query.html"
-        )
-    )
-    singletons: bool = Field(
-        default=False,
-        description="Match (and retag) individual tracks instead of whole albums, like `beet import -L -s`.",
-    )
-    quiet: bool = Field(
-        default_factory=partial(import_config_flag, "quiet"),
-        description="Run non-interactively (like `beet import -q`). See `ImportSubmitRequest.quiet`.",
-    )
-    move_files: bool = Field(
-        default_factory=import_config_moves_files,
-        description=(
-            "Move the files so the library's directory structure reflects the new tags. `false` retags in "
-            "place, leaving every file where it is (`beet import -C -M`) — useful when players/music servers "
-            "get confused by a path and tags changing at once."
-        ),
-    )
-    write_tags: bool = Field(
-        default_factory=partial(import_config_flag, "write"),
-        description="Write the new tags to the files (`-w`); `false` only updates the beets database (`-W`).",
-    )
-    logpath: Path | None = Field(
-        default_factory=import_config_logpath,
-        description="Corresponds to the `-l` option, or the config's `import.log` option.",
-    )
-    set_fields: dict[str, str] = Field(
-        default_factory=import_config_set_fields,
-        description="Corresponds to the `--set field=value` option for beets' `import` CLI command.",
-    )
-
-
-class FindMissingSourcePathRequest(BaseModel):
-    """Query parameters of `GET /api/import/reimport/find_missing_source_path`: exactly one beets id."""
+class LibraryEntryRef(BaseModel):
+    """Names one beets library entry by exactly one of its album id or its item (track) id."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     beets_album_id: int | None = Field(
-        default=None,
-        description=(
-            "The beets library id of the album beetkeeper is missing source filepath data for. Mutually "
-            "exclusive with `beets_item_id`."
-        ),
+        default=None, description="The beets library id of an album. Mutually exclusive with `beets_item_id`."
     )
     beets_item_id: int | None = Field(
-        default=None,
-        description=(
-            "The beets library id of the item (track) beetkeeper is missing source filepath data for. Mutually "
-            "exclusive with `beets_album_id`."
-        ),
+        default=None, description="The beets library id of an item (track). Mutually exclusive with `beets_album_id`."
     )
 
     @model_validator(mode="after")
@@ -160,7 +96,7 @@ class FindMissingSourcePathRequest(BaseModel):
 
     @property
     def is_album(self) -> bool:
-        """`True` if this search pertains to an Album. `False` if for a beets item."""
+        """`True` if this request names an album. `False` if it names a beets item."""
         return self.beets_album_id is not None
 
     @property
@@ -175,13 +111,66 @@ class FindMissingSourcePathRequest(BaseModel):
         assert beets_id is not None  # guaranteed by the validator
         return beets_id
 
+    @property
+    def clean_slate_target(self) -> CleanSlateTarget:
+        """The entry as a clean-slate target."""
+        return CleanSlateTarget.from_ids(self.beets_album_id, self.beets_item_id)
+
+
+class FindMissingSourcePathRequest(LibraryEntryRef):
+    """Body of `POST /api/import/find_missing_source_path`: the entry to ask the downloader about."""
+
+
+class CleanSlatePreviewRequest(LibraryEntryRef):
+    """Query parameters of `GET /api/import/clean_slate/preview`: the entry to remove and its source folder."""
+
+    source_path: str = Field(
+        min_length=1,
+        description=(
+            "The entry's raw (pre-import) source folder, under beetkeeper's `downloads_path`; for a standalone "
+            "track, the audio file itself or a folder holding just that file."
+        ),
+    )
+    allow_fewer_files: bool = Field(
+        default=False,
+        description=(
+            "Proceed even when the source holds fewer audio files than the entry currently has on disk (the "
+            "clean slate would then delete files the source cannot replace). Off by default."
+        ),
+    )
+
 
 # https://fastapi.tiangolo.com/tutorial/query-param-models/#query-parameters-with-a-pydantic-model
-FindMissingSourcePathRequestParams = Annotated[FindMissingSourcePathRequest, Query()]
+CleanSlatePreviewParams = Annotated[CleanSlatePreviewRequest, Query()]
+
+
+class CleanSlateSubmitRequest(CleanSlatePreviewRequest):
+    """
+    Body for starting a clean-slate import: remove the named library entry — its rows, the files inside the
+    beets directory and the album art, like `beet remove -d` — then import `source_path` afresh as an ordinary
+    path import (decisions, abort, quiet mode all apply). Nothing is carried over from the old entry: not its
+    flexible attributes, not its added-date. Option defaults come from the `beets.config` values.
+
+    The removal happens before the import starts; skipping or aborting the import afterwards leaves the entry
+    removed and the source files where they are. Preview first with `GET /api/import/clean_slate/preview`.
+    """
+
+    quiet: bool = Field(
+        default_factory=partial(import_config_flag, "quiet"),
+        description="Run non-interactively (like `beet import -q`). See `ImportSubmitRequest.quiet`.",
+    )
+    logpath: Path | None = Field(
+        default_factory=import_config_logpath,
+        description="Corresponds to the `-l` option, or the config's `import.log` option.",
+    )
+    set_fields: dict[str, str] = Field(
+        default_factory=import_config_set_fields,
+        description="Corresponds to the `--set field=value` option for beets' `import` CLI command.",
+    )
 
 
 class FindMissingSourcePathResponse(BaseModel):
-    """Response model for the `/reimport/find_missing_source_path` endpoint."""
+    """Response model for the `/find_missing_source_path` endpoint."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
