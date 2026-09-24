@@ -22,6 +22,8 @@ pex_binary(
     include_tools=True,
     inherit_path="fallback",
     complete_platforms=["//3rdparty/platforms:linux-amd64"],
+    # enable native pex for faster bootstrapping/startup: https://github.com/pex-tool/pex.rc
+    extra_build_args=["--rc"],
     tags=["pex"],
     dependencies=["//src/python:app-requirements", "//src/python:beetkeeper-whl", "//src/beetsplug:plugin-whl"],
 )
@@ -34,6 +36,8 @@ pex_binary(
     include_tools=True,
     inherit_path="fallback",
     complete_platforms=["//3rdparty/platforms:linux-aarch64"],
+    # enable native pex for faster bootstrapping/startup: https://github.com/pex-tool/pex.rc
+    extra_build_args=["--rc"],
     tags=["pex"],
     dependencies=["//src/python:app-requirements", "//src/python:beetkeeper-whl", "//src/beetsplug:plugin-whl"],
 )
