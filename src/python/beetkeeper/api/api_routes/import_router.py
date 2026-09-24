@@ -10,10 +10,18 @@ import logging
 
 from fastapi import APIRouter, HTTPException, status
 
-from beetkeeper.api.api_models import ImportSubmitRequest, PageQueryParams, ReimportSubmitRequest
+from beetkeeper.api.adapters import find_missing_source_path as _lookup_source_path
+from beetkeeper.api.api_models import (
+    FindMissingSourcePathRequestParams,
+    FindMissingSourcePathResponse,
+    ImportSubmitRequest,
+    PageQueryParams,
+    ReimportSubmitRequest,
+)
 from beetkeeper.api.constants import RouteTag
-from beetkeeper.api.dependencies import ImportStoreDep
+from beetkeeper.api.dependencies import BeetsLibraryDep, DownloaderHookDep, ImportStoreDep
 from beetkeeper.core import ImportDecision, ImportJob
+from beetkeeper.db.session import SessionDep
 
 _LOGGER = logging.getLogger(__name__)
 import_router = APIRouter(prefix="/import", tags=[RouteTag.IMPORT])
@@ -56,6 +64,37 @@ async def start_reimport(body: ReimportSubmitRequest, store: ImportStoreDep) -> 
         move_files=body.move_files,
         write_tags=body.write_tags,
     )
+
+
+@import_router.get("/reimport/find_missing_source_path")
+async def find_missing_source_path(
+    beets_library: BeetsLibraryDep,
+    downloader_hook: DownloaderHookDep,
+    session: SessionDep,
+    req_params: FindMissingSourcePathRequestParams,
+) -> FindMissingSourcePathResponse:
+    """Ask the configured downloader client where a library album/track was originally downloaded to.
+
+    Only useful for entries imported outside a beetkeeper context (so no source path was recorded): the
+    recovered pre-import folder is what a fresh path import of the entry needs. The entry's fields named in
+    the beets config's `beetkeeper.downloader_hook.beets_field_names_to_query_param_names` become the search
+    request's query params (see the `search-missing-source-path` webhook). A match is stored as the entry's
+    *inferred* source path (replacing any earlier inference), which the search page then shows labelled as
+    inferred — separate from source paths recorded from the beetkeeper plugin's events. 409 when no
+    downloader API is configured; 404 for an unknown beets id.
+    """
+    if not downloader_hook.enabled:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No downloader API is configured (see the `beetkeeper.downloader_hook` config section).",
+        )
+    response = await _lookup_source_path(beets_library, downloader_hook, session, req_params)
+    if response is None:
+        kind = "album" if req_params.is_album else "item"
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"No beets {kind} with id {req_params.beets_id}."
+        )
+    return response
 
 
 @import_router.get("")

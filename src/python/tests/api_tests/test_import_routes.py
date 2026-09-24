@@ -4,13 +4,23 @@
 this package's `conftest.py`), so these cover submit/list/get/decision/abort against actual persisted rows.
 """
 
+from pathlib import Path
+
+import httpx
 import pytest
 from httpx import AsyncClient
 
-from beetkeeper.api.dependencies import get_import_store
-from beetkeeper.core import ImportStore
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from .conftest import DependencyOverrides
+from beetkeeper.api.dependencies import get_beets_library, get_downloader_hook, get_import_store
+from beetkeeper.core import BeetsLibrary, ImportStore
+from beetkeeper.db.models import InferredSourcePath
+from beetkeeper.db.session import get_session
+from beetkeeper.hooks import DownloaderHook
+from beetkeeper.settings import DownloaderHookConfSection
+
+from .conftest import DependencyOverrides, SessionOverride
 
 
 @pytest.fixture
@@ -190,3 +200,128 @@ async def test_path_import_is_not_flagged_as_reimport(client: AsyncClient) -> No
     body = (await client.post("/api/import", json={"paths": ["/m/1"]})).json()
     assert body["is_reimport"] is False
     assert body["query"] is None
+
+
+class TestFindMissingSourcePathWithoutHook:
+    @pytest.fixture
+    def app_dependency_overrides(
+        self, import_store: ImportStore, beets_library: BeetsLibrary, get_session_override: SessionOverride
+    ) -> DependencyOverrides:
+        return {
+            get_import_store: lambda: import_store,
+            get_beets_library: lambda: beets_library,
+            get_session: get_session_override,
+        }
+
+    @pytest.mark.anyio
+    async def test_conflicts_without_a_downloader_hook(self, client: AsyncClient) -> None:
+        response = await client.get("/api/import/reimport/find_missing_source_path", params={"beets_album_id": 1})
+        assert response.status_code == 409
+        assert "downloader_hook" in response.json()["detail"]
+
+
+class TestFindMissingSourcePath:
+    """The lookup route against a populated beets library and a mock-transport downloader API."""
+
+    @pytest.fixture
+    def downloader_requests(self) -> list[httpx.Request]:
+        return []
+
+    @pytest.fixture
+    def downloader_hook(self, downloader_requests: list[httpx.Request]) -> DownloaderHook:
+        def handler(request: httpx.Request) -> httpx.Response:
+            downloader_requests.append(request)
+            if request.url.params.get("artist") == "Artist 07":
+                return httpx.Response(200, json=[{"content_path": "/data/complete/Artist 07 - Album"}])
+            return httpx.Response(200, json=[])
+
+        config = DownloaderHookConfSection(
+            base_url="http://qbit.local:8080",
+            search_endpoint_path="/api/v2/torrents/info",
+            beets_field_names_to_query_param_names={"album": "name", "albumartist": "artist"},
+            filepath_json_key="content_path",
+            replace_downloader_paths_prefix="/data/complete",
+        )
+        return DownloaderHook(config, Path("/downloads"), transport=httpx.MockTransport(handler))
+
+    @pytest.fixture
+    def app_dependency_overrides(
+        self,
+        import_store: ImportStore,
+        populated_beets_library: BeetsLibrary,
+        downloader_hook: DownloaderHook,
+        get_session_override: SessionOverride,
+    ) -> DependencyOverrides:
+        return {
+            get_import_store: lambda: import_store,
+            get_beets_library: lambda: populated_beets_library,
+            get_downloader_hook: lambda: downloader_hook,
+            get_session: get_session_override,
+        }
+
+    @pytest.mark.anyio
+    async def test_track_lookup_searches_with_renamed_fields(
+        self, client: AsyncClient, downloader_requests: list[httpx.Request]
+    ) -> None:
+        response = await client.get("/api/import/reimport/find_missing_source_path", params={"beets_item_id": 8})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["found_match"] is True
+        assert body["source_directory"] == "/downloads/Artist 07 - Album"
+        assert body["search_status_code"] == 200
+        assert body["query_params"] == {"name": "Album", "artist": "Artist 07"}
+        assert body["recorded_inference"] is True
+
+        (request,) = downloader_requests
+        assert request.url.path == "/api/v2/torrents/info"
+        assert dict(request.url.params) == {"name": "Album", "artist": "Artist 07"}
+
+    @pytest.mark.anyio
+    async def test_album_lookup_reports_no_match(
+        self, client: AsyncClient, populated_beets_library: BeetsLibrary
+    ) -> None:
+        # The synthetic library holds items only; add one album so an album id resolves.
+        from beets.library import Item, Library
+
+        library = Library(str(populated_beets_library._beets_config_filepath.parent / "lib.db"))
+        album = library.add_album([Item(album="Other", albumartist="Someone", path=b"/music/o.mp3")])
+
+        body = (
+            await client.get("/api/import/reimport/find_missing_source_path", params={"beets_album_id": album.id})
+        ).json()
+        assert body["found_match"] is False
+        assert body["source_directory"] is None
+        assert body["detail"] == "No search results."
+
+    @pytest.mark.anyio
+    async def test_match_is_stored_as_an_inference_and_replaced_on_relookup(
+        self, client: AsyncClient, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        for _ in range(2):
+            await client.get("/api/import/reimport/find_missing_source_path", params={"beets_item_id": 8})
+
+        async with session_factory() as session:
+            rows = (await session.execute(select(InferredSourcePath))).scalars().all()
+        (row,) = rows
+        assert (row.subject_type, row.beets_id, row.method) == ("track", 8, "downloader_hook")
+        assert row.source_path == "/downloads/Artist 07 - Album"
+        assert row.query_params_json == '{"name": "Album", "artist": "Artist 07"}'
+
+    @pytest.mark.anyio
+    async def test_no_match_stores_nothing(
+        self, client: AsyncClient, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        body = (await client.get("/api/import/reimport/find_missing_source_path", params={"beets_item_id": 3})).json()
+        assert body["found_match"] is False and body["recorded_inference"] is False
+        async with session_factory() as session:
+            assert (await session.execute(select(InferredSourcePath))).scalars().all() == []
+
+    @pytest.mark.anyio
+    async def test_unknown_id_is_404(self, client: AsyncClient) -> None:
+        response = await client.get("/api/import/reimport/find_missing_source_path", params={"beets_item_id": 999})
+        assert response.status_code == 404
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize("params", [{}, {"beets_album_id": 1, "beets_item_id": 2}, {"beets_item_id": "x"}])
+    async def test_exactly_one_id_is_required(self, client: AsyncClient, params: dict[str, str | int]) -> None:
+        assert (await client.get("/api/import/reimport/find_missing_source_path", params=params)).status_code == 422

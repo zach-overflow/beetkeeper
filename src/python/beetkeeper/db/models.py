@@ -7,7 +7,7 @@ Model definitions should be subclassed from `SQLModel` rather than SQLAlchemy mo
 # https://sqlmodel.tiangolo.com/#sql-databases-in-fastapi
 from datetime import datetime
 
-from sqlalchemy import DateTime, Index
+from sqlalchemy import DateTime, Index, UniqueConstraint
 from sqlmodel import AutoString, Field, SQLModel
 
 from beetkeeper.constants import BeetsEventType
@@ -82,6 +82,27 @@ class ImportDestinationPath(SQLModel, table=True):
         default=None, foreign_key="listener_event.event_id", ondelete="CASCADE", index=True
     )
     destination_path: str
+
+
+class InferredSourcePath(SQLModel, table=True):
+    """
+    A library entry's pre-import source path as *inferred* through an opt-in integration (`beetkeeper.hooks`),
+    for entries whose import the beetkeeper plugin never reported.
+
+    Deliberately separate from the event-backed `import_source_path` ledger: recorded paths come exclusively
+    from plugin events, and an inference is a best guess the UI labels as such. One row per entry (a fresh
+    lookup replaces it). `subject_type` is `album` or `track`; `method` names the integration that answered.
+    """
+
+    __tablename__ = "inferred_source_path"
+    __table_args__ = (UniqueConstraint("subject_type", "beets_id", name="uq_inferred_source_path_subject"),)
+    id: int | None = Field(default=None, primary_key=True)
+    subject_type: str
+    beets_id: int
+    source_path: str
+    method: str
+    query_params_json: str | None = Field(default=None)
+    inferred_at: datetime = Field(sa_type=DateTime)
 
 
 # TODO: draft — not wired up yet. Re-enable once it has a migration and a valid `import_job` FK

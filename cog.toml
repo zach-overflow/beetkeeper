@@ -13,6 +13,7 @@ scopes = [
   "dev",
   "search",
   "events",
+  "hooks",
   "import",
   "plugin",
   "web-ui",
