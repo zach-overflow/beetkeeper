@@ -15,6 +15,9 @@ pytest-socket>=0.8.1
 pytest-xdist>=3.8.0
 ruamel-yaml>=0.19.1
 ruff>=0.16.6
+setuptools>=84.0.0
+setuptools-scm>=10.3.4,<11
+
 tomlkit
 
 mike>=2.1.3

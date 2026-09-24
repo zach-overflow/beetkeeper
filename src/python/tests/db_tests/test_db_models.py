@@ -15,7 +15,7 @@ from beetkeeper.db.models import AlbumEvent, ListenerEvent
 
 
 async def _insert_listener_event(session: AsyncSession, event_type: str) -> ListenerEvent:
-    event = ListenerEvent(event_type=event_type, pushed_at=datetime.now(UTC))
+    event = ListenerEvent(event_type=event_type, pushed_at=datetime.now(UTC))  # type: ignore[arg-type]
     session.add(event)
     await session.commit()
     await session.refresh(event)
