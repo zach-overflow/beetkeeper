@@ -1,7 +1,7 @@
 # Build-only pyproject for `src/beetsplug:plugin-whl`: with `generate_setup=False`, setuptools reads this
 # file directly, so the `[project]` metadata below is hand-maintained and must stay in sync with the app's.
 [build-system]
-requires = ["setuptools>=80.9"]
+requires = ["setuptools>=84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]

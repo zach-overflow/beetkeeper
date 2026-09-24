@@ -2,7 +2,7 @@
 # file directly and Pants does no dependency inference — the `[project]` deps below are hand-maintained and
 # must match what the code imports.
 [build-system]
-requires = ["setuptools>=80.9"]
+requires = ["setuptools>=84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]

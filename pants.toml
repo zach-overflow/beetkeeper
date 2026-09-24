@@ -51,6 +51,12 @@ tools = ["docker-credential-desktop"]
 [docker.registries.ghcr]
 address = "ghcr.io"
 
+[setuptools]
+install_from_resolve = "tools-resolve"
+
+[setuptools-scm]
+install_from_resolve = "tools-resolve"
+
 [tailor]
 build_file_name = "BUILD"
 
