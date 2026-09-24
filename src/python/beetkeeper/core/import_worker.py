@@ -12,9 +12,9 @@ interactive `choose_*` hooks run in beets' own threads. Those reach the event lo
 `BlockingPortal`; from the loop, decisions are exchanged through the DB (so a decision POST handled by ANY
 process is seen by the leader). beets dev docs: https://beets.readthedocs.io/en/v2.12.0/dev/importer.html
 
-A job is either a path import or a library-mode reimport (`ImportJob.query`, i.e. `beet import -L`): the same
-session and decision flow, fed by a library query instead of paths, plus a prior-vs-new diff of what changed
-(`core.reimport_diff`). https://beets.readthedocs.io/en/stable/reference/cli.html#reimporting
+A clean-slate job (`ImportJob.is_clean_slate`) is a path import preceded by the removal of one existing
+library entry — `beet remove -d` followed by `beet import` of the entry's raw source folder — so the same
+session and decision flow applies; the removal itself lives in `core.clean_slate`.
 """
 
 import copy
@@ -23,6 +23,7 @@ import os
 import socket
 import threading
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 from uuid import uuid4
@@ -31,15 +32,17 @@ import anyio
 from anyio import to_thread
 from anyio.from_thread import BlockingPortal
 
-# Subclassing requires the class at definition time; beets is a hard dependency. `Album`/`Item`/`ImportTask`
-# must be runtime imports (not TYPE_CHECKING): beets inspects listener signatures on registration, evaluating
-# the parameter annotations.
-from beets.importer import Action, DuplicateAction, ImportSession, ImportTask
+# Subclassing requires the class at definition time; beets is a hard dependency. `Album`/`Item` must be
+# runtime imports (not TYPE_CHECKING): beets inspects listener signatures on registration, evaluating the
+# parameter annotations.
+from beets.importer import Action, DuplicateAction, ImportSession
 from beets.library import Album, Item, Library  # noqa: TC002
 from beets.plugins import BeetsPlugin
 from beets.util import bytestring_path
 
+from beetkeeper.core.clean_slate import CleanSlateError, RemovedEntry, preview, remove_entry, require_ok, saved_id
 from beetkeeper.core.import_jobs import (  # pants: no-infer-dep
+    CleanSlateTarget,
     DecisionRequest,
     ImportAction,
     ImportCandidate,
@@ -48,10 +51,8 @@ from beetkeeper.core.import_jobs import (  # pants: no-infer-dep
     ImportJobStatus,
 )
 from beetkeeper.core.library import failed_plugin_names, library_write_limiter, open_library
-from beetkeeper.core.reimport_diff import ReimportDiffCollector
 
 if TYPE_CHECKING:
-    from beetkeeper.core.import_jobs import ReimportReport
     from beetkeeper.core.import_store import ImportStore
 
 _LOGGER = logging.getLogger(__name__)
@@ -95,6 +96,12 @@ class _OutputBuffer:
         """Append one line of output (callable from any beets pipeline thread)."""
         with self._lock:
             self._lines.append(line)
+            self._version += 1
+
+    def extend_lines(self, lines: Sequence[str]) -> None:
+        """Append several indented lines under the previous one (a list in the narrative)."""
+        with self._lock:
+            self._lines.extend(f"  {line}" for line in lines)
             self._version += 1
 
     def snapshot(self) -> tuple[int, str]:
@@ -266,19 +273,15 @@ def _track_candidate(index: int, match: Any) -> ImportCandidate:
 def _session_config_overrides(job: ImportJob) -> dict[str, object]:
     """The job's overrides for the `import` config keys beets reads from `ImportSession.config`.
 
-    `move_files=False` is `beet import -C -M` (retag in place). `move_files=True` forces `move`: beets
-    relocates an already-in-library file to match its new tags under both `copy` and `move`, so this only
-    makes the relocation independent of which one the beets config happens to enable.
+    A clean slate additionally pins `incremental` off — its source folder was, in all likelihood, imported
+    before, and beets' incremental mode would silently skip it by path history — plus `resume` off, one task
+    per folder (no album grouping), and singleton mode when the entry being replaced is a standalone track.
     """
     overrides: dict[str, object] = {"group_albums": job.group_albums, "flat": job.flat}
-    if job.query is not None:
-        overrides["singletons"] = job.singletons
-    if job.move_files is True:
-        overrides["move"] = True
-    elif job.move_files is False:
-        overrides.update(dict.fromkeys(("copy", "move", "link", "hardlink", "reflink"), False))
-    if job.write_tags is not None:
-        overrides["write"] = job.write_tags
+    if job.is_clean_slate:
+        overrides.update(
+            group_albums=False, incremental=False, resume=False, singletons=job.clean_slate_item_id is not None
+        )
     return overrides
 
 
@@ -376,20 +379,15 @@ class WebImportSession(ImportSession):
         output: _OutputBuffer,
         quiet: bool = False,
         loghandler: logging.Handler | None = None,
-        query: Sequence[str] | None = None,
         config_overrides: Mapping[str, object] | None = None,
     ) -> None:
         """Construct the beets session and stash the async-bridge handles used by the decision hooks.
 
-        `loghandler`, when given, becomes the session logger's handler — beets' `-l` import log. A non-None
-        `query` (beets query parts; empty matches everything) runs the session in library mode (`-L`),
-        reimporting the matching library entries instead of `paths`. `config_overrides` are applied to the
-        session's detached `import` config (see `set_config`).
+        `loghandler`, when given, becomes the session logger's handler — beets' `-l` import log.
+        `config_overrides` are applied to the session's detached `import` config (see `set_config`).
         """
         # beets stores paths as bytes; `ImportSession.__init__(lib, loghandler, paths, query)`.
-        super().__init__(
-            library, loghandler, [bytestring_path(p) for p in paths], list(query) if query is not None else None
-        )
+        super().__init__(library, loghandler, [bytestring_path(p) for p in paths], None)
         self._job_id = job_id
         self._portal = portal
         self._bridge = bridge
@@ -401,11 +399,10 @@ class WebImportSession(ImportSession):
     def set_config(self, config: Any) -> None:
         """Run the session on a detached copy of beets' `import` config, with the job's overrides applied.
 
-        beets reads these keys live for the whole run (`copy`/`move`/`write` once per task), and its global
-        config is mutated underneath a running import: every `open_library` re-applies the user's config
-        file on top, which would silently undo a job's overrides (e.g. flip a retag-in-place reimport back
-        to moving files). The copy also keeps beets' own implied edits here (`resume`, `incremental`,
-        `copy`, ...) from leaking into later jobs. `config` is ignored: beets always passes the global view.
+        beets reads these keys live for the whole run (`copy`/`move`/`write` once per task) from the global
+        config, which other requests may touch underneath a running import; the copy keeps the job's
+        overrides (and beets' own implied edits: `resume`, `incremental`, `copy`, ...) from being undone
+        mid-run or leaking into later jobs. `config` is ignored: beets always passes the global view.
         """
         from beets import config as beets_config
 
@@ -556,27 +553,30 @@ class _ImportNarrator:
     job (it POSTs them to `/api/events`); the server never records import events on its own.
     """
 
-    def __init__(self, output: _OutputBuffer, *, reimport: bool = False) -> None:
+    def __init__(self, output: _OutputBuffer) -> None:
         """Bind the narrator to the job's output buffer (for the per-event narrative lines)."""
         self._lock = threading.Lock()
         self._output = output
         self._imported_count = 0
-        self._verb = "Reimported" if reimport else "Imported"
+        self.imported_album_ids: list[int] = []
+        self.imported_item_ids: list[int] = []
 
     def album_imported(self, album: Album) -> None:
         """Narrate one imported album and its track count."""
         item_count = len(list(album.items()))
         with self._lock:
             self._imported_count += 1
+            self.imported_album_ids.append(saved_id(album))
         self._output.append(
-            f"{self._verb} album: {album.albumartist or '?'} - {album.album or '?'} ({item_count} track(s))."
+            f"Imported album: {album.albumartist or '?'} - {album.album or '?'} ({item_count} track(s))."
         )
 
     def item_imported(self, item: Item) -> None:
         """Narrate one imported standalone (singleton) track."""
         with self._lock:
             self._imported_count += 1
-        self._output.append(f"{self._verb} standalone track: {item.artist or '?'} - {item.title or '?'}.")
+            self.imported_item_ids.append(saved_id(item))
+        self._output.append(f"Imported standalone track: {item.artist or '?'} - {item.title or '?'}.")
 
     @property
     def imported_count(self) -> int:
@@ -586,26 +586,21 @@ class _ImportNarrator:
 
 
 class _ImportEventsPlugin(BeetsPlugin):
-    """Routes beets' import events to the currently-running job's narrator and reimport diff collector.
+    """Routes beets' `album_imported`/`item_imported` events to the currently-running job's narrator.
 
     beets dispatches events from the process-global `BeetsPlugin.listeners` registry, which has no
     unregister API — so exactly one instance is created lazily (`_import_events`) and lives for the
     process, forwarding to whichever narrator is installed on `self.narrator`. The worker runs at most
     one import at a time per process, so a single slot suffices; events with no narrator installed
-    (imports run by other beets clients while we're idle) are ignored. The per-task events
-    (`import_task_created`/`_choice`/`_files`) feed `self.reimport_diff`, installed only for reimport jobs.
+    (imports run by other beets clients while we're idle) are ignored.
     """
 
     def __init__(self) -> None:
         """Register the import-event listeners (a one-time, process-global side effect)."""
         super().__init__(name="beetkeeper")
         self.narrator: _ImportNarrator | None = None
-        self.reimport_diff: ReimportDiffCollector | None = None
         self.register_listener("album_imported", self._on_album_imported)
         self.register_listener("item_imported", self._on_item_imported)
-        self.register_listener("import_task_created", self._on_task_created)
-        self.register_listener("import_task_choice", self._on_task_choice)
-        self.register_listener("import_task_files", self._on_task_files)
 
     def _on_album_imported(self, lib: Library, album: Album) -> None:
         if self.narrator is not None:
@@ -614,18 +609,6 @@ class _ImportEventsPlugin(BeetsPlugin):
     def _on_item_imported(self, lib: Library, item: Item) -> None:
         if self.narrator is not None:
             self.narrator.item_imported(item)
-
-    def _on_task_created(self, session: ImportSession, task: ImportTask) -> list[ImportTask] | None:
-        # beets replaces the task with whatever a listener returns; None leaves it untouched.
-        return self.reimport_diff.task_created(task) if self.reimport_diff is not None else None
-
-    def _on_task_choice(self, session: ImportSession, task: ImportTask) -> None:
-        if self.reimport_diff is not None:
-            self.reimport_diff.task_choice(task)
-
-    def _on_task_files(self, session: ImportSession, task: ImportTask) -> None:
-        if self.reimport_diff is not None:
-            self.reimport_diff.task_files(task)
 
 
 # The singleton lives in a dict so it can be set without `global` (mirrors `library._plugins_state`).
@@ -641,6 +624,19 @@ def _import_events() -> _ImportEventsPlugin:
         return _import_events_state["plugin"]
 
 
+@dataclass
+class _ImportRunResult:
+    """What one `_run_import_blocking` did, for the post-run bookkeeping on the event loop.
+
+    Filled in as the run progresses (the caller keeps a reference), so a clean slate's removal is known even
+    when the import that follows raises.
+    """
+
+    removed: RemovedEntry | None = None
+    imported_album_ids: list[int] = field(default_factory=list)
+    imported_item_ids: list[int] = field(default_factory=list)
+
+
 class ImportWorker:
     """Per-process import runner; only the lease holder actually runs imports (see module docstring).
 
@@ -648,10 +644,15 @@ class ImportWorker:
     the shared `ImportStore` (not this object), so they work no matter which process handles the request.
     """
 
-    def __init__(self, beets_config_filepath: Path, store: ImportStore) -> None:
-        """Create the worker over the shared store; mint a unique-per-process worker id."""
+    def __init__(self, beets_config_filepath: Path, store: ImportStore, downloads_path: Path | None = None) -> None:
+        """Create the worker over the shared store; mint a unique-per-process worker id.
+
+        `downloads_path` (beetkeeper's `downloads_path` setting) bounds clean-slate source folders; a clean-slate
+        job fails up front when it is unset.
+        """
         self._beets_config_filepath = beets_config_filepath
         self._store = store
+        self._downloads_path = downloads_path
         self._bridge = DecisionBridge(store)
         self._worker_id = f"{socket.gethostname()}:{os.getpid()}:{uuid4().hex[:8]}"
         self._was_leader = False
@@ -697,8 +698,8 @@ class ImportWorker:
 
     async def _run_job(self, job: ImportJob, portal: BlockingPortal) -> None:
         output = _OutputBuffer()
-        reimport_diff = ReimportDiffCollector(output.append) if job.query is not None else None
         failure: Exception | None = None
+        result = _ImportRunResult()
         async with anyio.create_task_group() as task_group:
             task_group.start_soon(self._renew_lease_until_cancelled)
             # Flush the growing output to the DB so anyone polling the job renders progress live.
@@ -709,7 +710,7 @@ class ImportWorker:
                 # `library_write_limiter` for the duration upholds the app-wide invariant that at most
                 # one beets-library writer exists (the UI's modify/remove wait until the import ends).
                 await to_thread.run_sync(
-                    self._run_import_blocking, job, portal, output, reimport_diff, limiter=library_write_limiter
+                    self._run_import_blocking, job, portal, output, result, limiter=library_write_limiter
                 )
             except Exception as exc:  # keep the worker alive; the failure lands on the job below
                 failure = exc
@@ -728,25 +729,31 @@ class ImportWorker:
         if failure is not None:
             _LOGGER.error(f"Import job {job.id} failed.", exc_info=failure)
             output.append(f"Import failed: {failure}")
-        await self._finalize_job(
-            job.id,
-            output,
-            status,
-            error=str(failure) if failure is not None else None,
-            # Persisted for failed/aborted jobs too: the entries reimported before the stop still changed.
-            reimport_report=reimport_diff.report() if reimport_diff is not None else None,
-        )
+        await self._finalize_job(job.id, output, status, error=str(failure) if failure is not None else None)
+        if result.removed is not None:
+            await self._retarget_inferences(job, result)
+
+    async def _retarget_inferences(self, job: ImportJob, result: _ImportRunResult) -> None:
+        """Move the clean-slated entry's inferred source path onto its fresh import, or drop it (best-effort).
+
+        Guarded like the other post-import bookkeeping: a failure here is logged and never fails the job,
+        whose library changes are already done.
+        """
+        removed = result.removed
+        assert removed is not None
+        imported = result.imported_album_ids if removed.target.subject == "album" else result.imported_item_ids
+        new_id = imported[0] if len(imported) == 1 else None
+        try:
+            await self._store.retarget_inferred_source_paths(
+                removed.target.subject, removed.target.beets_id, new_id, removed.item_ids
+            )
+        except Exception:
+            _LOGGER.warning(f"Re-keying the inferred source path after clean-slate job {job.id} failed.", exc_info=True)
 
     async def _finalize_job(
-        self,
-        job_id: str,
-        output: _OutputBuffer,
-        status: ImportJobStatus,
-        *,
-        error: str | None,
-        reimport_report: ReimportReport | None = None,
+        self, job_id: str, output: _OutputBuffer, status: ImportJobStatus, *, error: str | None
     ) -> None:
-        """Persist the job's final output, reimport report (if any) and terminal status, retrying DB errors.
+        """Persist the job's final output and terminal status, retrying DB errors.
 
         Losing the terminal write would leave the job RUNNING forever: `claim_next` only claims PENDING
         jobs and `recover_orphans` spares this worker's own claims, so nothing else could repair it while
@@ -755,8 +762,6 @@ class ImportWorker:
         for attempt in range(1, _FINALIZE_ATTEMPTS + 1):
             try:
                 await self._store.set_output(job_id, output.snapshot()[1])
-                if reimport_report is not None:
-                    await self._store.set_reimport_report(job_id, reimport_report)
                 await self._store.set_status(job_id, status, error=error)
                 return
             except Exception:
@@ -806,22 +811,20 @@ class ImportWorker:
             last_version = version
 
     def _run_import_blocking(
-        self,
-        job: ImportJob,
-        portal: BlockingPortal,
-        output: _OutputBuffer,
-        reimport_diff: ReimportDiffCollector | None = None,
-    ) -> None:
-        """Open the library, run the beets import (or library reimport) to completion, and narrate it.
+        self, job: ImportJob, portal: BlockingPortal, output: _OutputBuffer, result: _ImportRunResult | None = None
+    ) -> _ImportRunResult:
+        """Open the library, run the clean-slate removal (if any) and the beets import to completion, narrating.
 
         Executes in a worker thread (beets connections are thread-local). The added albums/items are
         narrated through beets' own `album_imported`/`item_imported` events (fired by the pipeline as each
         task lands — see `_ImportEventsPlugin`). beets warnings/errors during the run are funneled into
-        `output` alongside the session's own narrative lines.
+        `output` alongside the session's own narrative lines. A clean slate that fails its guard raises before
+        the library is touched, failing the job. `result` (a fresh one when omitted) is filled in as the run
+        progresses and returned.
         """
-        if job.query is not None:
-            scope = "singleton tracks" if job.singletons else "albums"
-            output.append(f"Starting reimport of library {scope} matching: {' '.join(job.query) or '(entire library)'}")
+        result = result if result is not None else _ImportRunResult()
+        if job.is_clean_slate:
+            output.append(f"Starting clean-slate import of: {', '.join(job.paths)}")
         else:
             output.append(f"Starting import of: {', '.join(job.paths)}")
         handler = _BufferLogHandler(output)
@@ -834,6 +837,8 @@ class ImportWorker:
             for warning in (_failed_plugins_warning(), _metadata_source_warning()):
                 if warning is not None:
                     output.append(warning)
+            if job.is_clean_slate:
+                result.removed = self._clean_slate_blocking(job, library, output)
             _apply_job_import_config(job)
             loghandler = _job_loghandler(job)
             session = WebImportSession(
@@ -846,25 +851,64 @@ class ImportWorker:
                 output=output,
                 quiet=job.quiet,
                 loghandler=loghandler,
-                query=job.query,
                 config_overrides=_session_config_overrides(job),
             )
             events = _import_events()
-            narrator = _ImportNarrator(output, reimport=job.query is not None)
+            narrator = _ImportNarrator(output)
             events.narrator = narrator
-            events.reimport_diff = reimport_diff
             try:
                 session.run()  # blocks until beets' pipeline finishes (or drains via cooperative SKIP on abort)
             finally:
                 events.narrator = None
-                events.reimport_diff = None
                 if loghandler is not None:
                     loghandler.close()
             if narrator.imported_count == 0:
                 output.append(
-                    "No library entries were reimported."
-                    if job.query is not None
+                    f"Nothing was imported. The removed entry is gone from the library; its source files remain at "
+                    f"{job.paths[0]} for a later import."
+                    if result.removed is not None
                     else "No new items were added to the library."
                 )
+            result.imported_album_ids = list(narrator.imported_album_ids)
+            result.imported_item_ids = list(narrator.imported_item_ids)
+            return result
         finally:
             beets_logger.removeHandler(handler)
+
+    def _clean_slate_blocking(self, job: ImportJob, library: Library, output: _OutputBuffer) -> RemovedEntry:
+        """Re-run the clean-slate preview as the guard, narrate the plan, then remove the entry.
+
+        Raises `CleanSlateError` (failing the job, library untouched) when the entry or source changed since
+        the job was submitted in a way the preview rejects.
+        """
+        if self._downloads_path is None:
+            raise CleanSlateError("invalid", "This worker has no downloads_path configured; clean slates need one.")
+        if len(job.paths) != 1:
+            raise CleanSlateError("invalid", "A clean-slate job imports exactly one source path.")
+        target = CleanSlateTarget.from_ids(job.clean_slate_album_id, job.clean_slate_item_id)
+        plan = preview(
+            library,
+            target,
+            job.paths[0],
+            downloads_path=self._downloads_path,
+            allow_fewer_files=job.clean_slate_allow_fewer_files,
+        )
+        require_ok(plan)
+        output.append(
+            f"Clean slate for {plan.subject} '{plan.label}' (#{plan.beets_id}): {plan.item_count} library row(s), "
+            f"{plan.files_present} file(s) on disk, {plan.files_missing} missing; the source folder holds "
+            f"{plan.source_audio_files} audio file(s)."
+        )
+        if plan.files_to_delete:
+            output.append(f"Deleting {len(plan.files_to_delete)} library file(s):")
+            output.extend_lines(plan.files_to_delete)
+        if plan.art_to_delete:
+            output.append(f"Deleting album art: {plan.art_to_delete}")
+        if plan.files_kept_outside_library:
+            output.append(f"Leaving {len(plan.files_kept_outside_library)} file(s) outside the library untouched:")
+            output.extend_lines(plan.files_kept_outside_library)
+        if plan.flexible_attributes_lost:
+            output.append(f"Flexible attributes not carried over: {', '.join(plan.flexible_attributes_lost)}.")
+        for warning in plan.warnings:
+            output.append(f"Warning: {warning}")
+        return remove_entry(library, target, job.paths[0], narrate=output.append)

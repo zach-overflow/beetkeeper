@@ -177,14 +177,11 @@ class ImportJobRecord(SQLModel, table=True):
     group_albums: bool = Field(default=False)
     flat: bool = Field(default=False)
     set_fields_json: str | None = Field(default=None)
-    # Library-mode reimport (`beet import -L`): `query_json` is a JSON list of beets query parts, NULL for a
-    # path import (an empty list is a valid query matching the whole library). `move_files`/`write_tags` are
-    # NULL when the job defers to the beets config. `reimport_report_json` is a serialized `ReimportReport`.
-    query_json: str | None = Field(default=None)
-    singletons: bool = Field(default=False)
-    move_files: bool | None = Field(default=None)
-    write_tags: bool | None = Field(default=None)
-    reimport_report_json: str | None = Field(default=None)
+    # Clean slate: the beets album (or standalone item) removed before `paths` is imported afresh. At most one
+    # is set (see `core.clean_slate`); both NULL means a plain path import.
+    clean_slate_album_id: int | None = Field(default=None)
+    clean_slate_item_id: int | None = Field(default=None)
+    clean_slate_allow_fewer_files: bool = Field(default=False)
     # Serialized `DecisionRequest` the worker is parked on; serialized `ImportDecision` the UI posted back.
     pending_decision_json: str | None = Field(default=None)
     submitted_decision_json: str | None = Field(default=None)

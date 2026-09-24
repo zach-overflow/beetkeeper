@@ -5,11 +5,11 @@ Integration model (decided): beetkeeper drives beets **in-process via its Python
 `beet` CLI — beetkeeper and beets are co-located, and in-process access is required for the interactive
 importer. See `beetkeeper.core.library` for the rationale and concurrency rules.
 
-  * `library`        — async facade for one-shot ops (query / modify / remove / stats).
+  * `library`        — async facade for one-shot ops (query / file health / clean-slate preview / stats).
   * `import_jobs`    — job status/action enums + decision DTOs + the `ImportJob` view (no beets imports).
   * `import_store`   — DB-backed, cross-process job store + the leader lock.
-  * `import_worker`  — the leader-elected worker that runs interactive imports (and library reimports).
-  * `reimport_diff`  — prior-vs-new field diffing for reimports (`ReimportReport`).
+  * `import_worker`  — the leader-elected worker that runs interactive imports (and clean slates).
+  * `clean_slate`    — remove a library entry, then import its raw source folder afresh.
 
 beets dev docs: https://beets.readthedocs.io/en/v2.12.0/dev/
 
@@ -24,13 +24,14 @@ Remaining beets-detail TODOs are marked inline (DTO mapping, duplicate resolutio
 """
 
 from beetkeeper.core.import_jobs import (
+    CleanSlatePreview,
+    CleanSlateTarget,
     DecisionRequest,
     ImportAction,
     ImportCandidate,
     ImportDecision,
     ImportJob,
     ImportJobStatus,
-    ReimportReport,
 )
 from beetkeeper.core.import_store import ImportStore
 from beetkeeper.core.import_worker import ImportWorker
@@ -38,6 +39,8 @@ from beetkeeper.core.library import BeetsLibrary
 
 __all__ = [
     "BeetsLibrary",
+    "CleanSlatePreview",
+    "CleanSlateTarget",
     "DecisionRequest",
     "ImportAction",
     "ImportCandidate",
@@ -46,5 +49,4 @@ __all__ = [
     "ImportJobStatus",
     "ImportStore",
     "ImportWorker",
-    "ReimportReport",
 ]

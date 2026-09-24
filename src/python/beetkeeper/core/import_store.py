@@ -24,12 +24,12 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col
 
-from beetkeeper.core.import_jobs import DecisionRequest, ImportDecision, ImportJob, ImportJobStatus, ReimportReport
-from beetkeeper.db.models import ImportJobRecord, ImportLock
+from beetkeeper.core.import_jobs import CleanSlateSubject, DecisionRequest, ImportDecision, ImportJob, ImportJobStatus
+from beetkeeper.db.models import ImportJobRecord, ImportLock, InferredSourcePath
 from beetkeeper.db.session import shielded_session
 
 if TYPE_CHECKING:
@@ -89,13 +89,9 @@ class ImportStore:
             group_albums=record.group_albums,
             flat=record.flat,
             set_fields=json.loads(record.set_fields_json) if record.set_fields_json else {},
-            query=json.loads(record.query_json) if record.query_json is not None else None,
-            singletons=record.singletons,
-            move_files=record.move_files,
-            write_tags=record.write_tags,
-            reimport_report=(
-                ReimportReport.model_validate_json(record.reimport_report_json) if record.reimport_report_json else None
-            ),
+            clean_slate_album_id=record.clean_slate_album_id,
+            clean_slate_item_id=record.clean_slate_item_id,
+            clean_slate_allow_fewer_files=record.clean_slate_allow_fewer_files,
         )
 
     async def create(
@@ -107,10 +103,9 @@ class ImportStore:
         group_albums: bool = False,
         flat: bool = False,
         set_fields: Mapping[str, str] | None = None,
-        query: Sequence[str] | None = None,
-        singletons: bool = False,
-        move_files: bool | None = None,
-        write_tags: bool | None = None,
+        clean_slate_album_id: int | None = None,
+        clean_slate_item_id: int | None = None,
+        clean_slate_allow_fewer_files: bool = False,
     ) -> ImportJob:
         """Insert a new PENDING job and return its view.
 
@@ -118,11 +113,12 @@ class ImportStore:
         non-interactively (`-q`), plus `logpath` (`-l`), `group_albums`, `flat`, and `set_fields` (`--set`).
         Each job keeps the values it was submitted with, so concurrent/ad-hoc imports can differ.
 
-        A non-None `query` makes the job a library-mode reimport (`-L`) of the entries matching those beets
-        query parts (`paths` is then empty, and an empty query matches the whole library). `singletons`
-        (`-s`) matches tracks instead of albums; `move_files`/`write_tags` override the beets config's file
-        handling (None defers to it).
+        `clean_slate_album_id` / `clean_slate_item_id` (at most one) name the library entry the worker removes
+        before importing `paths` — its raw source folder — afresh (see `core.clean_slate`);
+        `clean_slate_allow_fewer_files` records the submitter's opt-in to a source with fewer files.
         """
+        if clean_slate_album_id is not None and clean_slate_item_id is not None:
+            raise ValueError("A clean slate names an album or a standalone track, not both.")
         _LOGGER.debug("Creating ImportJob ...")
         now = _utcnow()
         record = ImportJobRecord(
@@ -136,10 +132,9 @@ class ImportStore:
             group_albums=group_albums,
             flat=flat,
             set_fields_json=json.dumps(dict(set_fields)) if set_fields else None,
-            query_json=json.dumps(list(query)) if query is not None else None,
-            singletons=singletons,
-            move_files=move_files,
-            write_tags=write_tags,
+            clean_slate_album_id=clean_slate_album_id,
+            clean_slate_item_id=clean_slate_item_id,
+            clean_slate_allow_fewer_files=clean_slate_allow_fewer_files,
         )
         async with self._session() as session:
             session.add(record)
@@ -182,14 +177,42 @@ class ImportStore:
             )
             await session.commit()
 
-    async def set_reimport_report(self, job_id: str, report: ReimportReport) -> None:
-        """Persist a reimport job's prior-vs-new diff report (the leader writes this as the job ends)."""
+    async def retarget_inferred_source_paths(
+        self, subject: CleanSlateSubject, old_id: int, new_id: int | None, old_item_ids: Sequence[int]
+    ) -> None:
+        """Move a clean-slated entry's inferred source path onto the id its fresh import got, or drop it.
+
+        beets re-numbers rows on every import, so after a clean slate the inference stored under the old id
+        would dangle (or, since beets reuses freed ids, attach to an unrelated entry later). When the import
+        produced exactly one new entry (`new_id`) the inference moves with it — the folder it names is what
+        was just imported — otherwise it is deleted. Inferences for the removed album's tracks are dropped.
+        """
+        stale_track_ids = set(old_item_ids) - ({old_id} if subject == "track" else set())
         async with self._session() as session:
-            await session.execute(
-                update(ImportJobRecord)
-                .where(col(ImportJobRecord.id) == job_id)
-                .values(reimport_report_json=report.model_dump_json(), updated_at=_utcnow())
-            )
+            if stale_track_ids:
+                await session.execute(
+                    delete(InferredSourcePath).where(
+                        col(InferredSourcePath.subject_type) == "track",
+                        col(InferredSourcePath.beets_id).in_(stale_track_ids),
+                    )
+                )
+            row = (
+                await session.execute(
+                    select(InferredSourcePath).where(
+                        col(InferredSourcePath.subject_type) == subject, col(InferredSourcePath.beets_id) == old_id
+                    )
+                )
+            ).scalar_one_or_none()
+            if row is not None:
+                if new_id is None:
+                    await session.delete(row)
+                elif new_id != old_id:
+                    await session.execute(
+                        delete(InferredSourcePath).where(
+                            col(InferredSourcePath.subject_type) == subject, col(InferredSourcePath.beets_id) == new_id
+                        )
+                    )
+                    row.beets_id = new_id
             await session.commit()
 
     async def set_awaiting(self, request: DecisionRequest) -> None:

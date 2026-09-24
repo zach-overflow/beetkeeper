@@ -1,39 +1,35 @@
-"""Renders the import job HTMX fragment for a job awaiting a decision, asserting the candidate table HTML.
+"""Renders the import page and its HTMX fragments against a real `ImportStore` over a migrated temp DB.
 
-Backed by a real `ImportStore` over a migrated temp DB (no import worker runs; see this package's
-`conftest.py`); this exercises the full `import_job.html` template, so it also guards against Jinja errors
-in the candidate-table markup.
+No import worker runs (see this package's `conftest.py`); these exercise the full templates (the job
+card's candidate table, the import and clean-slate forms, the clean-slate preview), so they also guard
+against Jinja errors in the markup. `get_user_config` is overridden because the page and the import forms
+read `downloads_path` from it.
 """
 
-import importlib
 from pathlib import Path
 from typing import Any
 
 import pytest
 from httpx import AsyncClient
 
-from beetkeeper.api.dependencies import get_beets_library, get_import_store
+from beetkeeper.api.dependencies import get_beets_library, get_import_store, get_user_config
 from beetkeeper.core import BeetsLibrary, ImportJobStatus, ImportStore
-from beetkeeper.core.import_jobs import (
-    DecisionRequest,
-    FieldChange,
-    ImportAction,
-    ImportCandidate,
-    MissingFilesEntry,
-    ReimportEntry,
-    ReimportReport,
-    TrackChange,
-)
+from beetkeeper.core.import_jobs import DecisionRequest, ImportAction, ImportCandidate
+from beetkeeper.settings import UserConfig
+from tests.conftest import TaggedWavWriter
 
 from .conftest import DependencyOverrides
 
-# importlib because the `ui_routes` package re-exports the router under this name, shadowing the submodule.
-_import_fragments_mod = importlib.import_module("beetkeeper.api.ui_routes.import_ui_fragments_router")
-
 
 @pytest.fixture
-def app_dependency_overrides(import_store: ImportStore) -> DependencyOverrides:
-    return {get_import_store: lambda: import_store}
+def app_dependency_overrides(
+    import_store: ImportStore, beets_library: BeetsLibrary, user_config: UserConfig
+) -> DependencyOverrides:
+    return {
+        get_import_store: lambda: import_store,
+        get_beets_library: lambda: beets_library,
+        get_user_config: lambda: user_config,
+    }
 
 
 @pytest.mark.anyio
@@ -100,6 +96,18 @@ async def test_job_fragment_renders_basename_summary_and_output(client: AsyncCli
 
 
 @pytest.mark.anyio
+async def test_job_fragment_summarises_a_clean_slate_job(client: AsyncClient, import_store: ImportStore) -> None:
+    job = await import_store.create(
+        ["/downloads/Artist - Album"], clean_slate_album_id=7, clean_slate_allow_fewer_files=True, quiet=True
+    )
+
+    html = (await client.get(f"/fragment/import/{job.id}")).text
+
+    assert "clean slate: Artist - Album" in html
+    assert "options: replaces album #7 · quiet · allow fewer files" in html
+
+
+@pytest.mark.anyio
 async def test_active_list_shows_active_jobs_newest_first_and_hides_terminal(
     client: AsyncClient, import_store: ImportStore
 ) -> None:
@@ -120,23 +128,27 @@ async def test_active_list_shows_active_jobs_newest_first_and_hides_terminal(
 
 
 @pytest.mark.anyio
-async def test_import_submit_creates_single_path_job(client: AsyncClient, import_store: ImportStore) -> None:
-    response = await client.post("/fragment/import", data={"path": "  /downloads/Album Y  "})
+async def test_import_submit_creates_single_path_job(
+    client: AsyncClient, import_store: ImportStore, downloads_path: Path
+) -> None:
+    response = await client.post("/fragment/import", data={"path": f"  {downloads_path}/Album Y  "})
 
     assert response.status_code == 200
     assert "Album Y" in response.text
     assert "Src Path:" not in response.text
     jobs = await import_store.list()
     assert len(jobs) == 1
-    assert jobs[0].paths == ["/downloads/Album Y"]
+    assert jobs[0].paths == [f"{downloads_path}/Album Y"]
 
 
 @pytest.mark.anyio
-async def test_import_submit_records_options(client: AsyncClient, import_store: ImportStore) -> None:
+async def test_import_submit_records_options(
+    client: AsyncClient, import_store: ImportStore, downloads_path: Path
+) -> None:
     response = await client.post(
         "/fragment/import",
         data={
-            "path": "/downloads/Album Z",
+            "path": f"{downloads_path}/Album Z",
             "quiet": "on",
             "group_albums": "on",
             "flat": "on",
@@ -156,9 +168,9 @@ async def test_import_submit_records_options(client: AsyncClient, import_store: 
 
 @pytest.mark.anyio
 async def test_import_submit_without_options_leaves_settings_unset(
-    client: AsyncClient, import_store: ImportStore
+    client: AsyncClient, import_store: ImportStore, downloads_path: Path
 ) -> None:
-    response = await client.post("/fragment/import", data={"path": "/downloads/Album Y"})
+    response = await client.post("/fragment/import", data={"path": f"{downloads_path}/Album Y"})
     assert response.status_code == 200
     assert "options:" not in response.text
     (job,) = await import_store.list()
@@ -170,9 +182,11 @@ async def test_import_submit_without_options_leaves_settings_unset(
 @pytest.mark.anyio
 @pytest.mark.parametrize("bad_set_fields", ["genre Jazz", "=Jazz", "genre=Jazz\nnot a pair"])
 async def test_import_submit_rejects_malformed_set_fields(
-    client: AsyncClient, import_store: ImportStore, bad_set_fields: str
+    client: AsyncClient, import_store: ImportStore, downloads_path: Path, bad_set_fields: str
 ) -> None:
-    response = await client.post("/fragment/import", data={"path": "/downloads/Album", "set_fields": bad_set_fields})
+    response = await client.post(
+        "/fragment/import", data={"path": f"{downloads_path}/Album", "set_fields": bad_set_fields}
+    )
     assert response.status_code == 422
     assert await import_store.list() == []
 
@@ -206,152 +220,207 @@ async def test_import_page_defaults_to_unchecked_options(client: AsyncClient) ->
 
 
 @pytest.mark.anyio
+async def test_import_page_is_pinned_to_the_configured_downloads_path(
+    client: AsyncClient, downloads_path: Path
+) -> None:
+    html = (await client.get("/import")).text
+    assert f"must be under <code>{downloads_path}</code>" in html
+    assert f'value="{downloads_path}/" required pattern="{downloads_path}/.+"' in html
+    assert "/downloads/" not in html.replace(str(downloads_path), "")
+    assert "Start from the <a" in html  # the explanatory text pointing at the search page
+    assert 'name="source_path"' not in html, "the clean-slate form only appears once an entry is linked to"
+
+
+@pytest.mark.anyio
 async def test_import_submit_rejects_empty_path(client: AsyncClient) -> None:
     response = await client.post("/fragment/import", data={"path": "   "})
     assert response.status_code == 422
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("bad_path", ["/music/incoming/Album", "/etc/passwd", "/downloads/../etc", "relative/x"])
+@pytest.mark.parametrize(
+    "bad_path", ["/music/incoming/Album", "/etc/passwd", "/downloads/Album", "{root}/../etc", "relative/x"]
+)
 async def test_import_submit_rejects_path_outside_root(
-    client: AsyncClient, import_store: ImportStore, bad_path: str
+    client: AsyncClient, import_store: ImportStore, downloads_path: Path, bad_path: str
 ) -> None:
-    response = await client.post("/fragment/import", data={"path": bad_path})
+    response = await client.post("/fragment/import", data={"path": bad_path.format(root=downloads_path)})
     assert response.status_code == 422
+    assert f"must be under {downloads_path}" in response.json()["detail"]
     assert await import_store.list() == []
 
 
 @pytest.mark.anyio
-async def test_path_suggestions_lists_matching_subdirectories(
-    client: AsyncClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(_import_fragments_mod, "_IMPORT_ROOT", str(tmp_path))
+async def test_path_suggestions_lists_matching_subdirectories(client: AsyncClient, downloads_path: Path) -> None:
     for name in ("Boards of Canada", "Bonobo", "Aphex Twin"):
-        (tmp_path / name).mkdir()
-    (tmp_path / "notes.txt").write_text("x", encoding="utf-8")
+        (downloads_path / name).mkdir()
+    (downloads_path / "notes.txt").write_text("x", encoding="utf-8")
 
-    listed = (await client.get("/fragment/import/path-suggestions", params={"path": f"{tmp_path}/"})).text
-    assert f'value="{tmp_path}/Boards of Canada"' in listed
-    assert f'value="{tmp_path}/Bonobo"' in listed
-    assert f'value="{tmp_path}/Aphex Twin"' in listed
+    listed = (await client.get("/fragment/import/path-suggestions", params={"path": f"{downloads_path}/"})).text
+    assert f'value="{downloads_path}/Boards of Canada"' in listed
+    assert f'value="{downloads_path}/Bonobo"' in listed
+    assert f'value="{downloads_path}/Aphex Twin"' in listed
     assert "notes.txt" not in listed
 
-    filtered = (await client.get("/fragment/import/path-suggestions", params={"path": f"{tmp_path}/bo"})).text
+    filtered = (await client.get("/fragment/import/path-suggestions", params={"path": f"{downloads_path}/bo"})).text
     assert "Boards of Canada" in filtered and "Bonobo" in filtered
     assert "Aphex Twin" not in filtered
 
 
 @pytest.mark.anyio
-async def test_path_suggestions_empty_outside_import_root(
-    client: AsyncClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(_import_fragments_mod, "_IMPORT_ROOT", str(tmp_path))
-    (tmp_path / "Album").mkdir()
+async def test_path_suggestions_empty_outside_import_root(client: AsyncClient, downloads_path: Path) -> None:
+    (downloads_path / "Album").mkdir()
 
-    for path in ("relative/x", "/etc", "/downloads/Album", f"{tmp_path}/../etc"):
+    for path in ("relative/x", "/etc", "/downloads/Album", f"{downloads_path}/../etc"):
         body = (await client.get("/fragment/import/path-suggestions", params={"path": path})).text
         assert body.strip() == "", f"expected no suggestions for {path!r}"
 
 
-@pytest.mark.anyio
-async def test_reimport_submit_creates_library_job(client: AsyncClient, import_store: ImportStore) -> None:
-    response = await client.post(
-        "/fragment/import/reimport",
-        data={"query": 'albumartist:"Boards of Canada" year:1998', "write_tags": "on", "quiet": "on"},
-    )
-    assert response.status_code == 200
-    assert "reimport: albumartist:Boards of Canada year:1998" in response.text
-    assert "retag in place" in response.text
+@pytest.fixture
+def wav_album_library(tmp_path: Path, make_tagged_wav: TaggedWavWriter) -> BeetsLibrary:
+    """A library (config shared with `user_config`) holding one two-track album whose second file is gone."""
+    from beets.library import Item, Library
 
-    (job,) = await import_store.list()
-    assert job.query == ["albumartist:Boards of Canada", "year:1998"]
-    assert job.paths == []
-    assert (job.quiet, job.singletons, job.move_files, job.write_tags) == (True, False, False, True)
-
-
-@pytest.mark.anyio
-async def test_reimport_submit_requires_opt_in_for_the_entire_library(
-    client: AsyncClient, import_store: ImportStore
-) -> None:
-    assert (await client.post("/fragment/import/reimport", data={"query": "  "})).status_code == 422
-    assert await import_store.list() == []
-
-    response = await client.post("/fragment/import/reimport", data={"query": "", "entire_library": "on"})
-    assert response.status_code == 200
-    (job,) = await import_store.list()
-    assert job.query == []
+    beets_config = tmp_path / "beets.yaml"
+    beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n", encoding="utf-8")
+    library = Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
+    items = []
+    for track, title in ((1, "One"), (2, "Two")):
+        path = tmp_path / "music" / "Artist" / "Album" / f"{track:02d} {title}.wav"
+        make_tagged_wav(
+            path, title=title, artist="Artist", albumartist="Artist", album="Album", track=track, tracktotal=2
+        )
+        items.append(Item.from_path(path))
+    library.add_album(items)
+    (tmp_path / "music" / "Artist" / "Album" / "02 Two.wav").unlink()
+    return BeetsLibrary(beets_config)
 
 
-@pytest.mark.anyio
-async def test_job_fragment_renders_reimport_report(client: AsyncClient, import_store: ImportStore) -> None:
-    job = await import_store.create([], query=["album:Geogaddi"])
-    await import_store.set_reimport_report(
-        job.id,
-        ReimportReport(
-            entries=[
-                ReimportEntry(
-                    label="Boards of Canada - Geogaddi",
-                    shared_changes=[FieldChange(field="label", old="Warp", new="")],
-                    tracks=[
-                        TrackChange(
-                            label="Boards of Canada - Gyroscope",
-                            path="/music/boc/04.flac",
-                            changes=[FieldChange(field="title", old="gyroscope", new="Gyroscope")],
-                        )
-                    ],
-                    left_behind=["Boards of Canada - Magic Window"],
-                )
-            ],
-            missing_files=[MissingFilesEntry(label="Bonobo - Black Sands", paths=["/music/bonobo/01.flac"])],
-        ),
-    )
-    await import_store.set_status(job.id, ImportJobStatus.COMPLETED)
-
-    html = (await client.get(f"/fragment/import/{job.id}")).text
-
-    assert "1 reimported, 1 skipped for missing files" in html
-    assert "<del>Warp</del>" in html and "<mark>value lost</mark>" in html
-    assert "<del>gyroscope</del>" in html and "<ins>Gyroscope</ins>" in html
-    assert "1 track(s) were not covered by the chosen match" in html and "Magic Window" in html
-    assert "<code>/music/bonobo/01.flac</code>" in html
-    assert "hx-trigger" not in html
+@pytest.fixture
+def source_folder(downloads_path: Path, make_tagged_wav: TaggedWavWriter) -> Path:
+    folder = downloads_path / "Artist - Album"
+    for track, title in ((1, "One"), (2, "Two")):
+        make_tagged_wav(
+            folder / f"{track:02d} {title}.wav",
+            title=title,
+            artist="Artist",
+            albumartist="Artist",
+            album="Album",
+            track=track,
+            tracktotal=2,
+        )
+    return folder
 
 
-@pytest.mark.anyio
-async def test_import_page_prefills_reimport_form(client: AsyncClient) -> None:
-    html = (await client.get("/import", params={"reimport_query": "id:42", "reimport_singletons": "true"})).text
-
-    assert 'name="query" size="60" autocomplete="off"\n           value="id:42"' in html
-    assert 'name="singletons" checked' in html
-    # beets' shipped defaults (`copy: yes`, `write: yes`) mean a reimport moves files and writes tags.
-    assert 'name="move_files" checked' in html
-    assert 'name="write_tags" checked' in html
-    assert 'name="entire_library" checked' not in html
-
-
-class TestReimportPreview:
+class TestCleanSlateForm:
     @pytest.fixture
     def app_dependency_overrides(
-        self, import_store: ImportStore, populated_beets_library: BeetsLibrary
+        self, import_store: ImportStore, wav_album_library: BeetsLibrary, user_config: UserConfig
     ) -> DependencyOverrides:
-        return {get_import_store: lambda: import_store, get_beets_library: lambda: populated_beets_library}
+        return {
+            get_import_store: lambda: import_store,
+            get_beets_library: lambda: wav_album_library,
+            get_user_config: lambda: user_config,
+        }
 
     @pytest.mark.anyio
-    async def test_counts_matching_standalone_tracks(self, client: AsyncClient) -> None:
-        response = await client.get(
-            "/fragment/import/reimport-preview", params={"query": "artist:'Artist 07'", "singletons": "true"}
+    async def test_import_page_prefills_the_clean_slate_form(self, client: AsyncClient, source_folder: Path) -> None:
+        params: dict[str, str | int] = {"clean_slate_album_id": 1, "clean_slate_source": str(source_folder)}
+        html = (await client.get("/import", params=params)).text
+
+        assert "Entry: <strong>Artist - Album</strong> <small>(album #1)</small>" in html
+        assert '<input type="hidden" name="beets_album_id" value="1">' in html
+        assert f'name="source_path" size="60" readonly value="{source_folder}"' in html
+        assert 'name="allow_fewer_files"' in html
+        assert "/fragment/import/clean-slate-preview" in html and "/fragment/import/clean-slate" in html
+
+    @pytest.mark.anyio
+    async def test_import_page_without_a_source_points_back_to_the_lookup(self, client: AsyncClient) -> None:
+        html = (await client.get("/import", params={"clean_slate_album_id": 1})).text
+        assert "No source folder is known for <strong>Artist - Album</strong>" in html
+        assert "Find via downloader" in html
+        assert 'name="source_path"' not in html
+
+    @pytest.mark.anyio
+    async def test_import_page_labels_an_unknown_entry(self, client: AsyncClient) -> None:
+        html = (await client.get("/import", params={"clean_slate_item_id": 99, "clean_slate_source": "/x"})).text
+        assert "(track not found)" in html
+        assert '<input type="hidden" name="beets_item_id" value="99">' in html
+
+    @pytest.mark.anyio
+    async def test_preview_fragment_renders_the_plan(
+        self, client: AsyncClient, source_folder: Path, tmp_path: Path
+    ) -> None:
+        params: dict[str, str | int] = {"beets_album_id": 1, "source_path": str(source_folder)}
+        response = await client.get("/fragment/import/clean-slate-preview", params=params)
+        assert response.status_code == 200
+        html = response.text
+        assert "<strong>Artist - Album</strong> (album #1)" in html
+        assert "2 library row(s), 1 file(s) on disk," in html and "<mark>1 missing</mark>" in html
+        assert f"<code>{source_folder}</code> holds <strong>2</strong> readable audio file(s)" in html
+        assert f"<code>{tmp_path / 'music' / 'Artist' / 'Album' / '01 One.wav'}</code>" in html
+        assert "Cannot run" not in html and "Tick the option" not in html
+
+    @pytest.mark.anyio
+    async def test_preview_fragment_shows_blocking_errors_and_lookup_failures(
+        self, client: AsyncClient, downloads_path: Path
+    ) -> None:
+        empty = downloads_path / "empty"
+        empty.mkdir()
+        html = (
+            await client.get(
+                "/fragment/import/clean-slate-preview", params={"beets_album_id": 1, "source_path": str(empty)}
+            )
+        ).text
+        assert "<strong>Cannot run:</strong>" in html and "No readable audio files" in html
+
+        missing = (
+            await client.get(
+                "/fragment/import/clean-slate-preview", params={"beets_album_id": 9, "source_path": str(empty)}
+            )
+        ).text
+        assert "<strong>Preview failed:</strong> No beets album with id 9." in missing
+
+    @pytest.mark.anyio
+    async def test_submit_creates_the_job_and_renders_its_card(
+        self, client: AsyncClient, import_store: ImportStore, source_folder: Path
+    ) -> None:
+        response = await client.post(
+            "/fragment/import/clean-slate",
+            data={"beets_album_id": "1", "source_path": f" {source_folder} ", "quiet": "on"},
         )
         assert response.status_code == 200
-        assert "<strong>1</strong> track:" in response.text
-        assert "Artist 07 — Song 07" in response.text
+        assert "clean slate: Artist - Album" in response.text
+        assert "replaces album #1 · quiet" in response.text
+        (job,) = await import_store.list()
+        assert job.clean_slate_album_id == 1 and job.paths == [str(source_folder)] and job.quiet is True
+        assert job.clean_slate_allow_fewer_files is False
 
     @pytest.mark.anyio
-    async def test_flags_an_empty_query_as_the_entire_library(self, client: AsyncClient) -> None:
-        html = (await client.get("/fragment/import/reimport-preview", params={"singletons": "true"})).text
-        assert "An empty query matches the entire library." in html
-        assert "<strong>30</strong> tracks (showing the first 10)" in html
+    async def test_submit_refuses_a_bad_source_or_a_short_one_without_the_opt_in(
+        self,
+        client: AsyncClient,
+        import_store: ImportStore,
+        downloads_path: Path,
+        make_tagged_wav: TaggedWavWriter,
+        tmp_path: Path,
+    ) -> None:
+        empty = downloads_path / "empty"
+        empty.mkdir()
+        refused = await client.post(
+            "/fragment/import/clean-slate", data={"beets_album_id": "1", "source_path": str(empty)}
+        )
+        assert refused.status_code == 422 and "No readable audio files" in refused.json()["detail"]
+
+        make_tagged_wav(tmp_path / "music" / "Artist" / "Album" / "02 Two.wav", title="Two", artist="Artist")
+        short = make_tagged_wav(downloads_path / "short" / "01 One.wav", title="One", artist="Artist").parent
+        short_form = {"beets_album_id": "1", "source_path": str(short)}
+        assert (await client.post("/fragment/import/clean-slate", data=short_form)).status_code == 409
+        assert await import_store.list() == []
+        accepted = await client.post("/fragment/import/clean-slate", data=short_form | {"allow_fewer_files": "on"})
+        assert accepted.status_code == 200 and "allow fewer files" in accepted.text
 
     @pytest.mark.anyio
-    async def test_reports_no_matches(self, client: AsyncClient) -> None:
-        html = (await client.get("/fragment/import/reimport-preview", params={"query": "album:Album"})).text
-        assert "No albums match this query." in html
+    async def test_submit_needs_exactly_one_id(self, client: AsyncClient, source_folder: Path) -> None:
+        response = await client.post("/fragment/import/clean-slate", data={"source_path": str(source_folder)})
+        assert response.status_code == 422

@@ -4,11 +4,15 @@ These prove the multi-worker behaviour: a single leased leader, atomic claim, th
 handoff, cooperative abort, and orphan recovery on leader takeover.
 """
 
+from datetime import UTC, datetime
+
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from beetkeeper.core import ImportAction, ImportDecision, ImportJobStatus, ImportStore
-from beetkeeper.core.import_jobs import DecisionRequest, FieldChange, ReimportEntry, ReimportReport
+from beetkeeper.core.import_jobs import DecisionRequest
+from beetkeeper.db.models import InferredSourcePath
 
 
 def _store(session_factory: async_sessionmaker[AsyncSession]) -> ImportStore:
@@ -190,49 +194,95 @@ async def test_recover_orphans_fails_only_other_workers_jobs(session_factory: as
 
 
 @pytest.mark.anyio
-async def test_path_import_is_not_a_reimport(session_factory: async_sessionmaker[AsyncSession]) -> None:
+async def test_path_import_is_not_a_clean_slate(session_factory: async_sessionmaker[AsyncSession]) -> None:
     job = await _store(session_factory).create(["/music/a"])
-    assert job.is_reimport is False
-    assert job.query is None
-    assert (job.move_files, job.write_tags, job.reimport_report) == (None, None, None)
+    assert job.is_clean_slate is False
+    assert (job.clean_slate_album_id, job.clean_slate_item_id, job.clean_slate_allow_fewer_files) == (None, None, False)
 
 
 @pytest.mark.anyio
-async def test_create_persists_reimport_settings(session_factory: async_sessionmaker[AsyncSession]) -> None:
+@pytest.mark.parametrize(
+    ("fields", "label"),
+    [
+        pytest.param({"clean_slate_album_id": 7, "clean_slate_allow_fewer_files": True}, "album", id="album"),
+        pytest.param({"clean_slate_item_id": 9}, "track", id="track"),
+    ],
+)
+async def test_create_persists_clean_slate_settings(
+    session_factory: async_sessionmaker[AsyncSession], fields: dict[str, object], label: str
+) -> None:
     store = _store(session_factory)
-    job = await store.create([], query=["albumartist:Bonobo"], singletons=True, move_files=False, write_tags=True)
+    job = await store.create(["/downloads/Artist - Album"], **fields)  # type: ignore[arg-type]
 
     claimed = await store.claim_next("worker-1")
     assert claimed is not None and claimed.id == job.id
-    assert claimed.is_reimport is True
-    assert claimed.paths == []
-    assert claimed.query == ["albumartist:Bonobo"]
-    assert (claimed.singletons, claimed.move_files, claimed.write_tags) == (True, False, True)
-    assert claimed.source_label == "reimport: albumartist:Bonobo"
+    assert claimed.is_clean_slate is True
+    assert claimed.paths == ["/downloads/Artist - Album"]
+    assert claimed.source_label == "clean slate: Artist - Album"
+    for name, value in fields.items():
+        assert getattr(claimed, name) == value
+    assert (claimed.clean_slate_album_id is not None) == (label == "album")
 
 
 @pytest.mark.anyio
-async def test_empty_query_is_a_whole_library_reimport(session_factory: async_sessionmaker[AsyncSession]) -> None:
-    store = _store(session_factory)
-    job = await store.create([], query=[])
-    fetched = await store.get(job.id)
-    assert fetched is not None
-    assert fetched.query == []
-    assert fetched.is_reimport is True
-    assert fetched.source_label == "reimport: entire library"
+async def test_create_rejects_a_clean_slate_naming_both_ids(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    with pytest.raises(ValueError, match="not both"):
+        await _store(session_factory).create(["/downloads/x"], clean_slate_album_id=1, clean_slate_item_id=2)
+
+
+async def _inference(session_factory: async_sessionmaker[AsyncSession], subject: str, beets_id: int, path: str) -> None:
+    async with session_factory() as session:
+        session.add(
+            InferredSourcePath(
+                subject_type=subject,
+                beets_id=beets_id,
+                source_path=path,
+                method="downloader_hook",
+                inferred_at=datetime.now(UTC).replace(tzinfo=None),
+            )
+        )
+        await session.commit()
+
+
+async def _inferences(session_factory: async_sessionmaker[AsyncSession]) -> set[tuple[str, int, str]]:
+    async with session_factory() as session:
+        rows = (await session.execute(select(InferredSourcePath))).scalars().all()
+    return {(row.subject_type, row.beets_id, row.source_path) for row in rows}
 
 
 @pytest.mark.anyio
-async def test_reimport_report_round_trips(session_factory: async_sessionmaker[AsyncSession]) -> None:
-    store = _store(session_factory)
-    job = await store.create([], query=["album:A"])
-    report = ReimportReport(
-        entries=[ReimportEntry(label="Artist - A", shared_changes=[FieldChange(field="label", old="Warp", new="")])]
-    )
+async def test_retarget_moves_the_album_inference_and_drops_its_tracks(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    await _inference(session_factory, "album", 3, "/dl/album")
+    await _inference(session_factory, "track", 30, "/dl/album")
+    await _inference(session_factory, "track", 31, "/dl/album")
+    await _inference(session_factory, "album", 8, "/dl/stale-guess-for-reused-id")
+    await _inference(session_factory, "album", 4, "/dl/other")
 
-    await store.set_reimport_report(job.id, report)
+    await _store(session_factory).retarget_inferred_source_paths("album", 3, 8, [30, 31])
 
-    fetched = await store.get(job.id)
-    assert fetched is not None
-    assert fetched.reimport_report == report
-    assert fetched.reimport_report.entries[0].shared_changes[0].dropped is True
+    assert await _inferences(session_factory) == {("album", 8, "/dl/album"), ("album", 4, "/dl/other")}
+
+
+@pytest.mark.anyio
+async def test_retarget_drops_the_inference_when_nothing_replaced_the_entry(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    await _inference(session_factory, "album", 3, "/dl/album")
+    await _inference(session_factory, "track", 30, "/dl/album")
+
+    await _store(session_factory).retarget_inferred_source_paths("album", 3, None, [30])
+
+    assert await _inferences(session_factory) == set()
+
+
+@pytest.mark.anyio
+async def test_retarget_keeps_a_track_inference_that_got_the_same_id_back(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    await _inference(session_factory, "track", 5, "/dl/song.flac")
+
+    await _store(session_factory).retarget_inferred_source_paths("track", 5, 5, [5])
+
+    assert await _inferences(session_factory) == {("track", 5, "/dl/song.flac")}

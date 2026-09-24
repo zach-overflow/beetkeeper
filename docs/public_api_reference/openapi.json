@@ -479,19 +479,113 @@
         }
       }
     },
-    "/api/import/reimport": {
+    "/api/import/clean_slate/preview": {
+      "get": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Preview Clean Slate",
+        "description": "Dry-run a clean-slate import without touching anything (see `POST /api/import/clean_slate`).\n\nReports what the removal would delete (library files inside the beets directory, album art), what it\nwould leave alone, the flexible attributes that would be lost, what the source folder holds, plus the\nblocking `errors`, non-blocking `warnings`, and whether the fewer-files opt-in is needed. 404 for an\nunknown beets id.",
+        "operationId": "preview_clean_slate_api_import_clean_slate_preview_get",
+        "parameters": [
+          {
+            "name": "beets_album_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The beets library id of an album. Mutually exclusive with `beets_item_id`.",
+              "title": "Beets Album Id"
+            },
+            "description": "The beets library id of an album. Mutually exclusive with `beets_item_id`."
+          },
+          {
+            "name": "beets_item_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The beets library id of an item (track). Mutually exclusive with `beets_album_id`.",
+              "title": "Beets Item Id"
+            },
+            "description": "The beets library id of an item (track). Mutually exclusive with `beets_album_id`."
+          },
+          {
+            "name": "source_path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The entry's raw (pre-import) source folder, under beetkeeper's `downloads_path`; for a standalone track, the audio file itself or a folder holding just that file.",
+              "title": "Source Path"
+            },
+            "description": "The entry's raw (pre-import) source folder, under beetkeeper's `downloads_path`; for a standalone track, the audio file itself or a folder holding just that file."
+          },
+          {
+            "name": "allow_fewer_files",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Proceed even when the source holds fewer audio files than the entry currently has on disk (the clean slate would then delete files the source cannot replace). Off by default.",
+              "default": false,
+              "title": "Allow Fewer Files"
+            },
+            "description": "Proceed even when the source holds fewer audio files than the entry currently has on disk (the clean slate would then delete files the source cannot replace). Off by default."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanSlatePreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/clean_slate": {
       "post": {
         "tags": [
           "imports"
         ],
-        "summary": "Start Reimport",
-        "description": "Enqueue a library-mode reimport (`beet import -L`) of the entries matching `query`.\n\nThe job runs through the same lifecycle as a path import (poll it, answer its decisions, abort it via\nthe routes below). Once it ends, its `reimport_report` diffs each reimported entry's prior library data\nagainst the new \u2014 flagging fields that lost their value \u2014 and lists entries skipped because their files\nno longer exist on disk.",
-        "operationId": "start_reimport_api_import_reimport_post",
+        "summary": "Start Clean Slate",
+        "description": "Enqueue a clean-slate import: remove the named library entry, then import its source folder afresh.\n\nThe preview runs first: a blocking error is a 422, a source with fewer audio files than the entry has on\ndisk is a 409 until `allow_fewer_files` is set, and an unknown beets id is a 404. The job is then\ntracked like any other import (poll it, answer its decisions, abort it via the routes below); the worker\nre-runs the preview as its guard right before removing anything.",
+        "operationId": "start_clean_slate_api_import_clean_slate_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReimportSubmitRequest"
+                "$ref": "#/components/schemas/CleanSlateSubmitRequest"
               }
             }
           },
@@ -521,52 +615,24 @@
         }
       }
     },
-    "/api/import/reimport/find_missing_source_path": {
-      "get": {
+    "/api/import/find_missing_source_path": {
+      "post": {
         "tags": [
           "imports"
         ],
         "summary": "Find Missing Source Path",
-        "description": "Ask the configured downloader client where a library album/track was originally downloaded to.\n\nOnly useful for entries imported outside a beetkeeper context (so no source path was recorded): the\nrecovered pre-import folder is what a fresh path import of the entry needs. The entry's fields named in\nthe beets config's `beetkeeper.downloader_hook.beets_field_names_to_query_param_names` become the search\nrequest's query params (see the `search-missing-source-path` webhook). A match is stored as the entry's\n*inferred* source path (replacing any earlier inference), which the search page then shows labelled as\ninferred \u2014 separate from source paths recorded from the beetkeeper plugin's events. 409 when no\ndownloader API is configured; 404 for an unknown beets id.",
-        "operationId": "find_missing_source_path_api_import_reimport_find_missing_source_path_get",
-        "parameters": [
-          {
-            "name": "beets_album_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "The beets library id of the album beetkeeper is missing source filepath data for. Mutually exclusive with `beets_item_id`.",
-              "title": "Beets Album Id"
-            },
-            "description": "The beets library id of the album beetkeeper is missing source filepath data for. Mutually exclusive with `beets_item_id`."
+        "description": "Ask the configured downloader client where a library album/track was originally downloaded to.\n\nOnly useful for entries imported outside a beetkeeper context (so no source path was recorded): the\nrecovered pre-import folder is what a clean-slate import of the entry needs. The entry's fields named in\nthe beets config's `beetkeeper.downloader_hook.beets_field_names_to_query_param_names` become the search\nrequest's query params (see the `search-missing-source-path` webhook). A match is stored as the entry's\n*inferred* source path (replacing any earlier inference), which the search page then shows labelled as\ninferred \u2014 separate from source paths recorded from the beetkeeper plugin's events. 409 when no\ndownloader API is configured; 404 for an unknown beets id.",
+        "operationId": "find_missing_source_path_api_import_find_missing_source_path_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindMissingSourcePathRequest"
+              }
+            }
           },
-          {
-            "name": "beets_item_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "The beets library id of the item (track) beetkeeper is missing source filepath data for. Mutually exclusive with `beets_album_id`.",
-              "title": "Beets Item Id"
-            },
-            "description": "The beets library id of the item (track) beetkeeper is missing source filepath data for. Mutually exclusive with `beets_album_id`."
-          }
-        ],
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -963,7 +1029,7 @@
     "search-missing-source-path": {
       "get": {
         "summary": "Search Missing Source Path",
-        "description": "Sent by beetkeeper to the configured downloader API (`downloader_hook.base_url` + `search_endpoint_path`)\nwhen a client requests `GET /api/import/reimport/find_missing_source_path` for a library entry whose\nsource path was never recorded. The downloader answers with a JSON list of results (or one object);\nbeetkeeper takes the first result's path. When `downloader_hook.api_key` is set, the request carries an\n`Authorization: Bearer <api_key>` header.",
+        "description": "Sent by beetkeeper to the configured downloader API (`downloader_hook.base_url` + `search_endpoint_path`)\nwhen a client requests `POST /api/import/find_missing_source_path` for a library entry whose\nsource path was never recorded. The downloader answers with a JSON list of results (or one object);\nbeetkeeper takes the first result's path. When `downloader_hook.api_key` is set, the request carries an\n`Authorization: Bearer <api_key>` header.",
         "operationId": "search_missing_source_pathsearch_missing_source_path_get",
         "parameters": [
           {
@@ -2177,6 +2243,227 @@
         "title": "BeetsEventType",
         "description": "Subset of beets listener `event_type`s which the API accepts from our plugin client.\nSee also:\n    https://beets.readthedocs.io/en/stable/dev/plugins/events.html"
       },
+      "CleanSlatePreview": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "enum": [
+              "album",
+              "track"
+            ],
+            "title": "Subject"
+          },
+          "beets_id": {
+            "type": "integer",
+            "title": "Beets Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "`albumartist - album` for an album, `artist - title` for a standalone track."
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count",
+            "description": "Library rows the entry holds (1 for a standalone track)."
+          },
+          "files_present": {
+            "type": "integer",
+            "title": "Files Present",
+            "description": "How many of those rows still have their file on disk."
+          },
+          "missing_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Paths",
+            "description": "Library paths whose file is gone."
+          },
+          "expected_tracks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Tracks",
+            "description": "Track total the album's tags claim (beets' `albumtotal`), when known."
+          },
+          "files_to_delete": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files To Delete",
+            "description": "Library files the removal deletes (inside the beets directory)."
+          },
+          "files_kept_outside_library": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files Kept Outside Library",
+            "description": "Entry files left on disk because they live outside the beets directory."
+          },
+          "art_to_delete": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Art To Delete",
+            "description": "The album art file the removal deletes, if any."
+          },
+          "flexible_attributes_lost": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Flexible Attributes Lost",
+            "description": "Flexible attribute names on the entry that a clean slate does not keep."
+          },
+          "source_path": {
+            "type": "string",
+            "title": "Source Path"
+          },
+          "source_audio_files": {
+            "type": "integer",
+            "title": "Source Audio Files",
+            "description": "Readable audio files found under the source path.",
+            "default": 0
+          },
+          "source_album_groups": {
+            "type": "integer",
+            "title": "Source Album Groups",
+            "description": "Album folders beets would import from the source.",
+            "default": 0
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "needs_confirmation": {
+            "type": "boolean",
+            "title": "Needs Confirmation",
+            "description": "The source has fewer audio files than the entry has on disk and `allow_fewer_files` was not set.",
+            "default": false
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "description": "Whether the clean slate may run as previewed (no blocking error and no outstanding confirmation).",
+            "readOnly": true
+          },
+          "files_missing": {
+            "type": "integer",
+            "title": "Files Missing",
+            "description": "How many of the entry's rows point at a file that no longer exists.",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "beets_id",
+          "label",
+          "item_count",
+          "files_present",
+          "source_path",
+          "ok",
+          "files_missing"
+        ],
+        "title": "CleanSlatePreview",
+        "description": "The dry run of a clean-slate import: what removing the library entry and importing its source would do.\n\nProduced read-only by `core.clean_slate.preview` for the API/UI preview, and again by the worker as the\nguard before it removes anything. `errors` lists the conditions that block the job outright; `warnings`\nare worth a look but do not block. `needs_confirmation` is set when the source folder holds fewer audio\nfiles than the entry currently has on disk \u2014 proceeding would delete files the source cannot replace,\nso the caller must opt in explicitly (`allow_fewer_files`)."
+      },
+      "CleanSlateSubmitRequest": {
+        "properties": {
+          "beets_album_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beets Album Id",
+            "description": "The beets library id of an album. Mutually exclusive with `beets_item_id`."
+          },
+          "beets_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beets Item Id",
+            "description": "The beets library id of an item (track). Mutually exclusive with `beets_album_id`."
+          },
+          "source_path": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Source Path",
+            "description": "The entry's raw (pre-import) source folder, under beetkeeper's `downloads_path`; for a standalone track, the audio file itself or a folder holding just that file."
+          },
+          "allow_fewer_files": {
+            "type": "boolean",
+            "title": "Allow Fewer Files",
+            "description": "Proceed even when the source holds fewer audio files than the entry currently has on disk (the clean slate would then delete files the source cannot replace). Off by default.",
+            "default": false
+          },
+          "quiet": {
+            "type": "boolean",
+            "title": "Quiet",
+            "description": "Run non-interactively (like `beet import -q`). See `ImportSubmitRequest.quiet`."
+          },
+          "logpath": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logpath",
+            "description": "Corresponds to the `-l` option, or the config's `import.log` option."
+          },
+          "set_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Set Fields",
+            "description": "Corresponds to the `--set field=value` option for beets' `import` CLI command."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_path"
+        ],
+        "title": "CleanSlateSubmitRequest",
+        "description": "Body for starting a clean-slate import: remove the named library entry \u2014 its rows, the files inside the\nbeets directory and the album art, like `beet remove -d` \u2014 then import `source_path` afresh as an ordinary\npath import (decisions, abort, quiet mode all apply). Nothing is carried over from the old entry: not its\nflexible attributes, not its added-date. Option defaults come from the `beets.config` values.\n\nThe removal happens before the import starts; skipping or aborting the import afterwards leaves the entry\nremoved and the source files where they are. Preview first with `GET /api/import/clean_slate/preview`."
+      },
       "DecisionRequest": {
         "properties": {
           "job_id": {
@@ -2332,48 +2619,37 @@
         "title": "EventsListResponse",
         "description": "Response payload for the events listing: recently ingested listener events, newest first."
       },
-      "FieldChange": {
+      "FindMissingSourcePathRequest": {
         "properties": {
-          "field": {
-            "type": "string",
-            "title": "Field"
-          },
-          "old": {
+          "beets_album_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Old"
+            "title": "Beets Album Id",
+            "description": "The beets library id of an album. Mutually exclusive with `beets_item_id`."
           },
-          "new": {
+          "beets_item_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "New"
-          },
-          "dropped": {
-            "type": "boolean",
-            "title": "Dropped",
-            "description": "True when the reimport lost information: the field held a value before and is blank now.",
-            "readOnly": true
+            "title": "Beets Item Id",
+            "description": "The beets library id of an item (track). Mutually exclusive with `beets_album_id`."
           }
         },
+        "additionalProperties": false,
         "type": "object",
-        "required": [
-          "field",
-          "dropped"
-        ],
-        "title": "FieldChange",
-        "description": "One library field whose value differs between the prior library entry and the reimported one."
+        "title": "FindMissingSourcePathRequest",
+        "description": "Body of `POST /api/import/find_missing_source_path`: the entry to ask the downloader about."
       },
       "FindMissingSourcePathResponse": {
         "properties": {
@@ -2433,7 +2709,7 @@
           "found_match"
         ],
         "title": "FindMissingSourcePathResponse",
-        "description": "Response model for the `/reimport/find_missing_source_path` endpoint."
+        "description": "Response model for the `/find_missing_source_path` endpoint."
       },
       "HTTPValidationError": {
         "properties": {
@@ -2765,67 +3041,43 @@
             "type": "object",
             "title": "Set Fields"
           },
-          "query": {
+          "clean_slate_album_id": {
             "anyOf": [
               {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Query"
+            "title": "Clean Slate Album Id"
           },
-          "singletons": {
+          "clean_slate_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clean Slate Item Id"
+          },
+          "clean_slate_allow_fewer_files": {
             "type": "boolean",
-            "title": "Singletons",
+            "title": "Clean Slate Allow Fewer Files",
             "default": false
           },
-          "move_files": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Move Files"
-          },
-          "write_tags": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Write Tags"
-          },
-          "reimport_report": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ReimportReport"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "is_reimport": {
+          "is_clean_slate": {
             "type": "boolean",
-            "title": "Is Reimport",
-            "description": "Whether this job reimports existing library entries (library mode) instead of importing paths.",
+            "title": "Is Clean Slate",
+            "description": "Whether this job removes an existing library entry before importing its source afresh.",
             "readOnly": true
           },
           "source_label": {
             "type": "string",
             "title": "Source Label",
-            "description": "Display name for the import source: the path basename(s), or the library query for a reimport.",
+            "description": "Display name for the import source: the path basename(s), prefixed for a clean-slate import.",
             "readOnly": true
           }
         },
@@ -2835,7 +3087,7 @@
           "status",
           "paths",
           "created_at",
-          "is_reimport",
+          "is_clean_slate",
           "source_label"
         ],
         "title": "ImportJob",
@@ -3029,151 +3281,6 @@
         "type": "object",
         "title": "LogoutResponseBody"
       },
-      "MissingFilesEntry": {
-        "properties": {
-          "label": {
-            "type": "string",
-            "title": "Label"
-          },
-          "paths": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Paths"
-          }
-        },
-        "type": "object",
-        "required": [
-          "label",
-          "paths"
-        ],
-        "title": "MissingFilesEntry",
-        "description": "A library album/track skipped by a reimport because its file(s) no longer exist on disk."
-      },
-      "ReimportEntry": {
-        "properties": {
-          "label": {
-            "type": "string",
-            "title": "Label"
-          },
-          "shared_changes": {
-            "items": {
-              "$ref": "#/components/schemas/FieldChange"
-            },
-            "type": "array",
-            "title": "Shared Changes"
-          },
-          "tracks": {
-            "items": {
-              "$ref": "#/components/schemas/TrackChange"
-            },
-            "type": "array",
-            "title": "Tracks"
-          },
-          "left_behind": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Left Behind"
-          }
-        },
-        "type": "object",
-        "required": [
-          "label"
-        ],
-        "title": "ReimportEntry",
-        "description": "Prior-vs-new diff for one reimported album (or singleton track).\n\n`shared_changes` are the changes every track has in common (album-level edits such as a corrected album\ntitle), hoisted out of `tracks` so they are reported once. `left_behind` lists tracks of the original\nalbum that the chosen match did not cover: beets leaves their library entries under the old album."
-      },
-      "ReimportReport": {
-        "properties": {
-          "entries": {
-            "items": {
-              "$ref": "#/components/schemas/ReimportEntry"
-            },
-            "type": "array",
-            "title": "Entries"
-          },
-          "missing_files": {
-            "items": {
-              "$ref": "#/components/schemas/MissingFilesEntry"
-            },
-            "type": "array",
-            "title": "Missing Files"
-          },
-          "truncated": {
-            "type": "boolean",
-            "title": "Truncated",
-            "description": "True when entries beyond the report cap were omitted.",
-            "default": false
-          }
-        },
-        "type": "object",
-        "title": "ReimportReport",
-        "description": "What a library reimport changed, plus the entries it had to skip because their files are gone."
-      },
-      "ReimportSubmitRequest": {
-        "properties": {
-          "query": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Query",
-            "description": "beets query parts (like the CLI args, e.g. `[\"albumartist:Beatles\", \"year:1969\"]`) selecting the library entries to reimport. Required; an explicit empty list reimports the ENTIRE library. See https://beets.readthedocs.io/en/stable/reference/query.html"
-          },
-          "singletons": {
-            "type": "boolean",
-            "title": "Singletons",
-            "description": "Match (and retag) individual tracks instead of whole albums, like `beet import -L -s`.",
-            "default": false
-          },
-          "quiet": {
-            "type": "boolean",
-            "title": "Quiet",
-            "description": "Run non-interactively (like `beet import -q`). See `ImportSubmitRequest.quiet`."
-          },
-          "move_files": {
-            "type": "boolean",
-            "title": "Move Files",
-            "description": "Move the files so the library's directory structure reflects the new tags. `false` retags in place, leaving every file where it is (`beet import -C -M`) \u2014 useful when players/music servers get confused by a path and tags changing at once."
-          },
-          "write_tags": {
-            "type": "boolean",
-            "title": "Write Tags",
-            "description": "Write the new tags to the files (`-w`); `false` only updates the beets database (`-W`)."
-          },
-          "logpath": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "path"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Logpath",
-            "description": "Corresponds to the `-l` option, or the config's `import.log` option."
-          },
-          "set_fields": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object",
-            "title": "Set Fields",
-            "description": "Corresponds to the `--set field=value` option for beets' `import` CLI command."
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "query"
-        ],
-        "title": "ReimportSubmitRequest",
-        "description": "Body for starting a library-mode reimport (`beet import -L`): re-run the importer over entries that are\nalready in the beets library, selected by a beets query instead of filesystem paths. Option defaults\ncome from the `beets.config` values if left unspecified.\n\nSee https://beets.readthedocs.io/en/stable/reference/cli.html#reimporting"
-      },
       "SearchMissingSourcePathResult": {
         "properties": {
           "content_path": {
@@ -3193,32 +3300,6 @@
         "type": "object",
         "title": "SearchMissingSourcePathResult",
         "description": "One search result. The key holding the path is whatever `downloader_hook.filepath_json_key` names."
-      },
-      "TrackChange": {
-        "properties": {
-          "label": {
-            "type": "string",
-            "title": "Label"
-          },
-          "path": {
-            "type": "string",
-            "title": "Path"
-          },
-          "changes": {
-            "items": {
-              "$ref": "#/components/schemas/FieldChange"
-            },
-            "type": "array",
-            "title": "Changes"
-          }
-        },
-        "type": "object",
-        "required": [
-          "label",
-          "path"
-        ],
-        "title": "TrackChange",
-        "description": "The field-level changes a reimport made to one track (`path` is its pre-reimport location)."
       },
       "ValidationError": {
         "properties": {

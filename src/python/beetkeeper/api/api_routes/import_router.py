@@ -12,15 +12,18 @@ from fastapi import APIRouter, HTTPException, status
 
 from beetkeeper.api.adapters import find_missing_source_path as _lookup_source_path
 from beetkeeper.api.api_models import (
-    FindMissingSourcePathRequestParams,
+    CleanSlatePreviewParams,
+    CleanSlatePreviewRequest,
+    CleanSlateSubmitRequest,
+    FindMissingSourcePathRequest,
     FindMissingSourcePathResponse,
     ImportSubmitRequest,
     PageQueryParams,
-    ReimportSubmitRequest,
 )
 from beetkeeper.api.constants import RouteTag
-from beetkeeper.api.dependencies import BeetsLibraryDep, DownloaderHookDep, ImportStoreDep
-from beetkeeper.core import ImportDecision, ImportJob
+from beetkeeper.api.dependencies import BeetsLibraryDep, DownloaderHookDep, ImportStoreDep, UserConfigDep
+from beetkeeper.core import CleanSlatePreview, ImportDecision, ImportJob
+from beetkeeper.core.clean_slate import CleanSlateError
 from beetkeeper.db.session import SessionDep
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,38 +48,64 @@ async def start_import(body: ImportSubmitRequest, store: ImportStoreDep) -> Impo
     )
 
 
-@import_router.post("/reimport", status_code=status.HTTP_201_CREATED)
-async def start_reimport(body: ReimportSubmitRequest, store: ImportStoreDep) -> ImportJob:
-    """Enqueue a library-mode reimport (`beet import -L`) of the entries matching `query`.
+@import_router.get("/clean_slate/preview")
+async def preview_clean_slate(
+    params: CleanSlatePreviewParams, library: BeetsLibraryDep, user_config: UserConfigDep
+) -> CleanSlatePreview:
+    """Dry-run a clean-slate import without touching anything (see `POST /api/import/clean_slate`).
 
-    The job runs through the same lifecycle as a path import (poll it, answer its decisions, abort it via
-    the routes below). Once it ends, its `reimport_report` diffs each reimported entry's prior library data
-    against the new — flagging fields that lost their value — and lists entries skipped because their files
-    no longer exist on disk.
+    Reports what the removal would delete (library files inside the beets directory, album art), what it
+    would leave alone, the flexible attributes that would be lost, what the source folder holds, plus the
+    blocking `errors`, non-blocking `warnings`, and whether the fewer-files opt-in is needed. 404 for an
+    unknown beets id.
     """
+    return await _clean_slate_preview(library, user_config, params)
+
+
+@import_router.post("/clean_slate", status_code=status.HTTP_201_CREATED)
+async def start_clean_slate(
+    body: CleanSlateSubmitRequest, store: ImportStoreDep, library: BeetsLibraryDep, user_config: UserConfigDep
+) -> ImportJob:
+    """Enqueue a clean-slate import: remove the named library entry, then import its source folder afresh.
+
+    The preview runs first: a blocking error is a 422, a source with fewer audio files than the entry has on
+    disk is a 409 until `allow_fewer_files` is set, and an unknown beets id is a 404. The job is then
+    tracked like any other import (poll it, answer its decisions, abort it via the routes below); the worker
+    re-runs the preview as its guard right before removing anything.
+    """
+    plan = await _clean_slate_preview(library, user_config, body)
+    if plan.errors:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=" ".join(plan.errors))
+    if plan.needs_confirmation:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"The source holds {plan.source_audio_files} audio file(s) but the entry has {plan.files_present} "
+                "on disk; set allow_fewer_files=true to proceed anyway."
+            ),
+        )
     return await store.create(
-        [],
+        [body.source_path],
         quiet=body.quiet,
         logpath=str(body.logpath) if body.logpath is not None else None,
         set_fields=body.set_fields,
-        query=body.query,
-        singletons=body.singletons,
-        move_files=body.move_files,
-        write_tags=body.write_tags,
+        clean_slate_album_id=body.beets_album_id,
+        clean_slate_item_id=body.beets_item_id,
+        clean_slate_allow_fewer_files=body.allow_fewer_files,
     )
 
 
-@import_router.get("/reimport/find_missing_source_path")
+@import_router.post("/find_missing_source_path")
 async def find_missing_source_path(
+    body: FindMissingSourcePathRequest,
     beets_library: BeetsLibraryDep,
     downloader_hook: DownloaderHookDep,
     session: SessionDep,
-    req_params: FindMissingSourcePathRequestParams,
 ) -> FindMissingSourcePathResponse:
     """Ask the configured downloader client where a library album/track was originally downloaded to.
 
     Only useful for entries imported outside a beetkeeper context (so no source path was recorded): the
-    recovered pre-import folder is what a fresh path import of the entry needs. The entry's fields named in
+    recovered pre-import folder is what a clean-slate import of the entry needs. The entry's fields named in
     the beets config's `beetkeeper.downloader_hook.beets_field_names_to_query_param_names` become the search
     request's query params (see the `search-missing-source-path` webhook). A match is stored as the entry's
     *inferred* source path (replacing any earlier inference), which the search page then shows labelled as
@@ -88,12 +117,10 @@ async def find_missing_source_path(
             status_code=status.HTTP_409_CONFLICT,
             detail="No downloader API is configured (see the `beetkeeper.downloader_hook` config section).",
         )
-    response = await _lookup_source_path(beets_library, downloader_hook, session, req_params)
+    response = await _lookup_source_path(beets_library, downloader_hook, session, body)
     if response is None:
-        kind = "album" if req_params.is_album else "item"
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"No beets {kind} with id {req_params.beets_id}."
-        )
+        kind = "album" if body.is_album else "item"
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No beets {kind} with id {body.beets_id}.")
     return response
 
 
@@ -126,6 +153,23 @@ async def abort_import(job_id: str, store: ImportStoreDep) -> ImportJob:
     await _require_job(store, job_id)
     await store.request_abort(job_id)
     return await _require_job(store, job_id)
+
+
+async def _clean_slate_preview(
+    library: BeetsLibraryDep, user_config: UserConfigDep, request: CleanSlatePreviewRequest
+) -> CleanSlatePreview:
+    """Run the read-only clean-slate preview, mapping an unknown entry to a 404."""
+    try:
+        return await library.clean_slate_preview(
+            request.clean_slate_target,
+            request.source_path,
+            downloads_path=user_config.downloads_path,
+            allow_fewer_files=request.allow_fewer_files,
+        )
+    except CleanSlateError as exc:
+        if exc.kind == "not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 async def _require_job(store: ImportStoreDep, job_id: str) -> ImportJob:

@@ -93,7 +93,7 @@ def test_job_loghandler_appends_across_jobs(tmp_path: Path) -> None:
     assert "first import" in text and "second import" in text
 
 
-_NO_FILE_OPERATION = dict.fromkeys(("copy", "move", "link", "hardlink", "reflink"), False)
+_CLEAN_SLATE_PINS = {"group_albums": False, "incremental": False, "resume": False}
 
 
 @pytest.mark.parametrize(
@@ -101,19 +101,17 @@ _NO_FILE_OPERATION = dict.fromkeys(("copy", "move", "link", "hardlink", "reflink
     [
         pytest.param({}, {"group_albums": False, "flat": False}, id="path-import-defers-to-the-beets-config"),
         pytest.param(
-            {"query": [], "singletons": True},
-            {"group_albums": False, "flat": False, "singletons": True},
-            id="reimport-pins-singletons",
+            {"group_albums": True, "flat": True}, {"group_albums": True, "flat": True}, id="path-import-flags"
         ),
         pytest.param(
-            {"query": ["a"], "move_files": False, "write_tags": False},
-            {"group_albums": False, "flat": False, "singletons": False, "write": False} | _NO_FILE_OPERATION,
-            id="retag-in-place-without-writing",
+            {"clean_slate_album_id": 7, "group_albums": True},
+            {"flat": False, "singletons": False} | _CLEAN_SLATE_PINS,
+            id="album-clean-slate-pins-incremental-off-and-one-task-per-folder",
         ),
         pytest.param(
-            {"query": ["a"], "move_files": True, "write_tags": True},
-            {"group_albums": False, "flat": False, "singletons": False, "move": True, "write": True},
-            id="move-and-write",
+            {"clean_slate_item_id": 9},
+            {"flat": False, "singletons": True} | _CLEAN_SLATE_PINS,
+            id="track-clean-slate-imports-singletons",
         ),
     ],
 )

@@ -4,8 +4,11 @@
 {% from "fragment_templates/source_path_cells.html" import inferred_path_cell with context %}
 {% if lookup is none %}
 <em>Library entry not found.</em>
+{% elif not hook_enabled %}
+<em>No downloader API is configured.</em>
+<small>Set the <code>beetkeeper.downloader_hook</code> section in your beets config (then restart) to look source folders up.</small>
 {% elif lookup.found_match %}
-{{ inferred_path_cell(lookup.source_directory) }}
+{{ inferred_path_cell(lookup.source_directory, album_id, item_id) }}
 {% else %}
 <em title="{{ lookup.detail }}">Not found via downloader</em>
 {% endif %}

@@ -74,7 +74,11 @@ This packages the server Docker image (`pants package //:beetkeeper-server-image
 from it, serving the app at <http://localhost:8337>. Press `Ctrl-C` to stop it. No configuration or host
 data is required: the container entrypoint (`build_scripts/dev_scripts/test_container_init.sh`) generates a
 throwaway beets/beetkeeper config under `/test_dirs` inside the container and runs the database migrations,
-so everything is discarded when the container exits.
+so everything is discarded when the container exits. It also creates fake tagged albums under `/downloads`
+to import, seeds fake events for the events page, and starts a fake download-client API
+(`build_scripts/dev_scripts/fake_downloader_api.py`) behind the config's downloader hook: on the search
+page, **Find via downloader** resolves an imported fake album back to its `/downloads` folder, from where
+a clean-slate import can be tried end to end.
 
 The script also mounts the repo's `src/python/beetkeeper/api/static` directory into the container and
 symlinks it over the copy the PEX extracts at startup. This means edits to static files (CSS, HTML

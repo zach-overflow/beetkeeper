@@ -61,7 +61,7 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.db_sessionmaker = sessionmaker
     # Import state lives in the DB (shared across processes); each process runs the import worker, but only
     # the lease holder runs imports. `run()` serves a `BlockingPortal` for beets' pipeline threads.
-    worker = ImportWorker(user_config.beets_config_filepath, ImportStore(sessionmaker))
+    worker = ImportWorker(user_config.beets_config_filepath, ImportStore(sessionmaker), user_config.downloads_path)
     try:
         async with (
             anyio.create_task_group() as task_group,

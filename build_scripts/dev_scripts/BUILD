@@ -8,3 +8,8 @@ python_source(
     dependencies=["./fake_tag_data:fake_tag_data", "src/python:app-requirements#beets", ":test-container-config"],
 )
 python_source(name="seed-fake-event-data", source="./seed_fake_event_data.py")
+python_source(
+    name="fake-downloader-api",
+    source="./fake_downloader_api.py",
+    dependencies=["./fake_tag_data:fake_tag_data", ":test-container-config"],
+)

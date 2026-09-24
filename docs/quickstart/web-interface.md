@@ -15,37 +15,31 @@ Multiple imports can run and be monitored simultaneously.
 
 ![Running imports](../assets/images/base_import_screenshot_0-4-0rc1.png){ width="80%" }
 
-### Reimports
+### Clean-slate imports
 
-The import page can also [reimport](https://beets.readthedocs.io/en/stable/reference/cli.html#reimporting)
-music that is already in your library — the `beet import -L` workflow. Use it to change a match you regret,
-to recover tags an earlier import dropped, or to tag music you originally imported as-is. Library entries are
-replaced in place (never duplicated), and beets preserves their flexible attributes and added-date.
+When a library album is missing files — rows whose file is gone from disk, or tracks an earlier import
+dropped — or was simply matched wrong, the fix is to import it again from its original download folder. A
+**clean-slate import** does exactly that, in two plain steps: it removes the entry from the library the way
+`beet remove -d` would (its rows, its files inside the beets directory, its album art), then runs an ordinary
+import of the source folder. Nothing carries over — flexible attributes and the added-date start from
+scratch — and the removal happens *before* the import, so skipping or aborting the import afterwards leaves
+the entry removed (the source files stay where they are).
 
-Select what to reimport with a [beets query](https://beets.readthedocs.io/en/stable/reference/query.html)
-(each album and standalone track on the search page links straight to its own reimport), and use **Preview
-matches** to check what the query covers before starting. An empty query means the whole library, so it
-additionally requires ticking **Reimport the entire library**. The reimport options are:
+Start from the search page: album rows show their **file health** ("3 of 12 files missing", "10 tracks,
+release lists 12") and every known source path offers **Clean-slate import from here**, which opens the
+clean-slate form on the import page with the entry and folder filled in. An album track links to its album's
+clean slate; a standalone track to its own. Use **Preview** to see exactly what would be deleted, what the
+source holds, and any warnings before you start. beetkeeper refuses a source that is missing, empty, outside
+the configured `downloads_path`, inside the beets directory, or holding more than one album, and asks for an
+explicit opt-in when the source holds fewer audio files than the library currently has on disk (the removal
+would delete files the source cannot replace). Files outside the beets directory are never deleted.
 
-- **Move files to match the new tags** — untick to retag in place and leave every file where it is
-  (`beet import -C -M`); handy when a player or music server gets confused by a path and tags changing at
-  once. You can run `beet move` later.
-- **Write the new tags to the files** — untick to update only the beets database (`-W`).
-- **Singletons** — match standalone tracks instead of albums (`-s`). Tracks that belong to an album are
-  skipped, because beets would detach them from it.
-
-When a reimport finishes, its card shows a **before/after diff** of every reimported album: changes shared
-by all tracks, per-track changes, fields whose previous **value was lost**, and tracks the chosen match did
-not cover. Library entries whose files no longer exist on disk are never touched; they are listed separately
-so you can restore the files or remove the entries.
-
-A reimport works from the files already in the library, so it cannot recover a track file that an earlier
-import dropped. That needs a fresh import of the original download folder — which beetkeeper only knows for
-imports its plugin reported. For older entries, configure the optional
-[downloader hook](../configuration.md#downloader-hook): unrecorded rows on the search page then gain a
-**Find via downloader** button that asks your download client for the folder. A match is remembered as the
-entry's *inferred* source path (labelled as such, since it is a best guess rather than a record) and offers
-**Import from here**.
+beetkeeper only knows an entry's source folder when its plugin reported the import. Unrecorded rows on the
+search page offer a **Find via downloader** button instead, which asks your download client for the folder
+through the optional [downloader hook](../configuration.md#downloader-hook) (the button tells you when the
+hook is not configured yet). A match is remembered as the entry's *inferred* source path (labelled as such,
+since it is a best guess rather than a record) and offers the same clean-slate link. Source folders are never
+typed by hand: a clean slate always starts from a recorded or inferred one.
 
 ## Events
 
@@ -59,6 +53,7 @@ elsewhere (via the [beets plugin](./installation.md)).
 
 Query your beets library using the full
 [beets query language](https://beets.readthedocs.io/en/stable/reference/query.html) — the same expressive
-queries you use on the beets command line.
+queries you use on the beets command line. Each result also shows whether its files are still on disk, its
+library location, and the folder it was imported from (with a clean-slate import link).
 
 ![Search](../assets/images/base_search_example_0-4-0rc1.png){ width="80%" }

@@ -41,7 +41,7 @@ def search_missing_source_path(
 ) -> Any:
     """
     Sent by beetkeeper to the configured downloader API (`downloader_hook.base_url` + `search_endpoint_path`)
-    when a client requests `GET /api/import/reimport/find_missing_source_path` for a library entry whose
+    when a client requests `POST /api/import/find_missing_source_path` for a library entry whose
     source path was never recorded. The downloader answers with a JSON list of results (or one object);
     beetkeeper takes the first result's path. When `downloader_hook.api_key` is set, the request carries an
     `Authorization: Bearer <api_key>` header.
