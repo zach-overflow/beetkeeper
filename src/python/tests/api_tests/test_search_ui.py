@@ -250,6 +250,17 @@ class TestAlbumResultsFragmentPaths:
         assert "1 of the albums on this page has no recorded source path." in body
 
     @pytest.mark.anyio
+    async def test_album_row_links_to_its_reimport(self, client: AsyncClient) -> None:
+        body = (await client.get("/fragment/search/results", params={"albums": "true"})).text
+        assert "/import?reimport_query=id:1#reimport" in body
+
+    @pytest.mark.anyio
+    async def test_album_tracks_offer_no_singleton_reimport(self, client: AsyncClient) -> None:
+        body = (await client.get("/fragment/search/results")).text
+        assert "Showing 1–2 of 2 tracks." in body
+        assert "reimport_query" not in body
+
+    @pytest.mark.anyio
     async def test_album_source_paths_come_from_its_tracks_import(self, client: AsyncClient, pushed_at: str) -> None:
         payload = _filesystem_event_payload(pushed_at, ["/inbox/An Album"], [1, 2], 1)
         assert (await client.post("/api/events/filesystem", json=payload)).status_code == 201

@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from beetkeeper.api.api_models.import_api_models import (
     import_config_flag,
     import_config_logpath,
+    import_config_moves_files,
     import_config_set_fields,
 )
 from beetkeeper.api.jinja_driver import get_templates
@@ -29,9 +30,12 @@ async def events_page(request: Request) -> HTMLResponse:
 
 
 @pages_ui_router.get("/import", response_class=HTMLResponse)
-async def import_page(request: Request) -> HTMLResponse:
+async def import_page(request: Request, reimport_query: str = "", reimport_singletons: bool = False) -> HTMLResponse:
     """The import page. The form's option controls are prefilled from the beets config's `import` section,
     so submitting the untouched form matches a plain `beet import` (and any change is an explicit override).
+
+    `reimport_query`/`reimport_singletons` prefill the reimport form, so other pages (e.g. a search result)
+    can link straight to "reimport this".
     """
     logpath = import_config_logpath()
     import_defaults = {
@@ -40,8 +44,14 @@ async def import_page(request: Request) -> HTMLResponse:
         "flat": import_config_flag("flat"),
         "logpath": str(logpath) if logpath is not None else "",
         "set_fields": "\n".join(f"{key}={value}" for key, value in import_config_set_fields().items()),
+        "move_files": import_config_moves_files(),
+        "write_tags": import_config_flag("write"),
     }
-    context = {"import_defaults": import_defaults}
+    context = {
+        "import_defaults": import_defaults,
+        "reimport_query": reimport_query,
+        "reimport_singletons": reimport_singletons,
+    }
     return get_templates().TemplateResponse(request=request, name="page_templates/import_page.html", context=context)
 
 

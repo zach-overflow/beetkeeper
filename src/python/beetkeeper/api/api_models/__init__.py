@@ -20,7 +20,7 @@ from beetkeeper.api.api_models.events_api_models import (
     MultiItemEventIngestResponse,
     TrackEventBody,
 )
-from beetkeeper.api.api_models.import_api_models import ImportSubmitRequest
+from beetkeeper.api.api_models.import_api_models import ImportSubmitRequest, ReimportSubmitRequest
 
 __all__ = [
     "APIAlbum",
@@ -42,6 +42,7 @@ __all__ = [
     "MultiItemEventIngestResponse",
     "PageQueryParams",
     "PageSize",
+    "ReimportSubmitRequest",
     "SearchResultsQueryParams",
     "TrackEventBody",
 ]

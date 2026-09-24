@@ -10,7 +10,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, status
 
-from beetkeeper.api.api_models import ImportSubmitRequest, PageQueryParams
+from beetkeeper.api.api_models import ImportSubmitRequest, PageQueryParams, ReimportSubmitRequest
 from beetkeeper.api.constants import RouteTag
 from beetkeeper.api.dependencies import ImportStoreDep
 from beetkeeper.core import ImportDecision, ImportJob
@@ -34,6 +34,27 @@ async def start_import(body: ImportSubmitRequest, store: ImportStoreDep) -> Impo
         group_albums=body.group_albums,
         flat=body.flat,
         set_fields=body.set_fields,
+    )
+
+
+@import_router.post("/reimport", status_code=status.HTTP_201_CREATED)
+async def start_reimport(body: ReimportSubmitRequest, store: ImportStoreDep) -> ImportJob:
+    """Enqueue a library-mode reimport (`beet import -L`) of the entries matching `query`.
+
+    The job runs through the same lifecycle as a path import (poll it, answer its decisions, abort it via
+    the routes below). Once it ends, its `reimport_report` diffs each reimported entry's prior library data
+    against the new — flagging fields that lost their value — and lists entries skipped because their files
+    no longer exist on disk.
+    """
+    return await store.create(
+        [],
+        quiet=body.quiet,
+        logpath=str(body.logpath) if body.logpath is not None else None,
+        set_fields=body.set_fields,
+        query=body.query,
+        singletons=body.singletons,
+        move_files=body.move_files,
+        write_tags=body.write_tags,
     )
 
 

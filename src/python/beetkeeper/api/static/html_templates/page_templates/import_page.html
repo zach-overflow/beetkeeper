@@ -1,7 +1,7 @@
 {% extends "base_template.html" %}
 {% block content %}
 <h1>Import</h1>
-<p>Start a beets import. The importer runs interactively — when it needs a decision, candidate matches
+<p>Start a beets import, or <a href="#reimport">reimport music already in your library</a>. The importer runs interactively — when it needs a decision, candidate matches
    appear below for you to apply, import as-is, or skip.</p>
 
 <form hx-post="{{ url_for('import_submit') }}" hx-target="#active-imports" hx-swap="afterbegin">
@@ -51,6 +51,70 @@
     </details>
 
     <button type="submit">Start import</button>
+</form>
+
+<h2 id="reimport">Reimport from library</h2>
+<p>Re-run the importer over music that is <em>already in your library</em> (<code>beet import -L</code>), to
+   change a match you regret, recover tags an earlier import dropped, or tag something you imported as-is.
+   Entries are replaced in place — never duplicated — and their flexible attributes and added-date are kept.
+   When the reimport finishes, its card shows what changed versus the previous data.
+   <a href="https://beets.readthedocs.io/en/stable/reference/cli.html#reimporting" target="_blank" rel="noopener">beets docs</a></p>
+
+<form hx-post="{{ url_for('import_reimport_submit') }}" hx-target="#active-imports" hx-swap="afterbegin">
+    <label for="reimport-query">Library <a href="https://beets.readthedocs.io/en/stable/reference/query.html" target="_blank" rel="noopener">query</a> selecting what to reimport:</label>
+    <br>
+    <input type="text" id="reimport-query" name="query" size="60" autocomplete="off"
+           value="{{ reimport_query }}" placeholder="albumartist:&quot;Boards of Canada&quot; year:1998">
+    <br>
+    <label>
+        <input type="checkbox" name="singletons"{% if reimport_singletons %} checked{% endif %}>
+        Singletons — match standalone tracks instead of albums (<code>-s</code>). Tracks that belong to an
+        album are skipped, since this mode would detach them from it.
+    </label>
+    <br>
+    <label>
+        <input type="checkbox" name="entire_library">
+        Reimport the <strong>entire library</strong> (required when the query is empty)
+    </label>
+    <br>
+    <button type="button" hx-get="{{ url_for('reimport_preview') }}" hx-include="closest form"
+            hx-target="#reimport-preview" hx-swap="innerHTML">Preview matches</button>
+    <div id="reimport-preview"></div>
+
+    <details>
+        <summary>Reimport options</summary>
+        <p><small>Prefilled from your beets config's <code>import</code> section; changes apply to this
+           reimport only.</small></p>
+        <fieldset>
+            <label>
+                <input type="checkbox" name="move_files"{% if import_defaults.move_files %} checked{% endif %}>
+                Move files to match the new tags. Untick to retag in place, leaving every file where it is
+                (<code>-C -M</code>) — you can run <code>beet move</code> later.
+            </label>
+            <br>
+            <label>
+                <input type="checkbox" name="write_tags"{% if import_defaults.write_tags %} checked{% endif %}>
+                Write the new tags to the files (<code>-w</code>). Untick to update only the beets database
+                (<code>-W</code>).
+            </label>
+            <br>
+            <label>
+                <input type="checkbox" name="quiet"{% if import_defaults.quiet %} checked{% endif %}>
+                Quiet — non-interactive, like <code>beet import -q</code> (no match prompts)
+            </label>
+            <br>
+            <label for="reimport-logpath">Log file path (<code>-l</code>; leave empty for no log file):</label>
+            <br>
+            <input type="text" id="reimport-logpath" name="logpath" size="60" value="{{ import_defaults.logpath }}"
+                   placeholder="/path/to/import.log">
+            <br>
+            <label for="reimport-set-fields">Set fields (<code>--set</code>; one <code>field=value</code> per line):</label>
+            <br>
+            <textarea id="reimport-set-fields" name="set_fields" rows="2" cols="60" placeholder="genre=Jazz">{{ import_defaults.set_fields }}</textarea>
+        </fieldset>
+    </details>
+
+    <button type="submit">Start reimport</button>
 </form>
 
 <h2>Active imports</h2>

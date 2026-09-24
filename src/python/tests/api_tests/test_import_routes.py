@@ -132,3 +132,61 @@ async def test_health_reports_pid_and_shared_job_count(client: AsyncClient) -> N
 
     await client.post("/api/import", json={"paths": ["/m/x"]})
     assert (await client.get("/api/health")).json()["job_count"] == before + 1
+
+
+@pytest.mark.anyio
+async def test_reimport_creates_pending_library_job(client: AsyncClient) -> None:
+    payload = {
+        "query": ["albumartist:Bonobo", "year:2010"],
+        "singletons": False,
+        "quiet": True,
+        "move_files": False,
+        "write_tags": False,
+        "set_fields": {"mood": "calm"},
+    }
+    response = await client.post("/api/import/reimport", json=payload)
+    assert response.status_code == 201
+    body = response.json()
+    assert body["status"] == "pending"
+    assert body["is_reimport"] is True
+    assert body["paths"] == []
+    assert body["query"] == ["albumartist:Bonobo", "year:2010"]
+    assert (body["quiet"], body["move_files"], body["write_tags"]) == (True, False, False)
+    assert body["set_fields"] == {"mood": "calm"}
+    assert body["reimport_report"] is None
+
+    assert (await client.get(f"/api/import/{body['id']}")).json()["query"] == payload["query"]
+
+
+@pytest.mark.anyio
+async def test_reimport_file_handling_defaults_follow_beets_config(client: AsyncClient) -> None:
+    body = (await client.post("/api/import/reimport", json={"query": ["album:A"]})).json()
+    # beets ships `copy: yes` / `write: yes`, and `copy` relocates files that are already in the library.
+    assert (body["move_files"], body["write_tags"], body["singletons"]) == (True, True, False)
+
+
+@pytest.mark.anyio
+async def test_reimport_accepts_explicit_empty_query_for_the_entire_library(client: AsyncClient) -> None:
+    body = (await client.post("/api/import/reimport", json={"query": []})).json()
+    assert body["query"] == []
+    assert body["source_label"] == "reimport: entire library"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({}, id="query-is-required"),
+        pytest.param({"query": ["a"], "paths": ["/m/1"]}, id="paths-are-not-accepted"),
+        pytest.param({"query": "album:A"}, id="query-must-be-a-list"),
+    ],
+)
+async def test_reimport_rejects_invalid_bodies(client: AsyncClient, payload: dict[str, object]) -> None:
+    assert (await client.post("/api/import/reimport", json=payload)).status_code == 422
+
+
+@pytest.mark.anyio
+async def test_path_import_is_not_flagged_as_reimport(client: AsyncClient) -> None:
+    body = (await client.post("/api/import", json={"paths": ["/m/1"]})).json()
+    assert body["is_reimport"] is False
+    assert body["query"] is None

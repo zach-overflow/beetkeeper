@@ -12,9 +12,18 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from beetkeeper.api.dependencies import get_import_store
-from beetkeeper.core import ImportJobStatus, ImportStore
-from beetkeeper.core.import_jobs import DecisionRequest, ImportAction, ImportCandidate
+from beetkeeper.api.dependencies import get_beets_library, get_import_store
+from beetkeeper.core import BeetsLibrary, ImportJobStatus, ImportStore
+from beetkeeper.core.import_jobs import (
+    DecisionRequest,
+    FieldChange,
+    ImportAction,
+    ImportCandidate,
+    MissingFilesEntry,
+    ReimportEntry,
+    ReimportReport,
+    TrackChange,
+)
 
 from .conftest import DependencyOverrides
 
@@ -242,3 +251,107 @@ async def test_path_suggestions_empty_outside_import_root(
     for path in ("relative/x", "/etc", "/downloads/Album", f"{tmp_path}/../etc"):
         body = (await client.get("/fragment/import/path-suggestions", params={"path": path})).text
         assert body.strip() == "", f"expected no suggestions for {path!r}"
+
+
+@pytest.mark.anyio
+async def test_reimport_submit_creates_library_job(client: AsyncClient, import_store: ImportStore) -> None:
+    response = await client.post(
+        "/fragment/import/reimport",
+        data={"query": 'albumartist:"Boards of Canada" year:1998', "write_tags": "on", "quiet": "on"},
+    )
+    assert response.status_code == 200
+    assert "reimport: albumartist:Boards of Canada year:1998" in response.text
+    assert "retag in place" in response.text
+
+    (job,) = await import_store.list()
+    assert job.query == ["albumartist:Boards of Canada", "year:1998"]
+    assert job.paths == []
+    assert (job.quiet, job.singletons, job.move_files, job.write_tags) == (True, False, False, True)
+
+
+@pytest.mark.anyio
+async def test_reimport_submit_requires_opt_in_for_the_entire_library(
+    client: AsyncClient, import_store: ImportStore
+) -> None:
+    assert (await client.post("/fragment/import/reimport", data={"query": "  "})).status_code == 422
+    assert await import_store.list() == []
+
+    response = await client.post("/fragment/import/reimport", data={"query": "", "entire_library": "on"})
+    assert response.status_code == 200
+    (job,) = await import_store.list()
+    assert job.query == []
+
+
+@pytest.mark.anyio
+async def test_job_fragment_renders_reimport_report(client: AsyncClient, import_store: ImportStore) -> None:
+    job = await import_store.create([], query=["album:Geogaddi"])
+    await import_store.set_reimport_report(
+        job.id,
+        ReimportReport(
+            entries=[
+                ReimportEntry(
+                    label="Boards of Canada - Geogaddi",
+                    shared_changes=[FieldChange(field="label", old="Warp", new="")],
+                    tracks=[
+                        TrackChange(
+                            label="Boards of Canada - Gyroscope",
+                            path="/music/boc/04.flac",
+                            changes=[FieldChange(field="title", old="gyroscope", new="Gyroscope")],
+                        )
+                    ],
+                    left_behind=["Boards of Canada - Magic Window"],
+                )
+            ],
+            missing_files=[MissingFilesEntry(label="Bonobo - Black Sands", paths=["/music/bonobo/01.flac"])],
+        ),
+    )
+    await import_store.set_status(job.id, ImportJobStatus.COMPLETED)
+
+    html = (await client.get(f"/fragment/import/{job.id}")).text
+
+    assert "1 reimported, 1 skipped for missing files" in html
+    assert "<del>Warp</del>" in html and "<mark>value lost</mark>" in html
+    assert "<del>gyroscope</del>" in html and "<ins>Gyroscope</ins>" in html
+    assert "1 track(s) were not covered by the chosen match" in html and "Magic Window" in html
+    assert "<code>/music/bonobo/01.flac</code>" in html
+    assert "hx-trigger" not in html
+
+
+@pytest.mark.anyio
+async def test_import_page_prefills_reimport_form(client: AsyncClient) -> None:
+    html = (await client.get("/import", params={"reimport_query": "id:42", "reimport_singletons": "true"})).text
+
+    assert 'name="query" size="60" autocomplete="off"\n           value="id:42"' in html
+    assert 'name="singletons" checked' in html
+    # beets' shipped defaults (`copy: yes`, `write: yes`) mean a reimport moves files and writes tags.
+    assert 'name="move_files" checked' in html
+    assert 'name="write_tags" checked' in html
+    assert 'name="entire_library" checked' not in html
+
+
+class TestReimportPreview:
+    @pytest.fixture
+    def app_dependency_overrides(
+        self, import_store: ImportStore, populated_beets_library: BeetsLibrary
+    ) -> DependencyOverrides:
+        return {get_import_store: lambda: import_store, get_beets_library: lambda: populated_beets_library}
+
+    @pytest.mark.anyio
+    async def test_counts_matching_standalone_tracks(self, client: AsyncClient) -> None:
+        response = await client.get(
+            "/fragment/import/reimport-preview", params={"query": "artist:'Artist 07'", "singletons": "true"}
+        )
+        assert response.status_code == 200
+        assert "<strong>1</strong> track:" in response.text
+        assert "Artist 07 — Song 07" in response.text
+
+    @pytest.mark.anyio
+    async def test_flags_an_empty_query_as_the_entire_library(self, client: AsyncClient) -> None:
+        html = (await client.get("/fragment/import/reimport-preview", params={"singletons": "true"})).text
+        assert "An empty query matches the entire library." in html
+        assert "<strong>30</strong> tracks (showing the first 10)" in html
+
+    @pytest.mark.anyio
+    async def test_reports_no_matches(self, client: AsyncClient) -> None:
+        html = (await client.get("/fragment/import/reimport-preview", params={"query": "album:Album"})).text
+        assert "No albums match this query." in html

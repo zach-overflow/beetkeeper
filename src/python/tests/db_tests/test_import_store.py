@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from beetkeeper.core import ImportAction, ImportDecision, ImportJobStatus, ImportStore
-from beetkeeper.core.import_jobs import DecisionRequest
+from beetkeeper.core.import_jobs import DecisionRequest, FieldChange, ReimportEntry, ReimportReport
 
 
 def _store(session_factory: async_sessionmaker[AsyncSession]) -> ImportStore:
@@ -187,3 +187,52 @@ async def test_recover_orphans_fails_only_other_workers_jobs(session_factory: as
     mine_view = await store.get(mine.id)
     assert orphan_view is not None and orphan_view.status is ImportJobStatus.FAILED
     assert mine_view is not None and mine_view.status is ImportJobStatus.RUNNING
+
+
+@pytest.mark.anyio
+async def test_path_import_is_not_a_reimport(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    job = await _store(session_factory).create(["/music/a"])
+    assert job.is_reimport is False
+    assert job.query is None
+    assert (job.move_files, job.write_tags, job.reimport_report) == (None, None, None)
+
+
+@pytest.mark.anyio
+async def test_create_persists_reimport_settings(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    store = _store(session_factory)
+    job = await store.create([], query=["albumartist:Bonobo"], singletons=True, move_files=False, write_tags=True)
+
+    claimed = await store.claim_next("worker-1")
+    assert claimed is not None and claimed.id == job.id
+    assert claimed.is_reimport is True
+    assert claimed.paths == []
+    assert claimed.query == ["albumartist:Bonobo"]
+    assert (claimed.singletons, claimed.move_files, claimed.write_tags) == (True, False, True)
+    assert claimed.source_label == "reimport: albumartist:Bonobo"
+
+
+@pytest.mark.anyio
+async def test_empty_query_is_a_whole_library_reimport(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    store = _store(session_factory)
+    job = await store.create([], query=[])
+    fetched = await store.get(job.id)
+    assert fetched is not None
+    assert fetched.query == []
+    assert fetched.is_reimport is True
+    assert fetched.source_label == "reimport: entire library"
+
+
+@pytest.mark.anyio
+async def test_reimport_report_round_trips(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    store = _store(session_factory)
+    job = await store.create([], query=["album:A"])
+    report = ReimportReport(
+        entries=[ReimportEntry(label="Artist - A", shared_changes=[FieldChange(field="label", old="Warp", new="")])]
+    )
+
+    await store.set_reimport_report(job.id, report)
+
+    fetched = await store.get(job.id)
+    assert fetched is not None
+    assert fetched.reimport_report == report
+    assert fetched.reimport_report.entries[0].shared_changes[0].dropped is True

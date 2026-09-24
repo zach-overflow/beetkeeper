@@ -8,7 +8,17 @@ generate_mono_repository_global_tag = true
 generate_mono_repository_package_tags = true
 branch_whitelist = ["main"]
 pre = "alpha.*"
-scopes = ["api", "dev", "search", "events", "plugin", "web-ui", "builds", "ci"]
+scopes = [
+  "api",
+  "dev",
+  "search",
+  "events",
+  "import",
+  "plugin",
+  "web-ui",
+  "builds",
+  "ci",
+]
 skip_ci = "[skip ci]"
 skip_untracked = false
 pre_bump_hooks = []

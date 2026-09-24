@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 
 from beetkeeper.core.import_jobs import ImportJob, ImportJobStatus
-from beetkeeper.core.import_worker import _apply_job_import_config, _job_loghandler
+from beetkeeper.core.import_worker import _apply_job_import_config, _job_loghandler, _session_config_overrides
 
 
 def _job(**overrides: Any) -> ImportJob:
@@ -91,3 +91,31 @@ def test_job_loghandler_appends_across_jobs(tmp_path: Path) -> None:
             handler.close()
     text = logpath.read_text(encoding="utf-8")
     assert "first import" in text and "second import" in text
+
+
+_NO_FILE_OPERATION = dict.fromkeys(("copy", "move", "link", "hardlink", "reflink"), False)
+
+
+@pytest.mark.parametrize(
+    ("job_fields", "expected"),
+    [
+        pytest.param({}, {"group_albums": False, "flat": False}, id="path-import-defers-to-the-beets-config"),
+        pytest.param(
+            {"query": [], "singletons": True},
+            {"group_albums": False, "flat": False, "singletons": True},
+            id="reimport-pins-singletons",
+        ),
+        pytest.param(
+            {"query": ["a"], "move_files": False, "write_tags": False},
+            {"group_albums": False, "flat": False, "singletons": False, "write": False} | _NO_FILE_OPERATION,
+            id="retag-in-place-without-writing",
+        ),
+        pytest.param(
+            {"query": ["a"], "move_files": True, "write_tags": True},
+            {"group_albums": False, "flat": False, "singletons": False, "move": True, "write": True},
+            id="move-and-write",
+        ),
+    ],
+)
+def test_session_config_overrides(job_fields: dict[str, Any], expected: dict[str, object]) -> None:
+    assert _session_config_overrides(_job(**job_fields)) == expected

@@ -8,6 +8,10 @@ At a high level, the API lets you:
 
 - **Run and track imports** — kick off an import of a directory, then poll its status and answer any
   decisions beets needs (for example, which candidate release to apply) — the same flow the UI drives.
+- **Reimport what's already in the library** — `POST /api/import/reimport` re-runs the importer over the
+  entries matching a beets query (`beet import -L`). It is tracked like any other import job, and the
+  finished job carries a `reimport_report`: a before/after diff per album, flagging fields that lost their
+  value and listing entries skipped because their files are gone.
 - **Read the event history** — query the record of album/track imports, file changes, and removals, so an
   external system can react to what beetkeeper (and beets) has done.
 - **Search the library** — run [beets queries](https://beets.readthedocs.io/en/stable/reference/query.html)
