@@ -1,6 +1,5 @@
 """Read-only beets query routes (`list`, `stats`, `fields`), backed by `core.BeetsLibrary`."""
 
-import logging
 from typing import Any
 
 from fastapi import APIRouter
@@ -9,7 +8,6 @@ from beetkeeper.api.api_models import ListQueryParams
 from beetkeeper.api.constants import RouteTag
 from beetkeeper.api.dependencies import BeetsLibraryDep
 
-_LOGGER = logging.getLogger(__name__)
 query_router = APIRouter(prefix="/query", tags=[RouteTag.QUERY])
 
 
@@ -21,7 +19,7 @@ async def list_(  # trailing underscore: avoid shadowing the builtin `list` (use
     Execute `beet list ...`: return one page of matching tracks (or albums) as JSON objects.
 
     The query params (pagination plus the beets query inputs, some repeatable) are documented on
-    `ListQueryParamsModel`.
+    `ListQueryParams`.
 
     See: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#list
     """

@@ -3,23 +3,14 @@ Clean-slate imports: remove one library entry, then import its raw source folder
 
 beets' own reimport (`beet import -L`) only re-tags files the library already points at, so it cannot recover
 a track whose file is gone or that an earlier import dropped. A clean slate sidesteps beets' reimport
-machinery entirely: `remove_entry` takes the entry out of the library the way `beet remove -d` would (rows,
-the files inside the beets directory, the album art), and the import worker then runs an ordinary path import
-over the source folder. Nothing is carried over — not flexible attributes, not the added-date — which is
-what "clean slate" means and what `preview` spells out before anything is touched. The one exception is the
-flexible attributes named by `preserve_fields` (in beetkeeper, the downloader hook's search fields, which identify
-the entry's download): `preview` reports their values, and the import worker re-applies them to the fresh import
-through beets' `--set` (see `import_worker._apply_job_import_config`).
+machinery entirely: the entry is removed the way `beet remove -d` would, and the import worker then runs an
+ordinary path import over the source folder. Nothing is carried over — not flexible attributes, not the
+added-date — which is what "clean slate" means. The one exception is the flexible attributes named by
+`preserve_fields` (in beetkeeper, the downloader hook's search fields, which identify the entry's download),
+which the import worker re-applies to the fresh import through beets' `--set` (see
+`import_worker._apply_job_import_config`).
 
-Safety rules, enforced by `preview` (the worker re-runs it as a guard right before removing anything):
-  * the source must be a real path under beetkeeper's `downloads_path` and outside the beets directory;
-  * for an album it must hold exactly one album folder with at least one readable audio file, for a standalone
-    track exactly one readable audio file;
-  * a source holding fewer audio files than the entry currently has on disk needs an explicit opt-in;
-  * only files inside the beets directory are ever deleted, and never anything under the source path.
-
-`file_health` powers the search page's per-row "files missing" marker, which is how entries in need of a
-clean slate are found. This module is the only new place that touches beets internals (see `core.library`).
+This module touches beets internals directly; `core.library` documents the integration rules.
 """
 
 import os
@@ -146,7 +137,12 @@ def expected_tracks(items: Sequence[Item]) -> int | None:
 
 
 def file_health(items: Sequence[Item]) -> AlbumFileHealth:
-    """Rows vs. files on disk vs. claimed track total for one album's items."""
+    """
+    Rows vs. files on disk vs. claimed track total for one album's items.
+
+    Powers the search page's per-row "files missing" marker, which is how entries in need of a clean slate
+    are found.
+    """
     return AlbumFileHealth(
         item_count=len(items),
         files_present=sum(1 for item in items if file_exists(item)),
@@ -164,7 +160,16 @@ def preview(
     preserve_fields: Collection[str] = (),
 ) -> CleanSlatePreview:
     """
-    Dry-run a clean slate of `target` from `source_path` (read-only; see the module docstring's rules).
+    Dry-run a clean slate of `target` from `source_path` (read-only).
+
+    Spells out what the removal and re-import would do before anything is touched, and enforces the safety
+    rules (the worker re-runs it as a guard right before removing anything):
+      * the source must be a real path under beetkeeper's `downloads_path` and outside the beets directory;
+      * for an album it must hold exactly one album folder with at least one readable audio file, for a
+        standalone track exactly one readable audio file;
+      * a source holding fewer audio files than the entry currently has on disk needs an explicit opt-in
+        (`allow_fewer_files`), reported as `needs_confirmation`;
+      * only files inside the beets directory are ever deleted, and never anything under the source path.
 
     `preserve_fields` names the flexible attributes whose values the clean slate carries onto the fresh import;
     they are reported as `fields_preserved` and left out of `flexible_attributes_lost`.
@@ -334,6 +339,11 @@ def _inside(path: bytes, root: bytes) -> bool:
 
 
 def _deletion_plan(lib: Library, entry: _Entry, source: bytes) -> _DeletionPlan:
+    """
+    Which of the entry's present files (and album art) the removal deletes, and which it leaves alone.
+
+    Only files inside the beets directory are ever deleted, and never anything under `source`.
+    """
     to_delete: list[bytes] = []
     kept: list[bytes] = []
     for item in entry.items:
@@ -353,6 +363,13 @@ def _deletion_plan(lib: Library, entry: _Entry, source: bytes) -> _DeletionPlan:
 
 
 def _scan_source(lib: Library, target: CleanSlateTarget, source: bytes, downloads_path: Path) -> _SourceScan:
+    """
+    Validate and inspect the source folder: its audio files, its album groups, and any blocking errors.
+
+    The source must exist under `downloads_path` and outside the beets directory; an album source must hold
+    exactly one album folder with at least one readable audio file, a standalone-track source exactly one
+    readable audio file.
+    """
     errors: list[str] = []
     shown = displayable_path(source)
     if not os.path.exists(syspath(source)):

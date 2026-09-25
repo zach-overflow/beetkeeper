@@ -6,7 +6,6 @@ event-backed recorded source paths, which come exclusively from the beetkeeper p
 
 import json
 from collections.abc import Sequence
-from datetime import UTC, datetime
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +14,7 @@ from sqlmodel import col
 from beetkeeper.api.api_models.import_api_models import FindMissingSourcePathRequest, FindMissingSourcePathResponse
 from beetkeeper.api.constants import LibrarySubject
 from beetkeeper.core import BeetsLibrary
-from beetkeeper.db.models import InferredSourcePath
+from beetkeeper.db.models import InferredSourcePath, naive_utcnow
 from beetkeeper.hooks import DownloaderHook
 
 DOWNLOADER_HOOK_METHOD = "downloader_hook"
@@ -56,7 +55,7 @@ async def record_inferred_source_path(
             source_path=source_path,
             method=DOWNLOADER_HOOK_METHOD,
             query_params_json=json.dumps(query_params),
-            inferred_at=datetime.now(UTC).replace(tzinfo=None),
+            inferred_at=naive_utcnow(),
         )
     )
     await session.commit()
@@ -69,11 +68,15 @@ async def inferred_source_paths(
     if not beets_ids:
         return {}
     rows = (
-        await session.execute(
-            select(col(InferredSourcePath.beets_id), col(InferredSourcePath.source_path)).where(
-                col(InferredSourcePath.subject_type) == subject.value,
-                col(InferredSourcePath.beets_id).in_(set(beets_ids)),
+        (
+            await session.execute(
+                select(col(InferredSourcePath.beets_id), col(InferredSourcePath.source_path)).where(
+                    col(InferredSourcePath.subject_type) == subject.value,
+                    col(InferredSourcePath.beets_id).in_(set(beets_ids)),
+                )
             )
         )
-    ).all()
-    return {beets_id: source_path for beets_id, source_path in rows}
+        .tuples()
+        .all()
+    )
+    return dict(rows)

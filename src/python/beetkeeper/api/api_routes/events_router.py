@@ -32,8 +32,7 @@ from beetkeeper.constants import BeetsEventType
 from beetkeeper.db.models import AlbumEvent, ImportDestinationPath, ImportSourcePath, ListenerEvent, TrackEvent
 from beetkeeper.db.session import SessionDep
 
-# TODO[https://github.com/zach-overflow/beetkeeper/issues/75]: replace these log calls with non-blocking calls
-# _LOGGER = logging.getLogger(__name__)
+# TODO[https://github.com/zach-overflow/beetkeeper/issues/75]: add non-blocking logging to the push routes.
 # The push (POST) routes are for the beetkeeper plugin only, so each opts out of the public OpenAPI schema
 # individually (a route-level `include_in_schema=True` cannot override a router-level `False`; FastAPI ANDs them).
 events_router = APIRouter(prefix="/events", tags=[RouteTag.EVENT])
@@ -41,11 +40,9 @@ events_router = APIRouter(prefix="/events", tags=[RouteTag.EVENT])
 
 async def _record_listener_event(session: AsyncSession, event_type: BeetsEventType, pushed_at: datetime) -> int:
     """Inserts the parent `ListenerEvent` and flushes to obtain its generated `event_id` for child FKs."""
-    # _LOGGER.debug(f"Processing track event type: {event_type} ...")
     listener_event = ListenerEvent(event_type=event_type, pushed_at=pushed_at)
     session.add(listener_event)
-    await session.flush()  # populates the autoincrement `event_id` used as the child rows' FK
-    # _LOGGER.debug(f"Write beets event to db took {perf_counter() - start} seconds.")
+    await session.flush()
     return cast("int", listener_event.event_id)
 
 
@@ -131,6 +128,7 @@ async def by_event_id(
 
 @events_router.post("/album", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def album(album_event: AlbumEventBody, session: SessionDep) -> EventIngestResponse:
+    """Record an album push (`album_imported` / `album_removed`) as a `ListenerEvent` plus one `AlbumEvent` row."""
     listener_event_id = await _record_listener_event(session, album_event.event_type, album_event.pushed_at)
     session.add(
         AlbumEvent(
@@ -145,6 +143,7 @@ async def album(album_event: AlbumEventBody, session: SessionDep) -> EventIngest
 
 @events_router.post("/track", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def track(track_event: TrackEventBody, session: SessionDep) -> EventIngestResponse:
+    """Record a track push (`item_imported` / `item_removed`) as a `ListenerEvent` plus one `TrackEvent` row."""
     listener_event_id = await _record_listener_event(session, track_event.event_type, track_event.pushed_at)
     session.add(_track_event_row(listener_event_id, track_event))
     await session.commit()
@@ -153,6 +152,13 @@ async def track(track_event: TrackEventBody, session: SessionDep) -> EventIngest
 
 @events_router.post("/filesystem", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def filesystem(fs_event: ImportTaskFilesEventBody, session: SessionDep) -> MultiItemEventIngestResponse:
+    """
+    Record an `import_task_files` push: the import task's source paths and the tracks it wrote.
+
+    One `ListenerEvent` row, then one `ImportSourcePath` per source path, one `ImportDestinationPath` per
+    imported item whose path decodes (UTF-8, replacing bad bytes) to a non-empty string, and one `TrackEvent`
+    per imported item. The response carries one ingest result per imported item.
+    """
     listener_event_id = await _record_listener_event(session, fs_event.event_type, fs_event.pushed_at)
     session.add_all(
         ImportSourcePath(listener_event_id=listener_event_id, source_path=source_path)

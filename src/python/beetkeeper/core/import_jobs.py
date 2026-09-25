@@ -15,7 +15,6 @@ This module deliberately imports NO beets internals — these are plain DTOs. Ma
 `import_store` (backed by the `ImportJobRecord`/`ImportLock` tables).
 """
 
-import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
@@ -23,8 +22,6 @@ from enum import StrEnum, unique
 from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
-
-_LOGGER = logging.getLogger(__name__)
 
 
 @unique
@@ -41,10 +38,15 @@ class ImportJobStatus(StrEnum):
 
 @unique
 class ImportAction(StrEnum):
-    """beetkeeper-side mirror of beets' import `action` choices (decoupled from beets internals)."""
+    """
+    beetkeeper-side mirror of beets' import `action` choices (decoupled from beets internals).
+
+    `APPLY` imports with the chosen candidate's metadata, `ASIS` imports without changing tags, `SKIP` skips
+    the task.
+    """
 
     APPLY = "apply"
-    ASIS = "asis"  # import without changing tags
+    ASIS = "asis"
     SKIP = "skip"
     # TODO[Claude]: extend + map to `beets.importer.action.*` in `import_worker` as the flow grows
     #     (e.g. as-tracks, group-albums, manual id/search). Keep this enum the API-facing contract.
@@ -204,31 +206,50 @@ class CleanSlatePreview(BaseModel):
 class ImportJob(BaseModel):
     """API-facing view of a single import job (the persisted record is `db.models.ImportJobRecord`)."""
 
-    id: str
-    status: ImportJobStatus
-    paths: list[str]
-    created_at: datetime
-    error: str | None = None
-    pending_decision: DecisionRequest | None = None
-    # True once the UI has answered the pending decision but the worker hasn't consumed it yet. The UI uses
-    # this to keep polling (the job is momentarily still AWAITING_DECISION) instead of re-showing the prompt.
-    decision_submitted: bool = False
-    # Human-readable, append-only log of the import's progress, surfaced on the job's UI fragment.
-    output: str | None = None
-    # Non-interactive (`beet import -q`) mode: the worker auto-decides matches instead of prompting.
-    quiet: bool = False
-    # Per-job import settings mirroring `beet import` flags (`-l`, `--group-albums`, `--flat`, `--set`).
-    logpath: str | None = None
-    group_albums: bool = False
-    flat: bool = False
-    set_fields: dict[str, str] = Field(default_factory=dict)
-    # Clean slate: the library album (or standalone track) removed before `paths` (its source folder) is
-    # imported. At most one is set; both None means a plain path import.
-    clean_slate_album_id: int | None = None
-    clean_slate_item_id: int | None = None
-    # The submitter's opt-in to a source holding fewer audio files than the entry has on disk (see
-    # `CleanSlatePreview.needs_confirmation`); the worker re-runs the preview with it before removing anything.
-    clean_slate_allow_fewer_files: bool = False
+    id: str = Field(description="Unique job id (32 hex characters), the `job_id` of the per-job import routes.")
+    status: ImportJobStatus = Field(description="The job's lifecycle state.")
+    paths: list[str] = Field(
+        description="The filesystem paths beets imports (for a clean slate, the removed entry's raw source folder)."
+    )
+    created_at: datetime = Field(description="When the job was submitted (naive UTC).")
+    error: str | None = Field(default=None, description="Why the job FAILED, once it has; None otherwise.")
+    pending_decision: DecisionRequest | None = Field(
+        default=None, description="The decision the worker is parked on while AWAITING_DECISION; None otherwise."
+    )
+    decision_submitted: bool = Field(
+        default=False,
+        description=(
+            "True once the UI has answered the pending decision but the worker has not consumed it yet: the job "
+            "is momentarily still AWAITING_DECISION, so keep polling instead of re-showing the prompt."
+        ),
+    )
+    output: str | None = Field(default=None, description="Human-readable, append-only log of the import's progress.")
+    quiet: bool = Field(
+        default=False,
+        description="Non-interactive (`beet import -q`) mode: the worker auto-decides matches instead of prompting.",
+    )
+    logpath: str | None = Field(default=None, description="The `beet import -l` log file path, if any.")
+    group_albums: bool = Field(default=False, description="The `beet import --group-albums` flag.")
+    flat: bool = Field(default=False, description="The `beet import --flat` flag.")
+    set_fields: dict[str, str] = Field(default_factory=dict, description="The `beet import --set` field values.")
+    clean_slate_album_id: int | None = Field(
+        default=None, description="The library album removed before `paths` (its source folder) is imported afresh."
+    )
+    clean_slate_item_id: int | None = Field(
+        default=None,
+        description=(
+            "The standalone track removed before `paths` is imported afresh. At most one clean-slate id is set; "
+            "both None means a plain path import."
+        ),
+    )
+    clean_slate_allow_fewer_files: bool = Field(
+        default=False,
+        description=(
+            "The submitter's opt-in to a source holding fewer audio files than the entry has on disk "
+            "(see `CleanSlatePreview.needs_confirmation`); the worker re-runs the preview with it before "
+            "removing anything."
+        ),
+    )
 
     @computed_field  # type: ignore[prop-decorator]  # mypy limitation: @computed_field stacks on @property
     @property

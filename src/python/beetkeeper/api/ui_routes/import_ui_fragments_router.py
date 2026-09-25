@@ -1,19 +1,11 @@
 """
 HTMX fragment routes for the interactive import flow.
 
-These return HTML partials (not JSON) for the `/import` page:
-  * `POST /fragment/import`                       — start an import from the page form, render the job fragment.
-  * `POST /fragment/import/clean-slate`           — start a clean-slate import from its form (remove, then import).
-  * `GET  /fragment/import/clean-slate-preview`   — dry-run a clean slate: what it would delete and import.
-  * `GET  /fragment/import/{job_id}`              — poll a job's current state (the fragment self-refreshes).
-  * `POST /fragment/import/{job_id}/decision`     — answer the match decision the job is parked on.
-  * `POST /fragment/import/{job_id}/abort`        — cooperatively cancel a running import.
-
-All state goes through the cross-process `ImportStore`. The single `import_job.html` fragment dispatches on
-`job.status` (poll while running, show candidate buttons while awaiting a decision).
+These return HTML partials (not JSON) for the `/import` page. All state goes through the cross-process
+`ImportStore`. The single `import_job.html` fragment dispatches on `job.status` (poll while running, show
+candidate buttons while awaiting a decision).
 """
 
-import logging
 import os
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -22,15 +14,15 @@ from typing import Annotated, Any
 from anyio import Path as AsyncPath
 from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
-from pydantic import ValidationError
 
 from beetkeeper.api.adapters import clean_slate_preview as _clean_slate_preview
+from beetkeeper.api.adapters import reject_unsafe_clean_slate, require_import_job
 from beetkeeper.api.api_models import CleanSlatePreviewRequest
+from beetkeeper.api.api_models.common_api_models import validated_or_422
 from beetkeeper.api.dependencies import BeetsLibraryDep, ImportStoreDep, UserConfigDep
 from beetkeeper.api.jinja_driver import get_templates
 from beetkeeper.core import ImportAction, ImportCandidate, ImportDecision, ImportJob, ImportJobStatus
 
-_LOGGER = logging.getLogger(__name__)
 import_ui_fragments_router = APIRouter(prefix="/fragment/import")
 
 _JOB_FRAGMENT = "fragment_templates/import_job.html"
@@ -205,31 +197,21 @@ def _build_cell(candidate: ImportCandidate, spec: tuple[str, str, Callable[[Any]
 
 
 def _render_job(request: Request, job: ImportJob) -> HTMLResponse:
-    candidate_table = build_candidate_table(job.pending_decision.candidates) if job.pending_decision else None
-    context = {"job": job, "candidate_table": candidate_table, "settings_summary": _job_settings_summary(job)}
-    return get_templates().TemplateResponse(request=request, name=_JOB_FRAGMENT, context=context)
-
-
-async def _require_job(store: ImportStoreDep, job_id: str) -> ImportJob:
-    job = await store.get(job_id)
-    if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No import job '{job_id}'.")
-    return job
+    """Render one job's `import_job.html` fragment."""
+    return get_templates().TemplateResponse(request=request, name=_JOB_FRAGMENT, context=_job_entry(job))
 
 
 def _clean_slate_request(
     beets_album_id: int | None, beets_item_id: int | None, source_path: str, allow_fewer_files: bool
 ) -> CleanSlatePreviewRequest:
     """Validate the clean-slate form fields into the shared request model; 422 on a bad combination."""
-    try:
-        return CleanSlatePreviewRequest(
-            beets_album_id=beets_album_id,
-            beets_item_id=beets_item_id,
-            source_path=source_path.strip(),
-            allow_fewer_files=allow_fewer_files,
-        )
-    except ValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    return validated_or_422(
+        CleanSlatePreviewRequest,
+        beets_album_id=beets_album_id,
+        beets_item_id=beets_item_id,
+        source_path=source_path.strip(),
+        allow_fewer_files=allow_fewer_files,
+    )
 
 
 @import_ui_fragments_router.get("", response_class=HTMLResponse)
@@ -241,7 +223,7 @@ async def import_active_list(request: Request, store: ImportStoreDep) -> HTMLRes
     and returning to the page (state lives in the DB-backed store, not the page DOM).
     """
     active = [job for job in await store.list() if job.status in _ACTIVE_STATUSES]
-    active.reverse()  # store.list() is oldest-first; show newest first (matches the form's prepend)
+    active.reverse()
     context = {"entries": [_job_entry(job) for job in active]}
     return get_templates().TemplateResponse(request=request, name=_JOB_LIST_FRAGMENT, context=context)
 
@@ -305,13 +287,12 @@ async def import_clean_slate_submit(
     """
     clean_slate = _clean_slate_request(beets_album_id, beets_item_id, source_path, allow_fewer_files)
     plan = await _clean_slate_preview(library, user_config, clean_slate)
-    if plan.errors:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=" ".join(plan.errors))
-    if plan.needs_confirmation:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="The source holds fewer audio files than the entry has on disk; tick the opt-in to proceed.",
-        )
+    reject_unsafe_clean_slate(
+        plan,
+        needs_confirmation_detail=(
+            "The source holds fewer audio files than the entry has on disk; tick the opt-in to proceed."
+        ),
+    )
     job = await store.create(
         [clean_slate.source_path],
         quiet=quiet,
@@ -361,8 +342,8 @@ async def path_suggestions(request: Request, user_config: UserConfigDep, path: s
 
 @import_ui_fragments_router.get("/{job_id}", response_class=HTMLResponse)
 async def import_job_status(request: Request, store: ImportStoreDep, job_id: str) -> HTMLResponse:
-    """Render a job's current fragment (the running/pending fragment polls this endpoint)."""
-    return _render_job(request, await _require_job(store, job_id))
+    """Render a job's current state as its fragment (the running/pending fragment polls this to self-refresh)."""
+    return _render_job(request, await require_import_job(store, job_id))
 
 
 @import_ui_fragments_router.post("/{job_id}/decision", response_class=HTMLResponse)
@@ -373,15 +354,15 @@ async def import_job_decision(
     action: Annotated[ImportAction, Form()],
     candidate_index: Annotated[int | None, Form()] = None,
 ) -> HTMLResponse:
-    """Submit the user's match decision, then render the job's next fragment."""
-    await _require_job(store, job_id)
+    """Answer the match decision the job is parked on, then render the job's next fragment."""
+    await require_import_job(store, job_id)
     await store.submit_decision(job_id, ImportDecision(action=action, candidate_index=candidate_index))
-    return _render_job(request, await _require_job(store, job_id))
+    return _render_job(request, await require_import_job(store, job_id))
 
 
 @import_ui_fragments_router.post("/{job_id}/abort", response_class=HTMLResponse)
 async def import_job_abort(request: Request, store: ImportStoreDep, job_id: str) -> HTMLResponse:
     """Cooperatively abort an in-flight import and render its fragment."""
-    await _require_job(store, job_id)
+    await require_import_job(store, job_id)
     await store.request_abort(job_id)
-    return _render_job(request, await _require_job(store, job_id))
+    return _render_job(request, await require_import_job(store, job_id))

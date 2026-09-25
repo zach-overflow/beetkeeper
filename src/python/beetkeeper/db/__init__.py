@@ -1,7 +1,8 @@
 """
 beetkeeper's own database layer.
 
-    - `models.py`     — SQLModel ORM tables for the beets-event history.
+    - `models.py`     — SQLModel ORM tables: the beets-event history, import jobs + the leader lock,
+                        login sessions, and inferred source paths.
     - `session.py`    — async engine + `async_sessionmaker` + the `get_session` FastAPI dependency.
     - `migrations.py` — programmatic alembic integration (online + offline `--sql`).
     - `alembic/`      — the alembic environment (`env.py` + `versions/`); migrations OWN the schema, so

@@ -7,7 +7,7 @@ library is single-writer SQLite), while every process keeps serving submit/statu
 the shared DB-backed `ImportStore`. If the leader dies, its lease expires and another process takes over
 and fails any orphaned job.
 
-Threading bridge (unchanged from before): beets' importer is a multi-threaded pipeline, and its
+Threading bridge: beets' importer is a multi-threaded pipeline, and its
 interactive `choose_*` hooks run in beets' own threads. Those reach the event loop through a
 `BlockingPortal`; from the loop, decisions are exchanged through the DB (so a decision POST handled by ANY
 process is seen by the leader). beets dev docs: https://beets.readthedocs.io/en/v2.12.0/dev/importer.html
@@ -43,7 +43,7 @@ from beets.util import bytestring_path
 from beets.util.functemplate import ESCAPE_CHAR, Parser
 
 from beetkeeper.core.clean_slate import CleanSlateError, RemovedEntry, preview, remove_entry, require_ok, saved_id
-from beetkeeper.core.import_jobs import (  # pants: no-infer-dep
+from beetkeeper.core.import_jobs import (
     CleanSlateTarget,
     DecisionRequest,
     ImportAction,
@@ -67,13 +67,10 @@ _DUPLICATE_NARRATIVES: Final[dict[DuplicateAction, str]] = {
     DuplicateAction.UPGRADE: "keeping whichever copy of each track has the higher bitrate",
 }
 
-# Leader lease length and how often the holder renews it (renew well within the lease).
 _LEASE_SECONDS = 30.0
 _RENEW_INTERVAL = 10.0
-# Poll cadences: how often a non-leader retries / the leader checks for work, and the decision-wait poll.
 _IDLE_POLL = 1.5
 _DECISION_POLL = 1.0
-# How often the leader flushes a running job's accumulated output to the DB (so pollers see progress).
 _OUTPUT_FLUSH_INTERVAL = 1.0
 # Terminal-status writes are retried (a lost one would leave the job RUNNING forever — see _finalize_job).
 _FINALIZE_ATTEMPTS = 5
@@ -85,8 +82,7 @@ class _OutputBuffer:
     Thread-safe, append-only accumulator for an import job's human-readable output.
 
     beets' importer is multi-threaded and our `WebImportSession` hooks run in those threads, so lines are
-    appended under a lock. `snapshot()` returns a monotonic version (to skip redundant DB writes) plus the
-    full text; the leader's flush task reads it on the event loop and persists it via `ImportStore`.
+    appended under a lock.
     """
 
     def __init__(self) -> None:
@@ -108,7 +104,12 @@ class _OutputBuffer:
             self._version += 1
 
     def snapshot(self) -> tuple[int, str]:
-        """Return `(version, full_text)`; the version increments on every append."""
+        """
+        Return `(version, full_text)`; the version increments on every append.
+
+        The leader's flush task reads this on the event loop and persists the text via `ImportStore`, using
+        the monotonic version to skip redundant DB writes.
+        """
         with self._lock:
             return self._version, "\n".join(self._lines)
 
@@ -130,19 +131,19 @@ class _BufferLogHandler(logging.Handler):
 
 
 class DecisionBridge:
-    """
-    Bridges an interactive decision from a beets pipeline thread to the cross-process DB store.
-
-    `request()` runs on the event loop (invoked from a beets thread via the portal): it parks the job on a
-    `DecisionRequest` and polls the store until the UI's `ImportDecision` arrives (or abort is requested).
-    """
+    """Bridges an interactive decision from a beets pipeline thread to the cross-process DB store."""
 
     def __init__(self, store: ImportStore) -> None:
         """Bind the bridge to the shared import store."""
         self._store = store
 
     async def request(self, request: DecisionRequest) -> ImportDecision:
-        """Publish the decision request and poll the store until answered (or aborted)."""
+        """
+        Publish the decision request and poll the store until answered (or aborted).
+
+        Runs on the event loop, invoked from a beets thread via the portal: parks the job on the
+        `DecisionRequest` and polls the store until the UI's `ImportDecision` arrives or abort is requested.
+        """
         await self._store.set_awaiting(request)
         while True:
             decision = await self._store.take_decision(request.job_id)
@@ -320,7 +321,6 @@ def _apply_job_import_config(job: ImportJob, preserved_fields: Mapping[str, str]
     per-job values are applied by mutating it. Safe because imports run one at a time node-wide (the leased
     leader is a single consumer) and every job sets ALL of these keys, so nothing leaks between jobs.
     """
-    # Imported lazily, like the rest of beets in `core`.
     from beets import config as beets_config
 
     beets_config["import"]["group_albums"] = job.group_albums
@@ -367,7 +367,6 @@ def _metadata_source_warning() -> str | None:
     accident, which makes autotag silently yield 0 candidates and parks every album on a manual decision.
     Call this after `open_library` (which loads the configured plugins). All access is defensive.
     """
-    # Imported lazily, like the rest of beets in `core`.
     from beets import config as beets_config
     from beets import metadata_plugins
 
@@ -394,8 +393,9 @@ class WebImportSession(ImportSession):
     """
     A `beets.importer.ImportSession` whose interactive hooks defer to the web UI via a `BlockingPortal`.
 
-    The `choose_*`/`resolve_*` methods run in beets' pipeline threads, so they reach the loop with
-    `portal.call(...)`; decisions and the abort flag are read/written through the DB-backed store.
+    The `choose_match`/`choose_item`/`get_duplicate_action` hooks run in beets' pipeline threads, so they
+    reach the loop with `portal.call(...)`; decisions and the abort flag are read/written through the
+    DB-backed store.
     """
 
     def __init__(
@@ -418,7 +418,6 @@ class WebImportSession(ImportSession):
         `loghandler`, when given, becomes the session logger's handler — beets' `-l` import log.
         `config_overrides` are applied to the session's detached `import` config (see `set_config`).
         """
-        # beets stores paths as bytes; `ImportSession.__init__(lib, loghandler, paths, query)`.
         super().__init__(library, loghandler, [bytestring_path(p) for p in paths], None)
         self._job_id = job_id
         self._portal = portal
@@ -443,8 +442,6 @@ class WebImportSession(ImportSession):
         for key, value in self._config_overrides.items():
             detached[key] = value
         super().set_config(detached)
-
-    # beets interactive hooks below execute in beets' pipeline threads, not the event loop.
 
     def choose_match(self, task: Any) -> Any:
         """Ask the UI which candidate to apply for an album `task` (or to skip / import as-is)."""
@@ -471,7 +468,6 @@ class WebImportSession(ImportSession):
             return Action.SKIP
 
         if self._quiet:
-            # Non-interactive (`beet import -q`): decide without prompting the UI.
             return self._quiet_choice(task, label, build_diff)
 
         request = self._build_decision_request(task, prompt, to_candidate)
@@ -503,7 +499,6 @@ class WebImportSession(ImportSession):
         Apply the best candidate iff beets rates the match a *strong* recommendation; otherwise fall back to
         beets' `import.quiet_fallback` config (skip by default, or import as-is).
         """
-        # Imported here (not at module load) to keep beets internals lazy, like the rest of `core`.
         from beets.autotag import Recommendation
 
         candidates = getattr(task, "candidates", None) or []
@@ -680,8 +675,8 @@ class ImportWorker:
     """
     Per-process import runner; only the lease holder actually runs imports (see module docstring).
 
-    Launch `run()` as a background task in the FastAPI lifespan. Submit/answer/abort/status all go through
-    the shared `ImportStore` (not this object), so they work no matter which process handles the request.
+    Submit/answer/abort/status all go through the shared `ImportStore` (not this object), so they work no
+    matter which process handles the request.
     """
 
     def __init__(
@@ -711,7 +706,8 @@ class ImportWorker:
         """
         Leader loop: acquire/renew the lease, recover orphans on election, then claim + run jobs.
 
-        The lock row is ensured once up front, unguarded: migrations have just run, so a failure there is
+        Launched as a background task in the FastAPI lifespan and runs until cancelled. The lock row is
+        ensured once up front, unguarded: migrations have just run, so a failure there is
         a real misconfiguration that should fail startup loudly. After that, each cycle is guarded against
         any `Exception` (transient SQLite contention, aiosqlite surfacing cancellation as "no active
         connection", driver errors that are not `OperationalError`, or child-task errors wrapped by anyio
@@ -748,12 +744,12 @@ class ImportWorker:
         await self._run_job(job, portal)
 
     async def _run_job(self, job: ImportJob, portal: BlockingPortal) -> None:
+        """Run one claimed job to a terminal status, streaming its output to the store while it runs."""
         output = _OutputBuffer()
         failure: Exception | None = None
         result = _ImportRunResult()
         async with anyio.create_task_group() as task_group:
             task_group.start_soon(self._renew_lease_until_cancelled)
-            # Flush the growing output to the DB so anyone polling the job renders progress live.
             task_group.start_soon(self._flush_output_until_cancelled, job.id, output)
             try:
                 # Run the multi-threaded beets pipeline on one worker thread; the lease is renewed

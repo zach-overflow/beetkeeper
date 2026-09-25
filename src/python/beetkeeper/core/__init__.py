@@ -1,5 +1,6 @@
 """
-Core domain logic the API layer calls into. This is the ONLY package that touches beets internals.
+Core domain logic the API layer calls into. This is the ONLY package that touches beets internals (the
+one exception: `api.api_models.import_api_models` reads the beets config's import defaults).
 
 Integration model (decided): beetkeeper drives beets **in-process via its Python API**, not via the
 `beet` CLI — beetkeeper and beets are co-located, and in-process access is required for the interactive
@@ -20,7 +21,8 @@ orphan-recovery bookkeeping across restarts). The JSON API is `api.api_routes.im
 the HTMX UI is `api.ui_routes.import_ui_fragments_router` (+ the `/import` page); routes use the store via
 `api.dependencies.ImportStoreDep`.
 
-Remaining beets-detail TODOs are marked inline (DTO mapping, duplicate resolution, candidate labels).
+Remaining beets-detail TODOs are marked inline (extending `ImportAction`, validating a decision's candidate
+index, bridging duplicate resolution and import resumption to the UI as decisions).
 """
 
 from beetkeeper.core.import_jobs import (

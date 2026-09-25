@@ -12,8 +12,8 @@
     <label><input type="checkbox" name="albums" value="true"> albums</label>
     <label for="sort_by">Sort</label>
     <input type="text" id="sort_by" name="sort_by" size="10" placeholder="e.g. year+">
-    <!-- Same inputs, two modes: "List" submits to the list (results) endpoint; "Stats" sends the same
-         form inputs to the stats endpoint instead. -->
+    {# Same inputs, two modes: "List" submits to the list (results) endpoint; "Stats" sends the same
+       form inputs to the stats endpoint instead. #}
     <button type="submit">List</button>
     <button type="button" hx-get="{{ url_for('search_stats_fragment') }}" hx-include="closest form"
             hx-target="#search-results" hx-swap="innerHTML">Stats</button>

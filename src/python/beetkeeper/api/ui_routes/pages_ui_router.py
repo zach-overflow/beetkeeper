@@ -18,16 +18,13 @@ pages_ui_router = APIRouter()
 
 @pages_ui_router.get("/")
 async def default_page() -> RedirectResponse:
+    """Send the site root to the search page, the UI's landing page."""
     return RedirectResponse(url="/search", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
-
-
-@pages_ui_router.get("/home", response_class=HTMLResponse)
-async def home_page(request: Request) -> HTMLResponse:
-    return get_templates().TemplateResponse(request=request, name="page_templates/main_page.html", context={})
 
 
 @pages_ui_router.get("/events", response_class=HTMLResponse)
 async def events_page(request: Request) -> HTMLResponse:
+    """Render the beets events page; its table loads through the `/fragment/event` HTMX fragment."""
     return get_templates().TemplateResponse(request=request, name="page_templates/events_page.html", context={})
 
 

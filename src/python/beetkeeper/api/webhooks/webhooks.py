@@ -22,7 +22,6 @@ class SearchMissingSourcePathResult(BaseModel):
     )
 
 
-# NOTE: since this is a webhook-only APIRouter, the `prefix` should not matter.
 webhook_router = APIRouter()
 
 

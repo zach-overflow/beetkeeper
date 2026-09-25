@@ -4,8 +4,7 @@ Async SQLAlchemy/SQLModel engine + session wiring for beetkeeper's own SQLite da
 The engine is built from `UserConfig.database` at application startup (see
 `beetkeeper.api.fastapi_app.lifespan`) and stored on `app.state`, so request handlers obtain a session
 through the `get_session` dependency rather than via a module-global engine. Every new DB-API connection
-gets beetkeeper's non-default SQLite settings via a `connect` event hook (see
-`_configure_sqlite_connection`): foreign-key enforcement, WAL journaling, and `synchronous=NORMAL`.
+gets beetkeeper's non-default SQLite settings (see `_configure_sqlite_connection`).
 
 Schema creation is owned by alembic (see `beetkeeper.db.migrations`); `SQLModel.metadata.create_all` is
 intentionally avoided at runtime so the migrations stay the single source of truth.
@@ -65,6 +64,11 @@ def make_engine(async_url: str, *, echo: bool = False) -> AsyncEngine:
 def make_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     """Builds an `async_sessionmaker` bound to `engine` (expire_on_commit off so results survive commit)."""
     return async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+
+def affected_rows(result: Any) -> int:
+    """Affected-row count of a DML statement's result (the runtime `CursorResult` exposes `rowcount`)."""
+    return int(result.rowcount)
 
 
 @asynccontextmanager

@@ -16,7 +16,6 @@ class RouteTag(StrEnum):
     MONITOR = "monitoring"
     IMPORT = "imports"
     QUERY = "query"
-    WEBHOOK = "webhooks"
 
 
 @unique
@@ -51,7 +50,7 @@ OPENAPI_TAG_METADATA: Final[Iterable[_OpenApiTagMetadata]] = (
         "name": RouteTag.AUTH,
         "description": dedent(
             """\
-            Used only when optional "beetkeeper.auth.enable_login_protection" is "true". 
+            Used only when optional "beetkeeper.auth.enable_login_protection" is "true".
             Routes for simple login / logout flows. Beetkeeper does not support multiple user identities.
             Only handles authentication, with implicit authorization to everything for an authenticated client.
             """
@@ -63,7 +62,7 @@ OPENAPI_TAG_METADATA: Final[Iterable[_OpenApiTagMetadata]] = (
             """\
             Routes for managing [beets imports](https://beets.readthedocs.io/en/stable/reference/cli.html#import).
             Offer API-based import execution, import history, import choice selection, and more.
-            For automated beets setups, you will typically rely on these endpoints the most. 
+            For automated beets setups, you will typically rely on these endpoints the most.
             These endpoints also power the frontend import management web UI page.
             """
         ),

@@ -1,16 +1,26 @@
 """
 Any database ORM models needed for our `core` and `api` to properly function.
 Model definitions should be subclassed from `SQLModel` rather than SQLAlchemy models.
+
+All `DateTime` columns are stored naive-UTC (SQLite's DATETIME is tz-naive); write them with `naive_utcnow`
+and compare naive against naive.
+
+See:
+    https://github.com/fastapi/full-stack-fastapi-template/blob/master/backend/app/models.py
+    https://sqlmodel.tiangolo.com/#sql-databases-in-fastapi
 """
 
-# https://github.com/fastapi/full-stack-fastapi-template/blob/master/backend/app/models.py
-# https://sqlmodel.tiangolo.com/#sql-databases-in-fastapi
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Index, UniqueConstraint
 from sqlmodel import AutoString, Field, SQLModel
 
 from beetkeeper.constants import BeetsEventType
+
+
+def naive_utcnow() -> datetime:
+    """Naive UTC 'now' matching the tz-naive `DateTime` columns below."""
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class ListenerEvent(SQLModel, table=True):
@@ -33,8 +43,6 @@ class AlbumEvent(SQLModel, table=True):
     """
 
     __tablename__ = "album_event"
-    # https://sqlmodel.tiangolo.com/tutorial/relationship-attributes/cascade-delete-relationships/?h=foreign#foreign-key-constraint-support
-    # NOTE: have to set pragma in sqllite to enable foreing key constraints
     id: int | None = Field(default=None, primary_key=True)
     listener_event_id: int | None = Field(
         default=None, foreign_key="listener_event.event_id", ondelete="CASCADE", index=True
@@ -50,8 +58,6 @@ class TrackEvent(SQLModel, table=True):
     """
 
     __tablename__ = "track_event"
-    # https://sqlmodel.tiangolo.com/tutorial/relationship-attributes/cascade-delete-relationships/?h=foreign#foreign-key-constraint-support
-    # NOTE: have to set pragma in sqllite to enable foreing key constraints
     id: int | None = Field(default=None, primary_key=True)
     listener_event_id: int | None = Field(
         default=None, foreign_key="listener_event.event_id", ondelete="CASCADE", index=True
@@ -105,44 +111,13 @@ class InferredSourcePath(SQLModel, table=True):
     inferred_at: datetime = Field(sa_type=DateTime)
 
 
-# TODO: draft — not wired up yet. Re-enable once it has a migration and a valid `import_job` FK
-# (note: `import_job`'s primary key is `id` (a str), not `event_id`).
-#
-# Feasibility / how to build (investigated 2026-06-27): the source -> destination data is available for free
-# from beets. During the importer's `manipulate_files` stage, `beets.library.Item.move_file()` emits
-# `item_copied` / `item_moved` / `item_linked` / `item_hardlinked` / `item_reflinked` events, each carrying
-# `item` (-> `item.id`), `source`, and `destination` (bytes paths). beets dispatches events via the
-# class-level `BeetsPlugin.listeners` table, so beetkeeper can register one in-process listener (a tiny
-# `BeetsPlugin` whose `register_listener(...)` runs in beets' pipeline threads) WITHOUT loading config
-# plugins, collect rows into a thread-safe sink, then have the leader worker persist them after the import
-# (mirroring the existing output-buffer pattern in `core/import_worker.py`).
-# Schema notes for re-enabling: make `dst_path` unique + indexed (one row per imported file; re-imports
-# upsert), index `src_path` for reverse lookups, decode the bytes paths to str, and consider `ondelete=
-# "SET NULL"` (not CASCADE) so this "canonical ledger" survives pruning of transient `import_job` rows.
-# Caveat: only audio Items emit these events — non-audio extras (cover art, logs) are moved by filetote and
-# would need its events to be captured too.
-# class FileLineage(SQLModel, table=True):
-#     """
-#     Persists the per-file lineage of any given file / directory in the beets-managed library folder, and
-#     associated raw, un-processed input filepath, if any.
-#
-#     This is particularly helpful for tracking down the original raw file(s) from a given import, and
-#     also may prove useful for users debugging their beets config.
-#     """
-#     __tablename__ = "file_lineage"
-#     id: str = Field(primary_key=True)
-#     dst_path: str
-#     src_path: str
-#     import_job_id: int | None = Field(default=None, foreign_key="import_job.event_id", ondelete="CASCADE")
-
-
 class AuthSessionRecord(SQLModel, table=True):
     """
     One logged-in session created by `POST /api/auth/login` (see `beetkeeper.api.security`).
 
-    Sessions live in the DB (not process memory) so a token issued by one uvicorn worker validates on all
-    of them and survives restarts. Only a SHA-256 hex digest of the bearer token is stored — the raw token
-    is returned once to the client and never persisted.
+    Sessions live in the DB (not process memory) so they survive restarts and are visible to every process
+    sharing the database. Only a SHA-256 hex digest of the bearer token is stored — the raw token is returned
+    once to the client and never persisted.
     """
 
     __tablename__ = "auth_session"
@@ -155,9 +130,14 @@ class ImportJobRecord(SQLModel, table=True):
     """
     Persisted state of one interactive import job (see `beetkeeper.core.import_store`).
 
-    This is the cross-process source of truth: any uvicorn worker reads/writes it, while the leader-elected
-    import worker runs the actual beets import. `paths` and the decision request/response are stored as JSON
-    text. `status` holds an `ImportJobStatus` value; `claimed_by` is the worker id currently running it.
+    This is the cross-process source of truth: any process reads/writes it, while the leader-elected import
+    worker runs the actual beets import. `status` holds an `ImportJobStatus` value and `claimed_by` the worker
+    id currently running it. The `*_json` columns hold JSON text: `paths_json` the import paths,
+    `set_fields_json` the `--set` object, `pending_decision_json` the `DecisionRequest` the worker is parked
+    on and `submitted_decision_json` the `ImportDecision` the UI posted back. `output` is the append-only
+    progress log the leader flushes as the import runs, so pollers see it incrementally. The per-job import
+    settings are captured at submit time so each ad-hoc import keeps its own values; their meanings are
+    documented on `core.import_jobs.ImportJob`.
     """
 
     __tablename__ = "import_job"
@@ -169,24 +149,16 @@ class ImportJobRecord(SQLModel, table=True):
     claimed_by: str | None = Field(default=None)
     error: str | None = Field(default=None)
     abort_requested: bool = Field(default=False)
-    # Non-interactive (`beet import -q`) mode: the worker auto-decides matches instead of prompting.
     quiet: bool = Field(default=False)
-    # Per-job import settings mirroring `beet import` flags (`-l`, `--group-albums`, `--flat`, `--set`);
-    # captured at submit time so each ad-hoc import keeps its own values. `set_fields_json` is a JSON object.
     logpath: str | None = Field(default=None)
     group_albums: bool = Field(default=False)
     flat: bool = Field(default=False)
     set_fields_json: str | None = Field(default=None)
-    # Clean slate: the beets album (or standalone item) removed before `paths` is imported afresh. At most one
-    # is set (see `core.clean_slate`); both NULL means a plain path import.
     clean_slate_album_id: int | None = Field(default=None)
     clean_slate_item_id: int | None = Field(default=None)
     clean_slate_allow_fewer_files: bool = Field(default=False)
-    # Serialized `DecisionRequest` the worker is parked on; serialized `ImportDecision` the UI posted back.
     pending_decision_json: str | None = Field(default=None)
     submitted_decision_json: str | None = Field(default=None)
-    # Human-readable, append-only log of the import's progress (rendered on the job's UI fragment). The
-    # leader flushes it to the DB as the import runs, so any process polling the job sees it incrementally.
     output: str | None = Field(default=None)
 
 
@@ -195,7 +167,7 @@ class ImportLock(SQLModel, table=True):
     Single-row (id=1) leased lock electing the one process that runs imports node-wide.
 
     Acquired/renewed with an atomic conditional UPDATE; the lease (`lease_expires_at`) lets another process
-    take over if the holder dies. This serializes imports across uvicorn workers (the beets library is
+    take over if the holder dies. This serializes imports across processes (the beets library is
     single-writer SQLite) without a separate broker.
     """
 

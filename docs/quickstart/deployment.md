@@ -66,7 +66,7 @@ beetkeeper creates its database schema automatically at startup, into the persis
 
 ```bash
 docker logs -f beetkeeper                                        # watch startup
-curl -s -o /dev/null -w '%{http_code}\n' localhost:8337/home     # 200
+curl -s -o /dev/null -w '%{http_code}\n' localhost:8337/search   # 200
 ```
 
 ## Upgrading an existing install

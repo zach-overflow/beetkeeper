@@ -34,34 +34,6 @@ beetkeeper_plugin = { workspace = true }
 [tool.ruff]
 target-version = "py314"
 src = ["src/python", "src/beetsplug"]
-exclude = [
-  ".bzr",
-  ".direnv",
-  ".eggs",
-  ".git",
-  ".git-rewrite",
-  ".hg",
-  ".ipynb_checkpoints",
-  ".mypy_cache",
-  ".nox",
-  ".pants.d",
-  ".pyenv",
-  ".pytest_cache",
-  ".pytype",
-  ".ruff_cache",
-  ".svn",
-  ".tox",
-  ".venv",
-  ".vscode",
-  "__pypackages__",
-  "_build",
-  "buck-out",
-  "build",
-  "dist",
-  "node_modules",
-  "site-packages",
-  "venv",
-]
 line-length = 120
 indent-width = 4
 
@@ -71,29 +43,27 @@ exclude = ["build_scripts/**/*.py", "src/python/tests/**/*.py"]
 select = ["E", "F", "UP", "B", "SIM", "I"]
 extend-select = [
   "ASYNC",
-  "B006",
-  "B007",
-  "B012",
-  "B017",
-  "B019",
-  "B028",
+  "C416",
   "D101",
   "D107",
   "D209",
   "D213",
   "D417",
   "D419",
+  "ERA001",
   "LOG",
   "FAST",
+  "PIE790",
   "PLW0603",
   "PT",
   "PYI045",
-  "PT024",
+  "PYI055",
   "PLE1142",
   "PLE1700",
   "RUF006",
   "RUF008",
   "RUF009",
+  "RUF010",
   "RUF012",
   "RUF015",
   "RUF018",
@@ -108,7 +78,7 @@ extend-select = [
   "TC",
   "TID25",
   "TRY002",
-  "UP",
+  "W291",
 ]
 # Ignore rules that conflict with the ruff formatter (https://stackoverflow.com/a/77796620).
 ignore = [
@@ -174,8 +144,6 @@ skip-magic-trailing-comma = true
 docstring-code-format = true
 
 
-# TODO: confirm `[tool.pytest]` (vs `[tool.pytest.ini_options]`) is valid on pytest 9.x:
-# https://docs.pytest.org/en/latest/reference/customize.html#pyproject-toml
 [tool.pytest]
 minversion = "9.1"
 addopts = [
@@ -187,12 +155,6 @@ addopts = [
   "--allow-hosts=testclient",
 ]
 strict_markers = true
-markers = [
-  "releasetest: mark test as a release-only test which should be skipped on non-release builds.",
-  "slow: mark test as a slow test which should be skipped by default in non-CI builds unless `--slowtests` is provided.",
-  "no_autouse_mock_lifespan_singleton_inst: mark a test to not use the auto-use fixture for the fastapi lifespan singleton.",
-  "override_global_httpx_mock: mark a test to override the configured httpx global fixture in favor of its own.",
-]
 filterwarnings = ["error:pytest.PytestWarning.*"]
 
 [tool.mypy]
@@ -201,10 +163,6 @@ plugins = ["pydantic.mypy"]
 exclude = ["build_scripts/", "docs/"]
 explicit_package_bases = true
 namespace_packages = true
-
-[[tool.mypy.overrides]]
-module = ["diskcache.*"]
-ignore_missing_imports = true
 
 [tool.bandit]
 exclude_dirs = [

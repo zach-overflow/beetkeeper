@@ -2,13 +2,7 @@
 ASGI middleware enforcing beetkeeper's opt-in bearer-token login protection.
 
 Enforcement lives at the middleware level so every router (JSON API, HTMX fragments, pages) is covered
-without per-route dependencies. The check is a no-op unless `beetkeeper.auth.enable_login_protection` is
-set in the user's config (read off `app.state`, which the lifespan populates).
-
-The session token is accepted from either the `Authorization: Bearer` header (API clients) or the
-`SESSION_COOKIE_NAME` HttpOnly cookie set by the `/login` browser flow. Unauthenticated failures are
-shaped per caller: JSON 401 for `/api/*`, an `HX-Redirect` for in-flight HTMX fragment swaps, and a plain
-redirect to `/login` for full-page browser navigation.
+without per-route dependencies.
 """
 
 from typing import TYPE_CHECKING, Final, cast
@@ -37,6 +31,14 @@ class LoginProtectionMiddleware(BaseHTTPMiddleware):
     """Rejects requests lacking a valid session token when login protection is enabled."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        """
+        Pass the request through when it carries a valid session token; otherwise answer with a 401/redirect.
+
+        The check is a no-op unless `beetkeeper.auth.enable_login_protection` is set in the user's config
+        (read off `app.state`, which the lifespan populates), and the `_EXEMPT_PATHS` / static assets are
+        always reachable. The token is accepted from either the `Authorization: Bearer` header (API clients)
+        or the `SESSION_COOKIE_NAME` HttpOnly cookie set by the `/login` browser flow.
+        """
         user_config = cast("UserConfig | None", getattr(request.app.state, "user_config", None))
         if user_config is None or not user_config.auth.enable_login_protection:
             return await call_next(request)
@@ -52,6 +54,10 @@ class LoginProtectionMiddleware(BaseHTTPMiddleware):
 
 
 def _unauthenticated_response(request: Request) -> Response:
+    """
+    The failure response shaped for the caller: JSON 401 for `/api/*`, an `HX-Redirect` for in-flight HTMX
+    fragment swaps, and a plain redirect to `/login` for full-page browser navigation.
+    """
     if request.url.path.startswith("/api/"):
         return JSONResponse(
             content={"detail": "Not authenticated. Obtain a bearer token via POST /api/auth/login."},

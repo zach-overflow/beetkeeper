@@ -19,13 +19,7 @@ from beetkeeper.core.import_worker import (
     _OutputBuffer,
     _track_candidate,
 )
-
-
-class _Attrs:
-    """Minimal attribute bag that is hashable by identity (usable as a `mapping` dict key)."""
-
-    def __init__(self, **attrs: Any) -> None:
-        self.__dict__.update(attrs)
+from tests.core_tests.conftest import Attrs
 
 
 class _FakePortal:
@@ -42,15 +36,15 @@ class _FakePortal:
 
 
 def test_album_diff_reports_album_track_and_unmatched_changes() -> None:
-    task = _Attrs(cur_artist="Old Artist", cur_album="Old Album")
-    item_one = _Attrs(title="track one", track=1)
-    item_two = _Attrs(title="trk 2", track=2)
-    match = _Attrs(
-        info=_Attrs(artist="New Artist", album="New Album", year=2007, data_source="MusicBrainz"),
+    task = Attrs(cur_artist="Old Artist", cur_album="Old Album")
+    item_one = Attrs(title="track one", track=1)
+    item_two = Attrs(title="trk 2", track=2)
+    match = Attrs(
+        info=Attrs(artist="New Artist", album="New Album", year=2007, data_source="MusicBrainz"),
         distance=0.1,
-        mapping={item_one: _Attrs(title="Track One", index=1), item_two: _Attrs(title="Track Two", index=2)},
-        extra_tracks=[_Attrs(title="Bonus Track")],
-        extra_items=[_Attrs(title="weird file")],
+        mapping={item_one: Attrs(title="Track One", index=1), item_two: Attrs(title="Track Two", index=2)},
+        extra_tracks=[Attrs(title="Bonus Track")],
+        extra_items=[Attrs(title="weird file")],
     )
 
     text = "\n".join(_build_album_diff(task, match))
@@ -65,14 +59,14 @@ def test_album_diff_reports_album_track_and_unmatched_changes() -> None:
 
 
 def test_album_diff_track_changes_sorted_by_position() -> None:
-    task = _Attrs(cur_artist="A", cur_album="B")
-    item_late = _Attrs(title="z", track=9)
-    item_early = _Attrs(title="a", track=1)
-    match = _Attrs(
-        info=_Attrs(artist="A", album="B"),
+    task = Attrs(cur_artist="A", cur_album="B")
+    item_late = Attrs(title="z", track=9)
+    item_early = Attrs(title="a", track=1)
+    match = Attrs(
+        info=Attrs(artist="A", album="B"),
         distance=0.0,
         # Insertion order is "late then early" to prove the diff re-sorts by track position.
-        mapping={item_late: _Attrs(title="Z", index=9), item_early: _Attrs(title="A", index=1)},
+        mapping={item_late: Attrs(title="Z", index=9), item_early: Attrs(title="A", index=1)},
         extra_tracks=[],
         extra_items=[],
     )
@@ -85,7 +79,7 @@ def test_album_diff_track_changes_sorted_by_position() -> None:
 
 
 def test_album_diff_without_info_is_empty() -> None:
-    assert _build_album_diff(_Attrs(cur_artist="a", cur_album="b"), _Attrs(info=None)) == []
+    assert _build_album_diff(Attrs(cur_artist="a", cur_album="b"), Attrs(info=None)) == []
 
 
 def test_choose_match_apply_writes_diff_to_output() -> None:
@@ -97,18 +91,18 @@ def test_choose_match_apply_writes_diff_to_output() -> None:
     session._quiet = False
     # portal.call is invoked twice: the abort check (False), then the decision request (APPLY candidate 0).
     session._portal = _FakePortal([False, ImportDecision(action=ImportAction.APPLY, candidate_index=0)])  # type: ignore[assignment]
-    session._bridge = _Attrs(request=lambda _request: None)  # type: ignore[assignment]
-    session._store = _Attrs(is_abort_requested=lambda _job_id: None)  # type: ignore[assignment]
+    session._bridge = Attrs(request=lambda _request: None)  # type: ignore[assignment]
+    session._store = Attrs(is_abort_requested=lambda _job_id: None)  # type: ignore[assignment]
 
-    item = _Attrs(title="old title", track=1)
-    candidate = _Attrs(
-        info=_Attrs(artist="New Artist", album="New Album", year=2020, data_source="MusicBrainz"),
+    item = Attrs(title="old title", track=1)
+    candidate = Attrs(
+        info=Attrs(artist="New Artist", album="New Album", year=2020, data_source="MusicBrainz"),
         distance=0.1,
-        mapping={item: _Attrs(title="New Title", index=1)},
+        mapping={item: Attrs(title="New Title", index=1)},
         extra_tracks=[],
         extra_items=[],
     )
-    task = _Attrs(cur_artist="Old Artist", cur_album="Old Album", candidates=[candidate])
+    task = Attrs(cur_artist="Old Artist", cur_album="Old Album", candidates=[candidate])
 
     result = session.choose_match(task)
 
@@ -148,7 +142,7 @@ def test_candidate_details_empty_and_no_url_when_attributes_absent() -> None:
 def test_build_decision_request_populates_differentiating_details() -> None:
     session = WebImportSession.__new__(WebImportSession)
     session._job_id = "job-x"
-    info = _Attrs(
+    info = Attrs(
         artist="Boards of Canada",
         album="Inferno",
         year=2026,
@@ -160,9 +154,9 @@ def test_build_decision_request_populates_differentiating_details() -> None:
         data_source="MusicBrainz",
         album_id="abc-123",
         data_url="https://musicbrainz.org/release/abc-123",
-        tracks=[_Attrs(), _Attrs(), _Attrs()],
+        tracks=[Attrs(), Attrs(), Attrs()],
     )
-    task = _Attrs(candidates=[_Attrs(info=info, distance=0.01)])
+    task = Attrs(candidates=[Attrs(info=info, distance=0.01)])
 
     request = session._build_decision_request(task)
     candidate = request.candidates[0]
@@ -178,7 +172,7 @@ def test_build_decision_request_coerces_non_string_attributes() -> None:
     """Non-MusicBrainz sources may use non-string fields (e.g. Discogs' int release ids)."""
     session = WebImportSession.__new__(WebImportSession)
     session._job_id = "job-z"
-    info = _Attrs(
+    info = Attrs(
         artist="Butthole Surfers",
         album="After The Astronaut",
         year=2026,
@@ -188,7 +182,7 @@ def test_build_decision_request_coerces_non_string_attributes() -> None:
         album_id=34097392,
         tracks=[],
     )
-    task = _Attrs(candidates=[_Attrs(info=info, distance=0.02)])
+    task = Attrs(candidates=[Attrs(info=info, distance=0.02)])
 
     candidate = session._build_decision_request(task).candidates[0]
 
@@ -202,8 +196,8 @@ def test_build_decision_request_handles_sparse_candidate_info() -> None:
     session = WebImportSession.__new__(WebImportSession)
     session._job_id = "job-y"
     # Empty strings (beets' AlbumInfo defaults) should become None, not blank detail fragments.
-    info = _Attrs(artist="A", album="B", year=0, country="", media="", label="", catalognum="", tracks=[])
-    task = _Attrs(candidates=[_Attrs(info=info, distance=0.2)])
+    info = Attrs(artist="A", album="B", year=0, country="", media="", label="", catalognum="", tracks=[])
+    task = Attrs(candidates=[Attrs(info=info, distance=0.2)])
 
     candidate = session._build_decision_request(task).candidates[0]
 
@@ -219,21 +213,21 @@ def _quiet_session() -> WebImportSession:
     session._output = _OutputBuffer()
     session._quiet = True
     session._portal = _FakePortal([False])  # type: ignore[assignment]
-    session._store = _Attrs(is_abort_requested=lambda _job_id: None)  # type: ignore[assignment]
+    session._store = Attrs(is_abort_requested=lambda _job_id: None)  # type: ignore[assignment]
     return session
 
 
 def test_quiet_mode_applies_a_strong_match_without_prompting() -> None:
     session = _quiet_session()
-    item = _Attrs(title="old", track=1)
-    candidate = _Attrs(
-        info=_Attrs(artist="A", album="B"),
+    item = Attrs(title="old", track=1)
+    candidate = Attrs(
+        info=Attrs(artist="A", album="B"),
         distance=0.05,
-        mapping={item: _Attrs(title="New", index=1)},
+        mapping={item: Attrs(title="New", index=1)},
         extra_tracks=[],
         extra_items=[],
     )
-    task = _Attrs(cur_artist="A", cur_album="B", candidates=[candidate], rec=Recommendation.strong)
+    task = Attrs(cur_artist="A", cur_album="B", candidates=[candidate], rec=Recommendation.strong)
 
     result = session.choose_match(task)
 
@@ -245,8 +239,8 @@ def test_quiet_mode_applies_a_strong_match_without_prompting() -> None:
 
 def test_quiet_mode_skips_when_no_strong_match() -> None:
     session = _quiet_session()
-    candidate = _Attrs(info=_Attrs(artist="A", album="B"), distance=0.6, mapping={}, extra_tracks=[], extra_items=[])
-    task = _Attrs(cur_artist="A", cur_album="B", candidates=[candidate], rec=Recommendation.none)
+    candidate = Attrs(info=Attrs(artist="A", album="B"), distance=0.6, mapping={}, extra_tracks=[], extra_items=[])
+    task = Attrs(cur_artist="A", cur_album="B", candidates=[candidate], rec=Recommendation.none)
 
     result = session.choose_match(task)
 
@@ -261,20 +255,20 @@ def _singleton_session(portal_results: Sequence[Any], *, quiet: bool = False) ->
     session._output = _OutputBuffer()
     session._quiet = quiet
     session._portal = _FakePortal(portal_results)  # type: ignore[assignment]
-    session._bridge = _Attrs(request=lambda _request: None)  # type: ignore[assignment]
-    session._store = _Attrs(is_abort_requested=lambda _job_id: None)  # type: ignore[assignment]
+    session._bridge = Attrs(request=lambda _request: None)  # type: ignore[assignment]
+    session._store = Attrs(is_abort_requested=lambda _job_id: None)  # type: ignore[assignment]
     return session
 
 
-def _track_candidate_match() -> _Attrs:
-    info = _Attrs(
+def _track_candidate_match() -> Attrs:
+    info = Attrs(
         artist="Burial", title="Archangel", data_source="MusicBrainz", track_id=1234, data_url="https://mb/track/1234"
     )
-    return _Attrs(info=info, distance=0.05)
+    return Attrs(info=info, distance=0.05)
 
 
 def test_track_diff_reports_artist_and_title_changes() -> None:
-    task = _Attrs(item=_Attrs(artist="burial", title="archangel"))
+    task = Attrs(item=Attrs(artist="burial", title="archangel"))
 
     assert _build_track_diff(task, _track_candidate_match()) == [
         "  Match: Burial - Archangel [MusicBrainz] (95.0% match)",
@@ -287,7 +281,7 @@ def test_choose_item_builds_a_track_decision_and_applies_the_choice() -> None:
     """Singleton tasks (`-s`) park on the same decision flow as albums, with track-shaped candidates."""
     session = _singleton_session([False, ImportDecision(action=ImportAction.APPLY, candidate_index=0)])
     match = _track_candidate_match()
-    task = _Attrs(item=_Attrs(artist="burial", title="archangel"), candidates=[match])
+    task = Attrs(item=Attrs(artist="burial", title="archangel"), candidates=[match])
 
     request = session._build_decision_request(task, "Choose a match for this track.", _track_candidate)
     assert request.prompt == "Choose a match for this track."
@@ -311,7 +305,7 @@ def test_choose_item_builds_a_track_decision_and_applies_the_choice() -> None:
 def test_choose_item_quiet_applies_a_strong_match_with_the_track_diff() -> None:
     session = _singleton_session([False], quiet=True)
     match = _track_candidate_match()
-    task = _Attrs(item=_Attrs(artist="burial", title="archangel"), candidates=[match], rec=Recommendation.strong)
+    task = Attrs(item=Attrs(artist="burial", title="archangel"), candidates=[match], rec=Recommendation.strong)
 
     assert session.choose_item(task) is match
     assert "Artist: burial -> Burial" in session._output.snapshot()[1]
@@ -319,7 +313,7 @@ def test_choose_item_quiet_applies_a_strong_match_with_the_track_diff() -> None:
 
 def test_choose_item_skip() -> None:
     session = _singleton_session([False, ImportDecision(action=ImportAction.SKIP)])
-    task = _Attrs(item=_Attrs(artist="a", title="t"), candidates=[])
+    task = Attrs(item=Attrs(artist="a", title="t"), candidates=[])
 
     assert session.choose_item(task) is Action.SKIP
     assert "Skipped 'a - t'." in session._output.snapshot()[1]

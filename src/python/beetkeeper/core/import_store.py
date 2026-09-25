@@ -1,16 +1,11 @@
 """
 Database-backed, cross-process store for interactive import jobs.
 
-Replaces the old in-memory registry so import state is shared across uvicorn workers and survives restarts.
-The store is the single source of truth; the leader-elected `ImportWorker` runs the actual beets import,
-while any worker process serves submit/status/decision/abort by reading and writing these rows.
-
-Coordination primitives (all SQLite-atomic):
-  * `acquire_lock` — a leased, single-row lock (`import_lock`) electing the one process that runs imports.
-  * `claim_next`   — the leader flips one PENDING job to RUNNING.
-  * `submit_decision` / `take_decision` — the UI writes a decision row; the leader polls and consumes it.
-  * `request_abort` / `is_abort_requested` — cooperative cancellation flag.
-  * `recover_orphans` — a freshly-elected leader fails jobs left active by a dead leader.
+Import state lives in the database so it survives restarts and is visible to every process sharing it. The
+store is the single source of truth; the leader-elected `ImportWorker` runs the actual beets import, while
+any process serves submit/status/decision/abort by reading and writing these rows. Every coordination
+primitive (lock lease, job claim, decision hand-off, abort flag, orphan recovery) is one SQLite-atomic
+statement.
 
 All timestamps are stored naive-UTC (the SQLite DATETIME column is tz-naive); compare naive against naive.
 Query expressions use `sqlmodel.col(...)` so the SQLModel columns type-check as SQLAlchemy column elements.
@@ -20,8 +15,8 @@ import json
 import logging
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from datetime import timedelta
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import delete, select, update
@@ -29,8 +24,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import col
 
 from beetkeeper.core.import_jobs import CleanSlateSubject, DecisionRequest, ImportDecision, ImportJob, ImportJobStatus
-from beetkeeper.db.models import ImportJobRecord, ImportLock, InferredSourcePath
-from beetkeeper.db.session import shielded_session
+from beetkeeper.db.models import ImportJobRecord, ImportLock, InferredSourcePath, naive_utcnow
+from beetkeeper.db.session import affected_rows, shielded_session
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -40,16 +35,6 @@ _LOGGER = logging.getLogger(__name__)
 _LOCK_ID = 1
 _ACTIVE = [ImportJobStatus.RUNNING.value, ImportJobStatus.AWAITING_DECISION.value]
 _ABORTABLE = [ImportJobStatus.PENDING.value, *_ACTIVE]
-
-
-def _utcnow() -> datetime:
-    """Naive UTC 'now' matching the tz-naive SQLite DATETIME columns."""
-    return datetime.now(UTC).replace(tzinfo=None)
-
-
-def _rowcount(result: Any) -> int:
-    """Affected-row count of a DML result (the runtime `CursorResult` exposes `rowcount`)."""
-    return int(result.rowcount)
 
 
 class ImportStore:
@@ -73,6 +58,7 @@ class ImportStore:
 
     @staticmethod
     def _to_view(record: ImportJobRecord) -> ImportJob:
+        """Map a persisted row onto the API-facing `ImportJob` view (decoding its JSON columns)."""
         pending = (
             DecisionRequest.model_validate_json(record.pending_decision_json) if record.pending_decision_json else None
         )
@@ -122,7 +108,7 @@ class ImportStore:
         if clean_slate_album_id is not None and clean_slate_item_id is not None:
             raise ValueError("A clean slate names an album or a standalone track, not both.")
         _LOGGER.debug("Creating ImportJob ...")
-        now = _utcnow()
+        now = naive_utcnow()
         record = ImportJobRecord(
             id=uuid4().hex,
             status=ImportJobStatus.PENDING.value,
@@ -162,7 +148,11 @@ class ImportStore:
 
     async def set_status(self, job_id: str, status: ImportJobStatus, *, error: str | None = None) -> None:
         """Set a job's status (and optional error); clears any pending decision."""
-        values: dict[str, object] = {"status": status.value, "pending_decision_json": None, "updated_at": _utcnow()}
+        values: dict[str, object] = {
+            "status": status.value,
+            "pending_decision_json": None,
+            "updated_at": naive_utcnow(),
+        }
         if error is not None:
             values["error"] = error
         async with self._session() as session:
@@ -175,7 +165,7 @@ class ImportStore:
             await session.execute(
                 update(ImportJobRecord)
                 .where(col(ImportJobRecord.id) == job_id)
-                .values(output=output, updated_at=_utcnow())
+                .values(output=output, updated_at=naive_utcnow())
             )
             await session.commit()
 
@@ -228,13 +218,17 @@ class ImportStore:
                     status=ImportJobStatus.AWAITING_DECISION.value,
                     pending_decision_json=request.model_dump_json(),
                     submitted_decision_json=None,
-                    updated_at=_utcnow(),
+                    updated_at=naive_utcnow(),
                 )
             )
             await session.commit()
 
     async def submit_decision(self, job_id: str, decision: ImportDecision) -> bool:
-        """Record the UI's decision; True only if the job was awaiting one and none was already submitted."""
+        """
+        Record the UI's decision; True only if the job was awaiting one and none was already submitted.
+
+        The leader polls for the row with `take_decision`, which consumes it.
+        """
         async with self._session() as session:
             result = await session.execute(
                 update(ImportJobRecord)
@@ -243,13 +237,18 @@ class ImportStore:
                     col(ImportJobRecord.status) == ImportJobStatus.AWAITING_DECISION.value,
                     col(ImportJobRecord.submitted_decision_json).is_(None),
                 )
-                .values(submitted_decision_json=decision.model_dump_json(), updated_at=_utcnow())
+                .values(submitted_decision_json=decision.model_dump_json(), updated_at=naive_utcnow())
             )
             await session.commit()
-            return _rowcount(result) == 1
+            return affected_rows(result) == 1
 
     async def take_decision(self, job_id: str) -> ImportDecision | None:
-        """Leader-side: atomically consume a submitted decision (clears it and flips back to RUNNING)."""
+        """
+        Leader-side: atomically consume a decision the UI wrote via `submit_decision`.
+
+        Clears the pending and submitted decision columns and flips the job back to RUNNING; None when no
+        decision has been submitted (or another consumer got there first).
+        """
         async with self._session() as session:
             record = await session.get(ImportJobRecord, job_id)
             if record is None or record.submitted_decision_json is None:
@@ -262,25 +261,25 @@ class ImportStore:
                     submitted_decision_json=None,
                     pending_decision_json=None,
                     status=ImportJobStatus.RUNNING.value,
-                    updated_at=_utcnow(),
+                    updated_at=naive_utcnow(),
                 )
             )
             await session.commit()
-            return decision if _rowcount(result) == 1 else None
+            return decision if affected_rows(result) == 1 else None
 
     async def request_abort(self, job_id: str) -> bool:
-        """Flag a non-terminal job for cooperative abort; True if such a job exists."""
+        """Flag a non-terminal job for cooperative abort (the worker polls `is_abort_requested`); True if one exists."""
         async with self._session() as session:
             result = await session.execute(
                 update(ImportJobRecord)
                 .where(col(ImportJobRecord.id) == job_id, col(ImportJobRecord.status).in_(_ABORTABLE))
-                .values(abort_requested=True, updated_at=_utcnow())
+                .values(abort_requested=True, updated_at=naive_utcnow())
             )
             await session.commit()
-            return _rowcount(result) == 1
+            return affected_rows(result) == 1
 
     async def is_abort_requested(self, job_id: str) -> bool:
-        """Whether abort has been requested for `job_id`."""
+        """Whether a cooperative abort has been requested for `job_id` (see `request_abort`)."""
         async with self._session() as session:
             record = await session.get(ImportJobRecord, job_id)
             return bool(record and record.abort_requested)
@@ -297,8 +296,13 @@ class ImportStore:
                 await session.rollback()  # another process inserted it first
 
     async def acquire_lock(self, worker_id: str, lease_seconds: float) -> bool:
-        """Acquire or renew the import-worker lease via one atomic conditional UPDATE; True if held."""
-        now = _utcnow()
+        """
+        Acquire or renew the import-worker lease via one atomic conditional UPDATE; True if held.
+
+        The lease is the single `import_lock` row: whoever holds it is the one process that runs imports, and
+        a lease left to expire lets another process take over.
+        """
+        now = naive_utcnow()
         async with self._session() as session:
             result = await session.execute(
                 update(ImportLock)
@@ -311,23 +315,13 @@ class ImportStore:
                 .values(holder=worker_id, lease_expires_at=now + timedelta(seconds=lease_seconds))
             )
             await session.commit()
-            return _rowcount(result) == 1
+            return affected_rows(result) == 1
 
     async def lock_holder(self) -> str | None:
         """The worker id currently holding the import lease (the elected import leader), or None."""
         async with self._session() as session:
             lock = await session.get(ImportLock, _LOCK_ID)
             return lock.holder if lock is not None else None
-
-    async def release_lock(self, worker_id: str) -> None:
-        """Release the lease if we hold it (best-effort, on shutdown)."""
-        async with self._session() as session:
-            await session.execute(
-                update(ImportLock)
-                .where(col(ImportLock.id) == _LOCK_ID, col(ImportLock.holder) == worker_id)
-                .values(holder=None, lease_expires_at=None)
-            )
-            await session.commit()
 
     async def claim_next(self, worker_id: str) -> ImportJob | None:
         """Leader-side: flip the oldest PENDING job to RUNNING under `worker_id`, or None if there are none."""
@@ -351,15 +345,19 @@ class ImportStore:
                 .where(
                     col(ImportJobRecord.id) == record.id, col(ImportJobRecord.status) == ImportJobStatus.PENDING.value
                 )
-                .values(status=ImportJobStatus.RUNNING.value, claimed_by=worker_id, updated_at=_utcnow())
+                .values(status=ImportJobStatus.RUNNING.value, claimed_by=worker_id, updated_at=naive_utcnow())
             )
             await session.commit()
-            if _rowcount(result) != 1:
+            if affected_rows(result) != 1:
                 return None
         return await self.get(record.id)
 
     async def recover_orphans(self, worker_id: str) -> int:
-        """Fail any active job NOT claimed by us (left behind by a dead leader); returns how many."""
+        """
+        Fail any active job not claimed by `worker_id` (left behind by a dead leader); returns how many.
+
+        A freshly elected leader runs this before claiming new work.
+        """
         async with self._session() as session:
             result = await session.execute(
                 update(ImportJobRecord)
@@ -368,8 +366,8 @@ class ImportStore:
                     status=ImportJobStatus.FAILED.value,
                     error="Interrupted: the import worker restarted.",
                     pending_decision_json=None,
-                    updated_at=_utcnow(),
+                    updated_at=naive_utcnow(),
                 )
             )
             await session.commit()
-            return _rowcount(result)
+            return affected_rows(result)

@@ -358,7 +358,7 @@
           "monitoring"
         ],
         "summary": "Health",
-        "description": "Report this process's pid, the current import leader (lock holder), and the shared job count.",
+        "description": "Report this process's pid, the current import leader (the `import_lock` holder), and the shared job count.\n\nThe server runs as a single worker process, so the serving pid and the leader normally coincide; the lease\nfields remain observable because job state and the lock are DB-backed (and survive restarts).",
         "operationId": "health_api_health_get",
         "responses": {
           "200": {
@@ -802,7 +802,7 @@
           "query"
         ],
         "summary": "List ",
-        "description": "Execute `beet list ...`: return one page of matching tracks (or albums) as JSON objects.\n\nThe query params (pagination plus the beets query inputs, some repeatable) are documented on\n`ListQueryParamsModel`.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#list",
+        "description": "Execute `beet list ...`: return one page of matching tracks (or albums) as JSON objects.\n\nThe query params (pagination plus the beets query inputs, some repeatable) are documented on\n`ListQueryParams`.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#list",
         "operationId": "list__api_query_list_get",
         "parameters": [
           {
@@ -2781,7 +2781,7 @@
           "skip"
         ],
         "title": "ImportAction",
-        "description": "beetkeeper-side mirror of beets' import `action` choices (decoupled from beets internals)."
+        "description": "beetkeeper-side mirror of beets' import `action` choices (decoupled from beets internals).\n\n`APPLY` imports with the chosen candidate's metadata, `ASIS` imports without changing tags, `SKIP` skips\nthe task."
       },
       "ImportCandidate": {
         "properties": {
@@ -2962,22 +2962,26 @@
         "properties": {
           "id": {
             "type": "string",
-            "title": "Id"
+            "title": "Id",
+            "description": "Unique job id (32 hex characters), the `job_id` of the per-job import routes."
           },
           "status": {
-            "$ref": "#/components/schemas/ImportJobStatus"
+            "$ref": "#/components/schemas/ImportJobStatus",
+            "description": "The job's lifecycle state."
           },
           "paths": {
             "items": {
               "type": "string"
             },
             "type": "array",
-            "title": "Paths"
+            "title": "Paths",
+            "description": "The filesystem paths beets imports (for a clean slate, the removed entry's raw source folder)."
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At"
+            "title": "Created At",
+            "description": "When the job was submitted (naive UTC)."
           },
           "error": {
             "anyOf": [
@@ -2988,7 +2992,8 @@
                 "type": "null"
               }
             ],
-            "title": "Error"
+            "title": "Error",
+            "description": "Why the job FAILED, once it has; None otherwise."
           },
           "pending_decision": {
             "anyOf": [
@@ -2998,11 +3003,13 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "The decision the worker is parked on while AWAITING_DECISION; None otherwise."
           },
           "decision_submitted": {
             "type": "boolean",
             "title": "Decision Submitted",
+            "description": "True once the UI has answered the pending decision but the worker has not consumed it yet: the job is momentarily still AWAITING_DECISION, so keep polling instead of re-showing the prompt.",
             "default": false
           },
           "output": {
@@ -3014,11 +3021,13 @@
                 "type": "null"
               }
             ],
-            "title": "Output"
+            "title": "Output",
+            "description": "Human-readable, append-only log of the import's progress."
           },
           "quiet": {
             "type": "boolean",
             "title": "Quiet",
+            "description": "Non-interactive (`beet import -q`) mode: the worker auto-decides matches instead of prompting.",
             "default": false
           },
           "logpath": {
@@ -3030,16 +3039,19 @@
                 "type": "null"
               }
             ],
-            "title": "Logpath"
+            "title": "Logpath",
+            "description": "The `beet import -l` log file path, if any."
           },
           "group_albums": {
             "type": "boolean",
             "title": "Group Albums",
+            "description": "The `beet import --group-albums` flag.",
             "default": false
           },
           "flat": {
             "type": "boolean",
             "title": "Flat",
+            "description": "The `beet import --flat` flag.",
             "default": false
           },
           "set_fields": {
@@ -3047,7 +3059,8 @@
               "type": "string"
             },
             "type": "object",
-            "title": "Set Fields"
+            "title": "Set Fields",
+            "description": "The `beet import --set` field values."
           },
           "clean_slate_album_id": {
             "anyOf": [
@@ -3058,7 +3071,8 @@
                 "type": "null"
               }
             ],
-            "title": "Clean Slate Album Id"
+            "title": "Clean Slate Album Id",
+            "description": "The library album removed before `paths` (its source folder) is imported afresh."
           },
           "clean_slate_item_id": {
             "anyOf": [
@@ -3069,11 +3083,13 @@
                 "type": "null"
               }
             ],
-            "title": "Clean Slate Item Id"
+            "title": "Clean Slate Item Id",
+            "description": "The standalone track removed before `paths` is imported afresh. At most one clean-slate id is set; both None means a plain path import."
           },
           "clean_slate_allow_fewer_files": {
             "type": "boolean",
             "title": "Clean Slate Allow Fewer Files",
+            "description": "The submitter's opt-in to a source holding fewer audio files than the entry has on disk (see `CleanSlatePreview.needs_confirmation`); the worker re-runs the preview with it before removing anything.",
             "default": false
           },
           "is_clean_slate": {
@@ -3214,6 +3230,7 @@
             },
             "type": "array",
             "title": "Album Ids",
+            "description": "The beets ids in `albums`, a derived view kept for response compatibility.",
             "readOnly": true
           },
           "track_ids": {
@@ -3222,6 +3239,7 @@
             },
             "type": "array",
             "title": "Track Ids",
+            "description": "The beets ids in `tracks`, a derived view kept for response compatibility.",
             "readOnly": true
           }
         },
@@ -3234,7 +3252,7 @@
           "track_ids"
         ],
         "title": "ListenerEventDetails",
-        "description": "One ingested beets listener event, with the album/track summaries of its child rows and, for\n`import_task_files` events, the import's source/destination filepaths (with `albums` holding the\nimported tracks' distinct releases, since those events have no album child rows of their own).\n`album_ids`/`track_ids` are derived views kept for response compatibility."
+        "description": "One ingested beets listener event, with the album/track summaries of its child rows and, for\n`import_task_files` events, the import's source/destination filepaths (with `albums` holding the\nimported tracks' distinct releases, since those events have no album child rows of their own)."
       },
       "LoginRequestBody": {
         "properties": {
@@ -3256,7 +3274,8 @@
           "username",
           "password"
         ],
-        "title": "LoginRequestBody"
+        "title": "LoginRequestBody",
+        "description": "Credentials for `POST /api/auth/login`: the single configured `beetkeeper.auth` username/password pair."
       },
       "LoginResponseBody": {
         "properties": {
@@ -3287,7 +3306,8 @@
           }
         },
         "type": "object",
-        "title": "LogoutResponseBody"
+        "title": "LogoutResponseBody",
+        "description": "Confirmation returned by `POST /api/auth/logout` once the session token has been revoked."
       },
       "SearchMissingSourcePathResult": {
         "properties": {
@@ -3360,11 +3380,11 @@
   "tags": [
     {
       "name": "authentication",
-      "description": "Used only when optional \"beetkeeper.auth.enable_login_protection\" is \"true\". \nRoutes for simple login / logout flows. Beetkeeper does not support multiple user identities.\nOnly handles authentication, with implicit authorization to everything for an authenticated client.\n"
+      "description": "Used only when optional \"beetkeeper.auth.enable_login_protection\" is \"true\".\nRoutes for simple login / logout flows. Beetkeeper does not support multiple user identities.\nOnly handles authentication, with implicit authorization to everything for an authenticated client.\n"
     },
     {
       "name": "imports",
-      "description": "Routes for managing [beets imports](https://beets.readthedocs.io/en/stable/reference/cli.html#import).\nOffer API-based import execution, import history, import choice selection, and more.\nFor automated beets setups, you will typically rely on these endpoints the most. \nThese endpoints also power the frontend import management web UI page.\n"
+      "description": "Routes for managing [beets imports](https://beets.readthedocs.io/en/stable/reference/cli.html#import).\nOffer API-based import execution, import history, import choice selection, and more.\nFor automated beets setups, you will typically rely on these endpoints the most.\nThese endpoints also power the frontend import management web UI page.\n"
     },
     {
       "name": "query",

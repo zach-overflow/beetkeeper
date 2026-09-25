@@ -2,11 +2,7 @@
 Alembic migration environment for beetkeeper's SQLite database.
 
 `target_metadata` is `SQLModel.metadata`, populated by importing `beetkeeper.db.models` (which registers
-every table). The connection URL is resolved in priority order:
-    1. an alembic ``-x db_url=...`` argument,
-    2. the explicit beetkeeper main-options set by `beetkeeper.db.migrations`,
-    3. the ``BEETSDIR`` env var — its `config.yaml` loaded via `beetkeeper.settings.load_config`,
-    4. the ``sqlalchemy.url`` ini option.
+every table). The connection URL comes from `_resolve_url`.
 
 Supports offline (`--sql`) generation and async-online application. See:
     https://alembic.sqlalchemy.org/en/latest/offline.html
@@ -23,7 +19,6 @@ from sqlalchemy import Connection, pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
 
-# Importing the models module registers all ORM tables onto `SQLModel.metadata`.
 import beetkeeper.db.models  # noqa: F401
 from beetkeeper.db.migrations import ASYNC_URL_OPT, SYNC_URL_OPT
 from beetkeeper.settings import BEETS_CONFIG_FILENAME, BEETS_DIR_ENVVAR, load_config
@@ -41,7 +36,13 @@ target_metadata = SQLModel.metadata
 
 
 def _resolve_url(*, prefer_async: bool) -> str:
-    """Resolves the SQLAlchemy URL for the current run (see module docstring for precedence)."""
+    """
+    Resolves the SQLAlchemy URL for the current run, in priority order:
+        1. an alembic ``-x db_url=...`` argument,
+        2. the explicit beetkeeper main-options set by `beetkeeper.db.migrations`,
+        3. the ``BEETSDIR`` env var — its `config.yaml` loaded via `beetkeeper.settings.load_config`,
+        4. the ``sqlalchemy.url`` ini option.
+    """
     x_args = context.get_x_argument(as_dictionary=True)
     if "db_url" in x_args:
         return x_args["db_url"]

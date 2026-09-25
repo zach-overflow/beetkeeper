@@ -9,10 +9,10 @@ from enum import Enum
 from functools import cached_property, partial
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from beets.importer import ImportSession, ImportTask  # pants: no-infer-dep  noqa: TC002
+from beets.importer import ImportSession, ImportTask  # pants: no-infer-dep
 from beets.library import Album, Item  # pants: no-infer-dep
 from beets.plugins import BeetsPlugin  # pants: no-infer-dep
-from beetsplug._utils.requests import (  # type: ignore[import-untyped]
+from beetsplug._utils.requests import (
     RequestHandler,  # pants: no-infer-dep
     TimeoutAndRetrySession,  # pants: no-infer-dep
 )
@@ -214,9 +214,6 @@ class _APIToken:
     """Wrapper class for a BeetKeeper API token."""
 
     value: str = field(repr=False)  # mitigate logging the token accidentally.
-
-    def get_value(self) -> str:
-        return self.value
 
     @property
     def header_value(self) -> str:
