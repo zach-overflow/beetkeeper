@@ -1203,7 +1203,7 @@ top-level <code>beetkeeper</code> section; the rest is an ordinary beets config 
 </div>
 <h3 id="3-verify">3. Verify<a class="headerlink" href="#3-verify" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>docker<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>beetkeeper<span class="w">                                        </span><span class="c1"># watch startup</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-o<span class="w"> </span>/dev/null<span class="w"> </span>-w<span class="w"> </span><span class="s1">'%{http_code}\n'</span><span class="w"> </span>localhost:8337/home<span class="w">     </span><span class="c1"># 200</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>-o<span class="w"> </span>/dev/null<span class="w"> </span>-w<span class="w"> </span><span class="s1">'%{http_code}\n'</span><span class="w"> </span>localhost:8337/search<span class="w">   </span><span class="c1"># 200</span>
 </code></pre></div>
 <h2 id="upgrading-an-existing-install">Upgrading an existing install<a class="headerlink" href="#upgrading-an-existing-install" title="Permanent link">&para;</a></h2>
 <p>When moving to a newer beetkeeper version, pull the new image and restart the server against the <strong>same</strong>

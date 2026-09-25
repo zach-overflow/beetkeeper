@@ -1096,12 +1096,12 @@
 <tbody>
 <tr>
 <td style="text-align: left;"><code>beetkeeper</code> wheel</td>
-<td style="text-align: left;"><code>src/python:beetkeeper-whl</code></td>
+<td style="text-align: left;"><code>beetkeeper-core:beetkeeper-whl</code></td>
 <td style="text-align: left;">pure-python, <code>py3-none-any</code></td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>beetkeeper-plugin</code> wheel</td>
-<td style="text-align: left;"><code>src/beetsplug:plugin-whl</code></td>
+<td style="text-align: left;"><code>plugin:plugin-whl</code></td>
 <td style="text-align: left;">pure-python</td>
 </tr>
 <tr>
@@ -1117,7 +1117,7 @@
 </tbody>
 </table>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pants<span class="w"> </span>package<span class="w"> </span>//:beetkeeper-server-image<span class="w">   </span><span class="c1"># builds the host-arch image (+ its PEX)</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pants<span class="w"> </span>package<span class="w"> </span>src/python:beetkeeper-whl
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pants<span class="w"> </span>package<span class="w"> </span>beetkeeper-core:beetkeeper-whl
 </code></pre></div>
 <h2 id="the-image-pexes-beetkeeper-linux-arch">The image PEXes (<code>//:beetkeeper-linux-&lt;arch&gt;</code>)<a class="headerlink" href="#the-image-pexes-beetkeeper-linux-arch" title="Permanent link">&para;</a></h2>
 <p>The Docker image bundles a thin, single-arch PEX built for its target Linux arch. Each is a <code>pex_binary</code>

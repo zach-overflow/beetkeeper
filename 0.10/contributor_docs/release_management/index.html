@@ -1172,12 +1172,12 @@
 <tbody>
 <tr>
 <td style="text-align: left;"><code>beetkeeper</code> wheel</td>
-<td style="text-align: left;"><code>src/python:beetkeeper-whl</code></td>
+<td style="text-align: left;"><code>beetkeeper-core:beetkeeper-whl</code></td>
 <td style="text-align: left;">PyPI (<code>beetkeeper</code>)</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>beetkeeper-plugin</code> wheel</td>
-<td style="text-align: left;"><code>src/beetsplug:plugin-whl</code></td>
+<td style="text-align: left;"><code>plugin:plugin-whl</code></td>
 <td style="text-align: left;">PyPI (<code>beetkeeper-plugin</code>)</td>
 </tr>
 <tr>
@@ -1194,8 +1194,8 @@ the release's <code>MAJOR.MINOR</code> docs version to the <code>gh-pages</code>
 <a href="https://www.pantsbuild.org/stable/reference/targets/vcs_version"><code>vcs_version</code></a> target (setuptools-scm
 under the hood); <strong>no version string is committed anywhere</strong>. The moving parts:</p>
 <ul>
-<li>Each distribution has a <code>vcs_version</code> target (<code>src/python/beetkeeper/BUILD</code>,
-  <code>src/beetsplug/beetkeeper_plugin/BUILD</code>) that runs setuptools-scm against the real repo and generates a
+<li>Each distribution has a <code>vcs_version</code> target (<code>beetkeeper-core/src/beetkeeper/BUILD</code>,
+  <code>plugin/src/beetsplug/beetkeeper_plugin/BUILD</code>) that runs setuptools-scm against the real repo and generates a
   <code>_scm_version.py</code> module into every consuming Pants sandbox (dependency inference picks it up from the
   import in <code>_version.py</code>).</li>
 <li>Each package's committed <code>_version.py</code> re-exports the generated module, falling back to <code>0.0.0.dev0</code>

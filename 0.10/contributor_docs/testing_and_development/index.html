@@ -1283,11 +1283,11 @@ must be listed there. <code>pants test ::</code> also runs the <code>hooks:uv-lo
 </code></pre></div>
 <p>To run only the tests found under a specific path, run:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pants<span class="w"> </span><span class="nb">test</span><span class="w"> </span>&lt;<span class="w"> </span>path-prefix-here<span class="w"> </span>&gt;::
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># Example: pants test src/python/tests/api_tests:: will only run tests found under src/python/tests/api_tests</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># Example: pants test beetkeeper-core/src/tests/api_tests:: will only run tests found under beetkeeper-core/src/tests/api_tests</span>
 </code></pre></div>
 <p>To run pytest with pdb or other breakpoints enabled, run the command with the <code>--test-debug</code> flag. Example:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># If you set a breakpoint in a test within `src/python/tests/my_pytest_file.py`.</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pants<span class="w"> </span>--test-debug<span class="w"> </span><span class="nb">test</span><span class="w"> </span>src/python/tests/my_pytest_file.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># If you set a breakpoint in a test within `beetkeeper-core/src/tests/my_pytest_file.py`.</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pants<span class="w"> </span>--test-debug<span class="w"> </span><span class="nb">test</span><span class="w"> </span>beetkeeper-core/src/tests/my_pytest_file.py
 </code></pre></div>
 <p>For quick ad-hoc runs against the uv dev venv (no Pants sandboxing), <code>uv run --all-groups pytest ...</code>
 also works.</p>
@@ -1304,7 +1304,7 @@ to import, seeds fake events for the events page, and starts a fake download-cli
 (<code>build_scripts/dev_scripts/fake_downloader_api.py</code>) behind the config's downloader hook: on the search
 page, <strong>Find via downloader</strong> resolves an imported fake album back to its <code>/downloads</code> folder, from where
 a clean-slate import can be tried end to end.</p>
-<p>The script also mounts the repo's <code>src/python/beetkeeper/api/static</code> directory into the container and
+<p>The script also mounts the repo's <code>beetkeeper-core/src/beetkeeper/api/static</code> directory into the container and
 symlinks it over the copy the PEX extracts at startup. This means edits to static files (CSS, HTML
 templates, images, JS) on the host render on the next browser refresh — no image rebuild or container
 restart needed. Changes to <strong>Python</strong> code, however, are baked into the PEX, so they require re-running the
@@ -1331,13 +1331,13 @@ script to rebuild the image.</p>
 <td style="text-align: left;"><code>beetkeeper.whl</code></td>
 <td>Python library distribution</td>
 <td style="text-align: left;">The beetkeeper server, published as a wheel file to PyPI</td>
-<td style="text-align: right;"><code>src/python:beetkeeper-whl</code></td>
+<td style="text-align: right;"><code>beetkeeper-core:beetkeeper-whl</code></td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>beetkeeper-plugin</code></td>
 <td>Python library distribution</td>
 <td style="text-align: left;"><code>beetsplug</code> plugin which pushes beets events to the beetkeeper server</td>
-<td style="text-align: right;"><code>src/beetsplug:plugin-whl</code></td>
+<td style="text-align: right;"><code>plugin:plugin-whl</code></td>
 </tr>
 </tbody>
 </table>
@@ -1346,7 +1346,7 @@ script to rebuild the image.</p>
 </code></pre></div>
 <p>Or, to package only a specific artifact, run the command against the intended pants target.
 For example, to only build the beetkeeper server wheel, you'd run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pants<span class="w"> </span>package<span class="w"> </span>src/python:beetkeeper-whl
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pants<span class="w"> </span>package<span class="w"> </span>beetkeeper-core:beetkeeper-whl
 </code></pre></div>
 <h2 id="ci-and-github-actions">CI and GitHub Actions<a class="headerlink" href="#ci-and-github-actions" title="Permanent link">&para;</a></h2>
 <p>CI runs in GitHub Actions (<code>.github/workflows/</code>). The main workflow validates the repo through pants
