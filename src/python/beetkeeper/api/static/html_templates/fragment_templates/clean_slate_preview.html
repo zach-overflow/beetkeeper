@@ -35,6 +35,9 @@
     <p>Left untouched (outside the beets directory):</p>
     <ul>{% for path in preview.files_kept_outside_library %}<li><code>{{ path }}</code></li>{% endfor %}</ul>
     {% endif %}
+    {% if preview.fields_preserved %}
+    <p>Carried over onto the new import: {% for name, value in preview.fields_preserved.items() %}<code>{{ name }}={{ value }}</code>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+    {% endif %}
     {% if preview.flexible_attributes_lost %}
     <p>Flexible attributes that will <mark>not</mark> carry over: {% for name in preview.flexible_attributes_lost %}<code>{{ name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
     {% endif %}

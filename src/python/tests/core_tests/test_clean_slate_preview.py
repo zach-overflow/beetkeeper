@@ -83,7 +83,7 @@ def _source_folder(
 
 
 def _preview(
-    library: Library, target: CleanSlateTarget, source: Path, downloads: Path, **kwargs: bool
+    library: Library, target: CleanSlateTarget, source: Path, downloads: Path, **kwargs: Any
 ) -> CleanSlatePreview:
     return preview(library, target, str(source), downloads_path=downloads, **kwargs)
 
@@ -114,6 +114,51 @@ def test_preview_reports_counts_deletions_and_lost_attributes(
     assert result.art_to_delete == str(art)
     assert result.flexible_attributes_lost == ["mood", "rating"]
     assert (result.source_path, result.source_audio_files, result.source_album_groups) == (str(source), 3, 1)
+
+
+def test_preview_reports_preserved_fields_and_leaves_them_out_of_the_lost_ones(
+    library: Library, downloads: Path, tmp_path: Path, make_tagged_wav: TaggedWavWriter
+) -> None:
+    """Preserved values come from the album first, else the first item holding one; fixed fields never qualify."""
+    items = _album_items(make_tagged_wav, tmp_path / "music" / "Artist" / "Album", ["One", "Two"])
+    album = _add_album(library, items)
+    album.mood = "calm"
+    album.torrent_hash = "abcdefg12345678"
+    album.store()
+    items[0].rating = 5
+    items[0].store()
+    items[1].foo = "some-value"
+    items[1].store()
+    source = _source_folder(make_tagged_wav, downloads / "Artist - Album", ["One", "Two"])
+
+    result = _preview(
+        library,
+        CleanSlateTarget("album", saved_id(album)),
+        source,
+        downloads,
+        preserve_fields=("torrent_hash", "foo", "rating", "absent", "album"),
+    )
+
+    assert result.fields_preserved == {"torrent_hash": "abcdefg12345678", "foo": "some-value", "rating": "5"}
+    assert result.flexible_attributes_lost == ["mood"]
+    assert result.ok is True
+
+
+def test_preview_preserves_a_standalone_tracks_own_fields(
+    library: Library, downloads: Path, tmp_path: Path, make_tagged_wav: TaggedWavWriter
+) -> None:
+    item = Item.from_path(make_tagged_wav(tmp_path / "music" / "solo.wav", title="Solo", artist="Artist"))
+    library.add(item)
+    item.torrent_hash = "abcdefg12345678"
+    item.store()
+    source = make_tagged_wav(downloads / "solo.wav", title="Solo", artist="Artist")
+
+    result = _preview(
+        library, CleanSlateTarget("track", saved_id(item)), source, downloads, preserve_fields=("torrent_hash",)
+    )
+
+    assert result.fields_preserved == {"torrent_hash": "abcdefg12345678"}
+    assert result.flexible_attributes_lost == [] and result.ok is True
 
 
 def test_preview_unknown_entry_raises_not_found(library: Library, downloads: Path) -> None:

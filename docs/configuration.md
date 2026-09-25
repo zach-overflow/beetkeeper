@@ -32,7 +32,7 @@ beetkeeper:
   downloader_hook:
     base_url: http://qbittorrent:8080
     search_endpoint_path: /api/v2/torrents/info
-    beets_field_names_to_query_param_names:
+    beet_field_to_dl_search_field:
       album: name
     filepath_json_key: content_path
     replace_downloader_paths_prefix: /data/torrents/complete
@@ -55,7 +55,7 @@ beetkeeper:
 | `downloads_path`          | path    | `/downloads` | The pre-import staging folder beetkeeper imports from (the container's `/downloads` mount). The import page's forms and clean-slate sources are pinned to it, and downloader hook paths are mapped into it. |
 | `downloader_hook.base_url` | URL    | —       | Base URL (with port) of your download client's REST API. Setting it enables the hook; the next three settings are then required. |
 | `downloader_hook.search_endpoint_path` | string | — | Endpoint (relative to `base_url`) beetkeeper sends GET search requests to. |
-| `downloader_hook.beets_field_names_to_query_param_names` | map | — | beets fields of the library entry being looked up → the query param name each is sent as (e.g. `album: name`). Empty fields are left out. |
+| `downloader_hook.beet_field_to_dl_search_field` | map | — | beets fields of the library entry being looked up → the query param name each is sent as (e.g. `album: name`). Empty fields are left out. A clean-slate import also carries these fields (flexible attributes only) from the removed entry onto the fresh one. |
 | `downloader_hook.filepath_json_key` | string | — | JSON key in each search result holding the download's path (e.g. qBittorrent's `content_path`). beetkeeper uses the first result. |
 | `downloader_hook.replace_downloader_paths_prefix` | string | `""` | Path prefix the download client reports which beetkeeper replaces with `downloads_path` — needed when the two run in containers with different mounts. Leave empty when both see the same paths. |
 | `downloader_hook.api_key`  | string | —       | Bearer token sent in the `Authorization` header, if the client's API needs one. |
@@ -85,12 +85,16 @@ The optional `downloader_hook` section lets beetkeeper ask your download client 
 generic — any client with a REST search endpoint can be wired up through config alone:
 
 1. beetkeeper looks the entry up in the beets library and takes the fields named in
-   `beets_field_names_to_query_param_names`, renaming each to its query param name.
+   `beet_field_to_dl_search_field`, renaming each to its query param name.
 2. It sends `GET <base_url><search_endpoint_path>?<params>` (with `Authorization: Bearer <api_key>` when
    set). The full request shape is documented as the `search-missing-source-path` webhook in the API docs.
 3. The client answers with a JSON list of results (or a single object). beetkeeper reads
    `filepath_json_key` from the first one and maps the path onto `downloads_path` via
    `replace_downloader_paths_prefix`.
+
+The mapping's keys have a second role: a [clean-slate import](quickstart/web-interface.md#clean-slate-imports)
+carries those fields (flexible attributes only, say a `torrent_hash`) from the removed entry onto the fresh one,
+so it can still be looked up afterwards. The preview lists them under *Carried over onto the new import*.
 
 Run a lookup through `POST /api/import/find_missing_source_path`, or the **Find via downloader** button on
 unrecorded search rows. A match is stored as the entry's **inferred** source path: the search page shows it

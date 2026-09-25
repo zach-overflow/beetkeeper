@@ -11,7 +11,8 @@ At a high level, the API lets you:
 - **Clean-slate an entry** — `POST /api/import/clean_slate` removes a library album (or standalone track)
   like `beet remove -d`, then imports its raw source folder afresh as an ordinary, tracked import job.
   `GET /api/import/clean_slate/preview` dry-runs it first: what would be deleted, what the source holds,
-  blocking errors and warnings, and whether the fewer-files opt-in (`allow_fewer_files`) is needed.
+  which fields carry over (`fields_preserved`), blocking errors and warnings, and whether the fewer-files
+  opt-in (`allow_fewer_files`) is needed.
 - **Recover an unrecorded source folder** — `POST /api/import/find_missing_source_path` asks your
   configured [download client](../configuration.md#downloader-hook) where a library entry was downloaded
   to, for entries imported before beetkeeper was tracking them.

@@ -148,8 +148,11 @@ class CleanSlateSubmitRequest(CleanSlatePreviewRequest):
     """
     Body for starting a clean-slate import: remove the named library entry — its rows, the files inside the
     beets directory and the album art, like `beet remove -d` — then import `source_path` afresh as an ordinary
-    path import (decisions, abort, quiet mode all apply). Nothing is carried over from the old entry: not its
-    flexible attributes, not its added-date. Option defaults come from the `beets.config` values.
+    path import (decisions, abort, quiet mode all apply). Nothing is carried over from the old entry — not its
+    flexible attributes, not its added-date — except the flexible attributes named as keys of the
+    `downloader_hook.beet_field_to_dl_search_field` config, whose values are re-applied to the fresh import via
+    `set_fields` (winning over a `set_fields` entry of the same name). Option defaults come from the
+    `beets.config` values.
 
     The removal happens before the import starts; skipping or aborting the import afterwards leaves the entry
     removed and the source files where they are. Preview first with `GET /api/import/clean_slate/preview`.

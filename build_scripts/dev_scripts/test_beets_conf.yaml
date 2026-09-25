@@ -16,6 +16,6 @@ beetkeeper:
   downloader_hook:
     base_url: http://127.0.0.1:8338
     search_endpoint_path: /api/v2/torrents/info
-    beets_field_names_to_query_param_names:
+    beet_field_to_dl_search_field:
       album: name
     filepath_json_key: content_path
