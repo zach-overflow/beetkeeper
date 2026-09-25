@@ -112,7 +112,7 @@ a clean slate the inference follows the entry to its new beets id (or is dropped
 
 !!! tip "Authoritative source"
     The table above is a friendly summary. For the exact field definitions, validation, and defaults, see the
-    [`beetkeeper.settings.user_config`](https://github.com/zach-overflow/beetkeeper/blob/main/src/python/beetkeeper/settings/user_config.py)
+    [`beetkeeper.settings.user_config`](https://github.com/zach-overflow/beetkeeper/blob/main/beetkeeper-core/src/beetkeeper/settings/user_config.py)
     models in the source.
 
 !!! warning "Separate database"
@@ -148,7 +148,7 @@ beetkeeper_plugin:
 | `api_token`  | string | —                       | Bearer token for the push requests, for servers running with login protection. When unset (or blank), pushes carry no auth at all. |
 
 The section is validated when beets loads the plugin (see the
-[`_bk_plugin_settings`](https://github.com/zach-overflow/beetkeeper/blob/main/src/beetsplug/beetkeeper_plugin/_bk_plugin_settings.py)
+[`_bk_plugin_settings`](https://github.com/zach-overflow/beetkeeper/blob/main/plugin/src/beetsplug/beetkeeper_plugin/_bk_plugin_settings.py)
 pydantic models): a malformed `server_url` fails plugin load with a clear validation error instead of
 silently pushing events nowhere, and blank values are treated as unset (their defaults apply).
 

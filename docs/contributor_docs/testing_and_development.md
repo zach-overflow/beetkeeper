@@ -49,14 +49,14 @@ To run only the tests found under a specific path, run:
 
 ```shell
 pants test < path-prefix-here >::
-# Example: pants test src/python/tests/api_tests:: will only run tests found under src/python/tests/api_tests
+# Example: pants test beetkeeper-core/src/tests/api_tests:: will only run tests found under beetkeeper-core/src/tests/api_tests
 ```
 
 To run pytest with pdb or other breakpoints enabled, run the command with the `--test-debug` flag. Example:
 
 ```shell
-# If you set a breakpoint in a test within `src/python/tests/my_pytest_file.py`.
-pants --test-debug test src/python/tests/my_pytest_file.py
+# If you set a breakpoint in a test within `beetkeeper-core/src/tests/my_pytest_file.py`.
+pants --test-debug test beetkeeper-core/src/tests/my_pytest_file.py
 ```
 
 For quick ad-hoc runs against the uv dev venv (no Pants sandboxing), `uv run --all-groups pytest ...`
@@ -80,7 +80,7 @@ to import, seeds fake events for the events page, and starts a fake download-cli
 page, **Find via downloader** resolves an imported fake album back to its `/downloads` folder, from where
 a clean-slate import can be tried end to end.
 
-The script also mounts the repo's `src/python/beetkeeper/api/static` directory into the container and
+The script also mounts the repo's `beetkeeper-core/src/beetkeeper/api/static` directory into the container and
 symlinks it over the copy the PEX extracts at startup. This means edits to static files (CSS, HTML
 templates, images, JS) on the host render on the next browser refresh — no image rebuild or container
 restart needed. Changes to **Python** code, however, are baked into the PEX, so they require re-running the
@@ -93,8 +93,8 @@ The beetkeeper repo publishes the following artifacts for any given release:
 |  Artifact Name         |  Type                       |  Description  |  Pants target  |
 | :--------------------- | --------------------------- | :------------ | -------------: |
 | `beetkeeper-server` | Docker image                | Self-hosted `beets` + `beetkeeper_plugin` wrapped by the `beetkeeper` server | `//:beetkeeper-server-image` |
-| `beetkeeper.whl`       | Python library distribution | The beetkeeper server, published as a wheel file to PyPI | `src/python:beetkeeper-whl` |
-| `beetkeeper-plugin` | Python library distribution | `beetsplug` plugin which pushes beets events to the beetkeeper server | `src/beetsplug:plugin-whl` |
+| `beetkeeper.whl`       | Python library distribution | The beetkeeper server, published as a wheel file to PyPI | `beetkeeper-core:beetkeeper-whl` |
+| `beetkeeper-plugin` | Python library distribution | `beetsplug` plugin which pushes beets events to the beetkeeper server | `plugin:plugin-whl` |
 
 To package all of the artifacts, run:
 
@@ -106,7 +106,7 @@ Or, to package only a specific artifact, run the command against the intended pa
 For example, to only build the beetkeeper server wheel, you'd run:
 
 ```shell
-pants package src/python:beetkeeper-whl
+pants package beetkeeper-core:beetkeeper-whl
 ```
 
 ## CI and GitHub Actions

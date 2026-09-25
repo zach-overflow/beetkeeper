@@ -4,14 +4,14 @@ How beetkeeper's build artifacts are produced with Pants. All commands run from 
 
 | Artifact | Pants target | Notes |
 | :------- | :----------- | :---- |
-| `beetkeeper` wheel | `src/python:beetkeeper-whl` | pure-python, `py3-none-any` |
-| `beetkeeper-plugin` wheel | `src/beetsplug:plugin-whl` | pure-python |
+| `beetkeeper` wheel | `beetkeeper-core:beetkeeper-whl` | pure-python, `py3-none-any` |
+| `beetkeeper-plugin` wheel | `plugin:plugin-whl` | pure-python |
 | image PEXes | `//:beetkeeper-linux-amd64`, `//:beetkeeper-linux-arm64` | thin, single-arch; bundled into the image |
 | server image | `//:beetkeeper-server-image` | GHCR (`db upgrade` / `run`) |
 
 ```bash
 pants package //:beetkeeper-server-image   # builds the host-arch image (+ its PEX)
-pants package src/python:beetkeeper-whl
+pants package beetkeeper-core:beetkeeper-whl
 ```
 
 ## The image PEXes (`//:beetkeeper-linux-<arch>`)

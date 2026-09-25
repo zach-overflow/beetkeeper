@@ -12,5 +12,5 @@ pex_binary(
     name="openapi-json-exporter",
     entry_point="export_openapi.py",
     resolve="beetkeeper-resolve",
-    dependencies=[":openapi-spec-exporter-script", "//src/python:app-requirements"],
+    dependencies=[":openapi-spec-exporter-script", "//beetkeeper-core:app-requirements"],
 )

@@ -5,7 +5,7 @@ python_source(
     source="./prep_fake_audio_files.py",
     # mutagen is only a transitive dep (via beets), so `import mutagen.flac` can't be inferred; depending on
     # beets makes subset runs (e.g. `pants check build_scripts::`) work, matching the PEX it runs inside.
-    dependencies=["./fake_tag_data:fake_tag_data", "src/python:app-requirements#beets", ":test-container-config"],
+    dependencies=["./fake_tag_data:fake_tag_data", "beetkeeper-core:app-requirements#beets", ":test-container-config"],
 )
 python_source(name="seed-fake-event-data", source="./seed_fake_event_data.py")
 python_source(

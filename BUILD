@@ -25,7 +25,7 @@ pex_binary(
     # enable native pex for faster bootstrapping/startup: https://github.com/pex-tool/pex.rc
     extra_build_args=["--rc"],
     tags=["pex"],
-    dependencies=["//src/python:app-requirements", "//src/python:beetkeeper-whl", "//src/beetsplug:plugin-whl"],
+    dependencies=["//beetkeeper-core:app-requirements", "//beetkeeper-core:beetkeeper-whl", "//plugin:plugin-whl"],
 )
 pex_binary(
     name="beetkeeper-linux-arm64",
@@ -39,7 +39,7 @@ pex_binary(
     # enable native pex for faster bootstrapping/startup: https://github.com/pex-tool/pex.rc
     extra_build_args=["--rc"],
     tags=["pex"],
-    dependencies=["//src/python:app-requirements", "//src/python:beetkeeper-whl", "//src/beetsplug:plugin-whl"],
+    dependencies=["//beetkeeper-core:app-requirements", "//beetkeeper-core:beetkeeper-whl", "//plugin:plugin-whl"],
 )
 
 # Native single-arch image: `pants package` builds it for the host arch and loads it into the local daemon.

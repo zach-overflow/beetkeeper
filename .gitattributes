@@ -17,13 +17,12 @@ uv.lock linguist-generated
 #####   WEB   #####
 ###################
 # Ignore the entirety of our static web assets (css, html, images, etc.) for repo language stats
-# NOTE: technically, only `src/python/beetkeeper/api/static/js/htmx.min.js` is vendored, but 
+# NOTE: technically, only `beetkeeper-core/src/beetkeeper/api/static/js/htmx.min.js` is vendored, but 
 # the 'linguist-vendored' setting appears to be the only way to exclude files from language stats,
 # while still *including* those files in diffs: https://github.com/github-linguist/linguist/blob/main/docs/overrides.md
-src/python/beetkeeper/api/static/** linguist-vendored
+beetkeeper-core/src/beetkeeper/api/static/** linguist-vendored
 
 ###################
 #####   DOCS   ####
 ###################
 docs/** linguist-documentation
-src/docs/** linguist-documentation

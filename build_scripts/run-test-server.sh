@@ -9,7 +9,7 @@
 # dev_scripts/seed_fake_event_data.py) for spot-checking the /events page — so no host data directory is
 # needed and nothing has to be cleaned up on the host.
 #
-# The repo's `src/python/beetkeeper/api/static` is mounted read-only at /host_static and symlinked over the
+# The repo's `beetkeeper-core/src/beetkeeper/api/static` is mounted read-only at /host_static and symlinked over the
 # PEX's extracted copy, so edits to static files (CSS, templates, images) render live on browser refresh.
 #
 # Usage:
@@ -26,7 +26,7 @@ pants package //:beetkeeper-server-image
 set +x
 echo
 echo "beetkeeper test server -> http://localhost:8337"
-echo "Static files served live from: ${repo_root}/src/python/beetkeeper/api/static"
+echo "Static files served live from: ${repo_root}/beetkeeper-core/src/beetkeeper/api/static"
 echo "Press Ctrl-C to stop."
 echo
 set -x
@@ -34,6 +34,6 @@ set -x
 docker run -it --rm \
 	-p 8337:8337 \
 	-v "${repo_root}/build_scripts/dev_scripts:/dev_scripts:ro" \
-	-v "${repo_root}/src/python/beetkeeper/api/static:/host_static:ro" \
+	-v "${repo_root}/beetkeeper-core/src/beetkeeper/api/static:/host_static:ro" \
 	--entrypoint /dev_scripts/test_container_init.sh \
 	ghcr.io/zach-overflow/beetkeeper:dev

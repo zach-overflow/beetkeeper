@@ -1,7 +1,6 @@
-# The distribution's build-system/`[project]` config lives in `src/python/pyproject.toml` to avoid Pants'
+# The distribution's build-system/`[project]` config lives in `beetkeeper-core/pyproject.toml` to avoid Pants'
 # `python_distribution` metadata injection; see the comment there.
 [dependency-groups]
-app_image = ["beetkeeper @ file:///app/src/python/beetkeeper.whl"]
 dev = [
   "bandit>=1.9.4",
   "fastapi[standard]>=0.138.0",
@@ -25,7 +24,7 @@ constraint-dependencies = ["beets>=2.14.1"]
 
 # Members must be registered here or uv (which only reads this root file) can't see them and `uv lock` fails.
 [tool.uv.workspace]
-members = ["src/python", "src/beetsplug"]
+members = ["beetkeeper-core", "plugin"]
 
 [tool.uv.sources]
 beetkeeper = { workspace = true }
@@ -33,13 +32,13 @@ beetkeeper_plugin = { workspace = true }
 
 [tool.ruff]
 target-version = "py314"
-src = ["src/python", "src/beetsplug"]
+src = ["beetkeeper-core/src", "plugin/src"]
 line-length = 120
 indent-width = 4
 
 
 [tool.ruff.lint]
-exclude = ["build_scripts/**/*.py", "src/python/tests/**/*.py"]
+exclude = ["build_scripts/**/*.py", "beetkeeper-core/src/tests/**/*.py"]
 select = ["E", "F", "UP", "B", "SIM", "I"]
 extend-select = [
   "ASYNC",
@@ -104,12 +103,12 @@ ignore = [
 
 
 [tool.ruff.lint.per-file-ignores]
-"src/integration_tests/**/*.py" = ["I"]
+"integration_tests/**/*.py" = ["I"]
 # TC off: runtime-needed type hints like `fastapi.Depends` must not move under TYPE_CHECKING.
-"src/python/beetkeeper/api/**/*.py" = ["TC", "D101"]
+"beetkeeper-core/src/beetkeeper/api/**/*.py" = ["TC", "D101"]
 # TC off: these are all runtime pydantic models.
-"src/python/beetkeeper/db/**/*.py" = ["TC"]
-"src/beetsplug/**/*.py" = ["TID25"]
+"beetkeeper-core/src/beetkeeper/db/**/*.py" = ["TC"]
+"plugin/**/*.py" = ["TID25"]
 
 [tool.ruff.lint.flake8-type-checking]
 exempt-modules = ["typing", "typing_extensions"]
@@ -169,8 +168,8 @@ exclude_dirs = [
   ".github",
   "build_scripts",
   "docs",
-  "src/beetsplug/plugin_tests",
-  "src/python/tests",
-  "src/integration_tests",
+  "plugin/src/tests",
+  "beetkeeper-core/src/tests",
+  "integration_tests",
   ".venv",
 ]

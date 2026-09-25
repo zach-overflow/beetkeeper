@@ -8,8 +8,8 @@ A release publishes three artifacts, all carrying the **same** semver:
 
 | Artifact | Pants target | Destination |
 | :------- | :----------- | :---------- |
-| `beetkeeper` wheel | `src/python:beetkeeper-whl` | PyPI (`beetkeeper`) |
-| `beetkeeper-plugin` wheel | `src/beetsplug:plugin-whl` | PyPI (`beetkeeper-plugin`) |
+| `beetkeeper` wheel | `beetkeeper-core:beetkeeper-whl` | PyPI (`beetkeeper`) |
+| `beetkeeper-plugin` wheel | `plugin:plugin-whl` | PyPI (`beetkeeper-plugin`) |
 | `beetkeeper-server` image | `//:beetkeeper-server-image` | GHCR `ghcr.io/zach-overflow/beetkeeper` (`:latest` + `:<version>`) |
 
 The docs site (GitHub Pages) is also rebuilt and redeployed as part of every release: mike publishes
@@ -21,8 +21,8 @@ Both wheels are versioned from the `vMAJOR.MINOR.PATCH` git tag via Pants'
 [`vcs_version`](https://www.pantsbuild.org/stable/reference/targets/vcs_version) target (setuptools-scm
 under the hood); **no version string is committed anywhere**. The moving parts:
 
-- Each distribution has a `vcs_version` target (`src/python/beetkeeper/BUILD`,
-  `src/beetsplug/beetkeeper_plugin/BUILD`) that runs setuptools-scm against the real repo and generates a
+- Each distribution has a `vcs_version` target (`beetkeeper-core/src/beetkeeper/BUILD`,
+  `plugin/src/beetsplug/beetkeeper_plugin/BUILD`) that runs setuptools-scm against the real repo and generates a
   `_scm_version.py` module into every consuming Pants sandbox (dependency inference picks it up from the
   import in `_version.py`).
 - Each package's committed `_version.py` re-exports the generated module, falling back to `0.0.0.dev0`

@@ -5,6 +5,6 @@
 !**/uv.lock
 !LICENSE.txt
 !**/*.whl
-!src/python/beetkeeper/**
-!src/python/tests/**
-!src/beetsplug/**
+!beetkeeper-core/src/beetkeeper/**
+!beetkeeper-core/src/tests/**
+!plugin/**

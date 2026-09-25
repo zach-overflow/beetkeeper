@@ -2,8 +2,8 @@ bandit>=1.9.4
 
 mypy>=2.3.1
 mypy-extensions>=1.1.0
-# `pydantic`/`fastapi` bounds kept equal to `src/python/pyproject.toml` by
-# `src/integration_tests/meta_tests/test_resolve_version_consistency.py` (Pants can't single-source across resolves).
+# `pydantic`/`fastapi` bounds kept equal to `beetkeeper-core/pyproject.toml` by
+# `integration_tests/meta_tests/test_dep_versions_consistency.py` (Pants can't single-source across resolves).
 pydantic>=2.13.5
 # https://pyproject-fmt.readthedocs.io/en/latest/
 pyproject-fmt>=2.25.2

@@ -29,11 +29,11 @@ def test_cmd(
     extra_tools = extra_tools or []
     builtin_exec_deps = [
         "//:pyproject",
-        "//src/beetsplug:plugin-whl",
-        "//src/beetsplug:plugin-pyproject",
-        "//src/python:app-requirements",
-        "//src/python:dist-pyproject",
-        "//src/python:lib-source-files",
+        "//plugin:plugin-whl",
+        "//plugin:plugin-pyproject",
+        "//beetkeeper-core:app-requirements",
+        "//beetkeeper-core:dist-pyproject",
+        "//beetkeeper-core:lib-source-files",
         "//:uv-lockfile",
     ]
     test_shell_command(
