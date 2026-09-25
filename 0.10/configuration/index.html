@@ -1118,7 +1118,7 @@ still a valid beets config — beetkeeper only requires the section when you run
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">  </span><span class="nt">downloader_hook</span><span class="p">:</span>
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="nt">base_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://qbittorrent:8080</span>
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">    </span><span class="nt">search_endpoint_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v2/torrents/info</span>
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="nt">beets_field_names_to_query_param_names</span><span class="p">:</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="nt">beet_field_to_dl_search_field</span><span class="p">:</span>
 <a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">      </span><span class="nt">album</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">name</span>
 <a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">    </span><span class="nt">filepath_json_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">content_path</span>
 <a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="nt">replace_downloader_paths_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/torrents/complete</span>
@@ -1213,10 +1213,10 @@ still a valid beets config — beetkeeper only requires the section when you run
 <td style="text-align: left;">Endpoint (relative to <code>base_url</code>) beetkeeper sends GET search requests to.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>downloader_hook.beets_field_names_to_query_param_names</code></td>
+<td style="text-align: left;"><code>downloader_hook.beet_field_to_dl_search_field</code></td>
 <td style="text-align: left;">map</td>
 <td style="text-align: left;">—</td>
-<td style="text-align: left;">beets fields of the library entry being looked up → the query param name each is sent as (e.g. <code>album: name</code>). Empty fields are left out.</td>
+<td style="text-align: left;">beets fields of the library entry being looked up → the query param name each is sent as (e.g. <code>album: name</code>). Empty fields are left out. A clean-slate import also carries these fields (flexible attributes only) from the removed entry onto the fresh one.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>downloader_hook.filepath_json_key</code></td>
@@ -1259,13 +1259,16 @@ without a source folder they cannot be <a href="../quickstart/web-interface/#cle
 generic — any client with a REST search endpoint can be wired up through config alone:</p>
 <ol>
 <li>beetkeeper looks the entry up in the beets library and takes the fields named in
-   <code>beets_field_names_to_query_param_names</code>, renaming each to its query param name.</li>
+   <code>beet_field_to_dl_search_field</code>, renaming each to its query param name.</li>
 <li>It sends <code>GET &lt;base_url&gt;&lt;search_endpoint_path&gt;?&lt;params&gt;</code> (with <code>Authorization: Bearer &lt;api_key&gt;</code> when
    set). The full request shape is documented as the <code>search-missing-source-path</code> webhook in the API docs.</li>
 <li>The client answers with a JSON list of results (or a single object). beetkeeper reads
    <code>filepath_json_key</code> from the first one and maps the path onto <code>downloads_path</code> via
    <code>replace_downloader_paths_prefix</code>.</li>
 </ol>
+<p>The mapping's keys have a second role: a <a href="../quickstart/web-interface/#clean-slate-imports">clean-slate import</a>
+carries those fields (flexible attributes only, say a <code>torrent_hash</code>) from the removed entry onto the fresh one,
+so it can still be looked up afterwards. The preview lists them under <em>Carried over onto the new import</em>.</p>
 <p>Run a lookup through <code>POST /api/import/find_missing_source_path</code>, or the <strong>Find via downloader</strong> button on
 unrecorded search rows. A match is stored as the entry's <strong>inferred</strong> source path: the search page shows it
 labelled <em>(inferred via downloader)</em> — for the album and each of its tracks — with a <strong>Clean-slate import

@@ -949,7 +949,8 @@ rather than driving everything by hand.</p>
 <li><strong>Clean-slate an entry</strong> — <code>POST /api/import/clean_slate</code> removes a library album (or standalone track)
   like <code>beet remove -d</code>, then imports its raw source folder afresh as an ordinary, tracked import job.
   <code>GET /api/import/clean_slate/preview</code> dry-runs it first: what would be deleted, what the source holds,
-  blocking errors and warnings, and whether the fewer-files opt-in (<code>allow_fewer_files</code>) is needed.</li>
+  which fields carry over (<code>fields_preserved</code>), blocking errors and warnings, and whether the fewer-files
+  opt-in (<code>allow_fewer_files</code>) is needed.</li>
 <li><strong>Recover an unrecorded source folder</strong> — <code>POST /api/import/find_missing_source_path</code> asks your
   configured <a href="../../configuration/#downloader-hook">download client</a> where a library entry was downloaded
   to, for entries imported before beetkeeper was tracking them.</li>
