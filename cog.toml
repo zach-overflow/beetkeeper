@@ -32,14 +32,14 @@ post_package_bump_hooks = []
 [commit_types]
 feat = { changelog_title = "Features", order = 1 }
 fix = { changelog_title = "Bug Fixes", order = 2 }
-perf = { changelog_title = "Performance Improvements", order = 3 }
+perf = { changelog_title = "Performance Improvements", order = 3, bump_level = "Patch" }
 docs = { changelog_title = "Documentation", order = 4 }
 build = { changelog_title = "Internal Tooling / Development", order = 5 }
 ci = { changelog_title = "Internal Tooling / Development", order = 5 }
 test = { changelog_title = "Internal Tooling / Development", order = 5 }
 chore = { changelog_title = "Internal Tooling / Development", order = 5 }
 style = { changelog_title = "Internal Tooling / Development", order = 5 }
-refactor = { changelog_title = "Internal Tooling / Development", order = 5 }
+refactor = { changelog_title = "Internal Tooling / Development", order = 5, bump_level = "Patch" }
 revert = { changelog_title = "Revert", omit_from_changelog = true }
 
 [changelog]
