@@ -22,8 +22,9 @@ dropped — or was simply matched wrong, the fix is to import it again from its 
 **clean-slate import** does exactly that, in two plain steps: it removes the entry from the library the way
 `beet remove -d` would (its rows, its files inside the beets directory, its album art), then runs an ordinary
 import of the source folder. Nothing carries over — flexible attributes and the added-date start from
-scratch — and the removal happens *before* the import, so skipping or aborting the import afterwards leaves
-the entry removed (the source files stay where they are).
+scratch — save for the fields the [downloader hook](../configuration.md#downloader-hook) searches by, which
+are re-applied to the fresh entry so it can still be looked up. The removal happens *before* the import, so
+skipping or aborting the import afterwards leaves the entry removed (the source files stay where they are).
 
 Start from the search page: album rows show their **file health** ("3 of 12 files missing", "10 tracks,
 release lists 12") and every known source path offers **Clean-slate import from here**, which opens the

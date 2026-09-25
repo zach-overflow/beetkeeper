@@ -485,7 +485,7 @@
           "imports"
         ],
         "summary": "Preview Clean Slate",
-        "description": "Dry-run a clean-slate import without touching anything (see `POST /api/import/clean_slate`).\n\nReports what the removal would delete (library files inside the beets directory, album art), what it\nwould leave alone, the flexible attributes that would be lost, what the source folder holds, plus the\nblocking `errors`, non-blocking `warnings`, and whether the fewer-files opt-in is needed. 404 for an\nunknown beets id.",
+        "description": "Dry-run a clean-slate import without touching anything (see `POST /api/import/clean_slate`).\n\nReports what the removal would delete (library files inside the beets directory, album art), what it\nwould leave alone, the flexible attributes that would be lost and those re-applied to the fresh import\n(`fields_preserved`: the entry's values for the keys of the `downloader_hook.beet_field_to_dl_search_field`\nconfig), what the source folder holds, plus the blocking `errors`, non-blocking `warnings`, and whether the\nfewer-files opt-in is needed. 404 for an unknown beets id.",
         "operationId": "preview_clean_slate_api_import_clean_slate_preview_get",
         "parameters": [
           {
@@ -621,7 +621,7 @@
           "imports"
         ],
         "summary": "Find Missing Source Path",
-        "description": "Ask the configured downloader client where a library album/track was originally downloaded to.\n\nOnly useful for entries imported outside a beetkeeper context (so no source path was recorded): the\nrecovered pre-import folder is what a clean-slate import of the entry needs. The entry's fields named in\nthe beets config's `beetkeeper.downloader_hook.beets_field_names_to_query_param_names` become the search\nrequest's query params (see the `search-missing-source-path` webhook). A match is stored as the entry's\n*inferred* source path (replacing any earlier inference), which the search page then shows labelled as\ninferred \u2014 separate from source paths recorded from the beetkeeper plugin's events. 409 when no\ndownloader API is configured; 404 for an unknown beets id.",
+        "description": "Ask the configured downloader client where a library album/track was originally downloaded to.\n\nOnly useful for entries imported outside a beetkeeper context (so no source path was recorded): the\nrecovered pre-import folder is what a clean-slate import of the entry needs. The entry's fields named in\nthe beets config's `beetkeeper.downloader_hook.beet_field_to_dl_search_field` become the search\nrequest's query params (see the `search-missing-source-path` webhook). A match is stored as the entry's\n*inferred* source path (replacing any earlier inference), which the search page then shows labelled as\ninferred \u2014 separate from source paths recorded from the beetkeeper plugin's events. 409 when no\ndownloader API is configured; 404 for an unknown beets id.",
         "operationId": "find_missing_source_path_api_import_find_missing_source_path_post",
         "requestBody": {
           "content": {
@@ -1033,7 +1033,7 @@
         "operationId": "search_missing_source_pathsearch_missing_source_path_get",
         "parameters": [
           {
-            "description": "One query param per entry in the `downloader_hook.beets_field_names_to_query_param_names` config: the param is named by the mapping's value and carries the library entry's beets field value (e.g. `album=Geogaddi&albumartist=Boards+of+Canada`).",
+            "description": "One query param per entry in the `downloader_hook.beet_field_to_dl_search_field` config: the param is named by the mapping's value and carries the library entry's beets field value (e.g. `album=Geogaddi&albumartist=Boards+of+Canada`).",
             "required": false,
             "schema": {
               "anyOf": [
@@ -1045,7 +1045,7 @@
                 }
               ],
               "title": "Field",
-              "description": "One query param per entry in the `downloader_hook.beets_field_names_to_query_param_names` config: the param is named by the mapping's value and carries the library entry's beets field value (e.g. `album=Geogaddi&albumartist=Boards+of+Canada`)."
+              "description": "One query param per entry in the `downloader_hook.beet_field_to_dl_search_field` config: the param is named by the mapping's value and carries the library entry's beets field value (e.g. `album=Geogaddi&albumartist=Boards+of+Canada`)."
             },
             "name": "field",
             "in": "query"
@@ -2326,7 +2326,15 @@
             },
             "type": "array",
             "title": "Flexible Attributes Lost",
-            "description": "Flexible attribute names on the entry that a clean slate does not keep."
+            "description": "Flexible attribute names on the entry that a clean slate does not keep (`fields_preserved` aside)."
+          },
+          "fields_preserved": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Fields Preserved",
+            "description": "The entry's flexible attributes named as keys of the `downloader_hook.beet_field_to_dl_search_field` config, with their values: re-applied to the fresh import via beets' `--set`."
           },
           "source_path": {
             "type": "string",
@@ -2462,7 +2470,7 @@
           "source_path"
         ],
         "title": "CleanSlateSubmitRequest",
-        "description": "Body for starting a clean-slate import: remove the named library entry \u2014 its rows, the files inside the\nbeets directory and the album art, like `beet remove -d` \u2014 then import `source_path` afresh as an ordinary\npath import (decisions, abort, quiet mode all apply). Nothing is carried over from the old entry: not its\nflexible attributes, not its added-date. Option defaults come from the `beets.config` values.\n\nThe removal happens before the import starts; skipping or aborting the import afterwards leaves the entry\nremoved and the source files where they are. Preview first with `GET /api/import/clean_slate/preview`."
+        "description": "Body for starting a clean-slate import: remove the named library entry \u2014 its rows, the files inside the\nbeets directory and the album art, like `beet remove -d` \u2014 then import `source_path` afresh as an ordinary\npath import (decisions, abort, quiet mode all apply). Nothing is carried over from the old entry \u2014 not its\nflexible attributes, not its added-date \u2014 except the flexible attributes named as keys of the\n`downloader_hook.beet_field_to_dl_search_field` config, whose values are re-applied to the fresh import via\n`set_fields` (winning over a `set_fields` entry of the same name). Option defaults come from the\n`beets.config` values.\n\nThe removal happens before the import starts; skipping or aborting the import afterwards leaves the entry\nremoved and the source files where they are. Preview first with `GET /api/import/clean_slate/preview`."
       },
       "DecisionRequest": {
         "properties": {

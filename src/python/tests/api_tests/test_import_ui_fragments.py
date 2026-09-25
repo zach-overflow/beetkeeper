@@ -15,7 +15,7 @@ from httpx import AsyncClient
 from beetkeeper.api.dependencies import get_beets_library, get_import_store, get_user_config
 from beetkeeper.core import BeetsLibrary, ImportJobStatus, ImportStore
 from beetkeeper.core.import_jobs import DecisionRequest, ImportAction, ImportCandidate
-from beetkeeper.settings import UserConfig
+from beetkeeper.settings import DownloaderHookConfSection, UserConfig
 from tests.conftest import TaggedWavWriter
 
 from .conftest import DependencyOverrides
@@ -291,7 +291,10 @@ def wav_album_library(tmp_path: Path, make_tagged_wav: TaggedWavWriter) -> Beets
             path, title=title, artist="Artist", albumartist="Artist", album="Album", track=track, tracktotal=2
         )
         items.append(Item.from_path(path))
-    library.add_album(items)
+    album = library.add_album(items)
+    album.torrent_hash = "abcdefg12345678"
+    album.mood = "calm"
+    album.store()
     (tmp_path / "music" / "Artist" / "Album" / "02 Two.wav").unlink()
     return BeetsLibrary(beets_config)
 
@@ -313,6 +316,12 @@ def source_folder(downloads_path: Path, make_tagged_wav: TaggedWavWriter) -> Pat
 
 
 class TestCleanSlateForm:
+    @pytest.fixture
+    def user_config(self, user_config: UserConfig) -> UserConfig:
+        """The downloader hook searches by `torrent_hash`, so a clean slate carries it over."""
+        hook = DownloaderHookConfSection(beet_field_to_dl_search_field={"torrent_hash": "hashes"})
+        return user_config.model_copy(update={"downloader_hook": hook})
+
     @pytest.fixture
     def app_dependency_overrides(
         self, import_store: ImportStore, wav_album_library: BeetsLibrary, user_config: UserConfig
@@ -359,6 +368,8 @@ class TestCleanSlateForm:
         assert "2 library row(s), 1 file(s) on disk," in html and "<mark>1 missing</mark>" in html
         assert f"<code>{source_folder}</code> holds <strong>2</strong> readable audio file(s)" in html
         assert f"<code>{tmp_path / 'music' / 'Artist' / 'Album' / '01 One.wav'}</code>" in html
+        assert "Carried over onto the new import: <code>torrent_hash=abcdefg12345678</code>." in html
+        assert "will <mark>not</mark> carry over: <code>mood</code>." in html
         assert "Cannot run" not in html and "Tick the option" not in html
 
     @pytest.mark.anyio

@@ -24,11 +24,11 @@ from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
 
+from beetkeeper.api.adapters import clean_slate_preview as _clean_slate_preview
 from beetkeeper.api.api_models import CleanSlatePreviewRequest
 from beetkeeper.api.dependencies import BeetsLibraryDep, ImportStoreDep, UserConfigDep
 from beetkeeper.api.jinja_driver import get_templates
-from beetkeeper.core import CleanSlatePreview, ImportAction, ImportCandidate, ImportDecision, ImportJob, ImportJobStatus
-from beetkeeper.core.clean_slate import CleanSlateError
+from beetkeeper.core import ImportAction, ImportCandidate, ImportDecision, ImportJob, ImportJobStatus
 
 _LOGGER = logging.getLogger(__name__)
 import_ui_fragments_router = APIRouter(prefix="/fragment/import")
@@ -228,21 +228,6 @@ def _clean_slate_request(
         )
     except ValidationError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-
-
-async def _clean_slate_preview(
-    library: BeetsLibraryDep, user_config: UserConfigDep, request: CleanSlatePreviewRequest
-) -> CleanSlatePreview:
-    try:
-        return await library.clean_slate_preview(
-            request.clean_slate_target,
-            request.source_path,
-            downloads_path=user_config.downloads_path,
-            allow_fewer_files=request.allow_fewer_files,
-        )
-    except CleanSlateError as exc:
-        code = status.HTTP_404_NOT_FOUND if exc.kind == "not_found" else status.HTTP_422_UNPROCESSABLE_ENTITY
-        raise HTTPException(status_code=code, detail=str(exc)) from exc
 
 
 @import_ui_fragments_router.get("", response_class=HTMLResponse)

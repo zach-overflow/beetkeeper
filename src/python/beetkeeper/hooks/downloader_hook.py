@@ -82,7 +82,7 @@ class DownloaderHook(httpx.AsyncClient):
         `search` refuses it.
         """
         params: dict[str, str] = {}
-        for field, param in self._config.beets_field_names_to_query_param_names.items():
+        for field, param in self._config.beet_field_to_dl_search_field.items():
             value = entry.get(field)
             if value is None or (isinstance(value, str) and not value.strip()):
                 continue
@@ -98,8 +98,7 @@ class DownloaderHook(httpx.AsyncClient):
         _LOGGER.debug(f"Sending GET search request via downloader hook with params: {dict(params)}")
         try:
             response = await self.get(self._config.search_endpoint_path or "", params=dict(params))
-            response.raise_for_status()
-            raw_json = response.json()
+            raw_json = response.raise_for_status().json()
         except httpx.HTTPStatusError as exc:
             _LOGGER.error(f"Downloader hook search request failed: {exc}")
             return DownloaderSearchResult(
@@ -108,7 +107,7 @@ class DownloaderHook(httpx.AsyncClient):
         except httpx.HTTPError as exc:
             _LOGGER.error(f"Downloader hook search request failed: {exc}")
             return DownloaderSearchResult(found=False, detail=f"Downloader API unreachable: {exc}")
-        except ValueError as exc:  # httpx raises json's decode error (a ValueError) on a non-JSON body
+        except ValueError as exc:
             _LOGGER.error(f"Downloader hook search result JSON unparseable: {exc}")
             return DownloaderSearchResult(
                 found=False, status_code=response.status_code, detail="Downloader API returned a non-JSON response."

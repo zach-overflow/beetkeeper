@@ -6,14 +6,12 @@ Job state lives in the cross-process DB-backed `ImportStore`; the leader-elected
 they work on any uvicorn process. HTML/HTMX equivalents live in `ui_routes.import_ui_fragments_router`.
 """
 
-import logging
-
 from fastapi import APIRouter, HTTPException, status
 
+from beetkeeper.api.adapters import clean_slate_preview as _clean_slate_preview
 from beetkeeper.api.adapters import find_missing_source_path as _lookup_source_path
 from beetkeeper.api.api_models import (
     CleanSlatePreviewParams,
-    CleanSlatePreviewRequest,
     CleanSlateSubmitRequest,
     FindMissingSourcePathRequest,
     FindMissingSourcePathResponse,
@@ -23,10 +21,8 @@ from beetkeeper.api.api_models import (
 from beetkeeper.api.constants import RouteTag
 from beetkeeper.api.dependencies import BeetsLibraryDep, DownloaderHookDep, ImportStoreDep, UserConfigDep
 from beetkeeper.core import CleanSlatePreview, ImportDecision, ImportJob
-from beetkeeper.core.clean_slate import CleanSlateError
 from beetkeeper.db.session import SessionDep
 
-_LOGGER = logging.getLogger(__name__)
 import_router = APIRouter(prefix="/import", tags=[RouteTag.IMPORT])
 
 
@@ -55,9 +51,10 @@ async def preview_clean_slate(
     """Dry-run a clean-slate import without touching anything (see `POST /api/import/clean_slate`).
 
     Reports what the removal would delete (library files inside the beets directory, album art), what it
-    would leave alone, the flexible attributes that would be lost, what the source folder holds, plus the
-    blocking `errors`, non-blocking `warnings`, and whether the fewer-files opt-in is needed. 404 for an
-    unknown beets id.
+    would leave alone, the flexible attributes that would be lost and those re-applied to the fresh import
+    (`fields_preserved`: the entry's values for the keys of the `downloader_hook.beet_field_to_dl_search_field`
+    config), what the source folder holds, plus the blocking `errors`, non-blocking `warnings`, and whether the
+    fewer-files opt-in is needed. 404 for an unknown beets id.
     """
     return await _clean_slate_preview(library, user_config, params)
 
@@ -106,7 +103,7 @@ async def find_missing_source_path(
 
     Only useful for entries imported outside a beetkeeper context (so no source path was recorded): the
     recovered pre-import folder is what a clean-slate import of the entry needs. The entry's fields named in
-    the beets config's `beetkeeper.downloader_hook.beets_field_names_to_query_param_names` become the search
+    the beets config's `beetkeeper.downloader_hook.beet_field_to_dl_search_field` become the search
     request's query params (see the `search-missing-source-path` webhook). A match is stored as the entry's
     *inferred* source path (replacing any earlier inference), which the search page then shows labelled as
     inferred — separate from source paths recorded from the beetkeeper plugin's events. 409 when no
@@ -153,23 +150,6 @@ async def abort_import(job_id: str, store: ImportStoreDep) -> ImportJob:
     await _require_job(store, job_id)
     await store.request_abort(job_id)
     return await _require_job(store, job_id)
-
-
-async def _clean_slate_preview(
-    library: BeetsLibraryDep, user_config: UserConfigDep, request: CleanSlatePreviewRequest
-) -> CleanSlatePreview:
-    """Run the read-only clean-slate preview, mapping an unknown entry to a 404."""
-    try:
-        return await library.clean_slate_preview(
-            request.clean_slate_target,
-            request.source_path,
-            downloads_path=user_config.downloads_path,
-            allow_fewer_files=request.allow_fewer_files,
-        )
-    except CleanSlateError as exc:
-        if exc.kind == "not_found":
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 async def _require_job(store: ImportStoreDep, job_id: str) -> ImportJob:

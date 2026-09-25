@@ -6,7 +6,10 @@ a track whose file is gone or that an earlier import dropped. A clean slate side
 machinery entirely: `remove_entry` takes the entry out of the library the way `beet remove -d` would (rows,
 the files inside the beets directory, the album art), and the import worker then runs an ordinary path import
 over the source folder. Nothing is carried over — not flexible attributes, not the added-date — which is
-what "clean slate" means and what `preview` spells out before anything is touched.
+what "clean slate" means and what `preview` spells out before anything is touched. The one exception is the
+flexible attributes named by `preserve_fields` (in beetkeeper, the downloader hook's search fields, which identify
+the entry's download): `preview` reports their values, and the import worker re-applies them to the fresh import
+through beets' `--set` (see `import_worker._apply_job_import_config`).
 
 Safety rules, enforced by `preview` (the worker re-runs it as a guard right before removing anything):
   * the source must be a real path under beetkeeper's `downloads_path` and outside the beets directory;
@@ -21,7 +24,7 @@ clean slate are found. This module is the only new place that touches beets inte
 
 import os
 from collections import Counter
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -151,9 +154,18 @@ def file_health(items: Sequence[Item]) -> AlbumFileHealth:
 
 
 def preview(
-    lib: Library, target: CleanSlateTarget, source_path: str, *, downloads_path: Path, allow_fewer_files: bool = False
+    lib: Library,
+    target: CleanSlateTarget,
+    source_path: str,
+    *,
+    downloads_path: Path,
+    allow_fewer_files: bool = False,
+    preserve_fields: Collection[str] = (),
 ) -> CleanSlatePreview:
     """Dry-run a clean slate of `target` from `source_path` (read-only; see the module docstring's rules).
+
+    `preserve_fields` names the flexible attributes whose values the clean slate carries onto the fresh import;
+    they are reported as `fields_preserved` and left out of `flexible_attributes_lost`.
 
     Raises `CleanSlateError("not_found")` when no library entry has the target's id. Every other problem is
     reported inside the returned preview (`errors`, `warnings`, `needs_confirmation`); `require_ok` turns those
@@ -162,6 +174,7 @@ def preview(
     entry = _load_entry(lib, target)
     if entry is None:
         raise CleanSlateError("not_found", f"No beets {target.subject} with id {target.beets_id}.")
+    preserved = _preserved_fields(entry, preserve_fields)
     errors: list[str] = []
     warnings: list[str] = []
     if target.subject == "track" and entry.items[0].album_id:
@@ -205,7 +218,8 @@ def preview(
         files_to_delete=[displayable_path(path) for path in plan.to_delete],
         files_kept_outside_library=[displayable_path(path) for path in plan.kept],
         art_to_delete=displayable_path(plan.art) if plan.art else None,
-        flexible_attributes_lost=_flexible_attributes(entry),
+        flexible_attributes_lost=_flexible_attributes(entry, excluding=preserved),
+        fields_preserved=preserved,
         source_path=displayable_path(source),
         source_audio_files=scan.audio_files,
         source_album_groups=scan.album_groups,
@@ -282,13 +296,29 @@ def _load_entry(lib: Library, target: CleanSlateTarget) -> _Entry | None:
     return _Entry(label=f"{item.artist or '?'} - {item.title or '?'}", album=None, items=[item])
 
 
-def _flexible_attributes(entry: _Entry) -> list[str]:
-    names: set[str] = set()
-    if entry.album is not None:
-        names.update(entry.album._values_flex)
-    for item in entry.items:
-        names.update(item._values_flex)
-    return sorted(names)
+def _models(entry: _Entry) -> list[LibModel]:
+    return [entry.album, *entry.items] if entry.album is not None else [*entry.items]
+
+
+def _flexible_attributes(entry: _Entry, *, excluding: Collection[str] = ()) -> list[str]:
+    names = {name for model in _models(entry) for name in model._values_flex}
+    return sorted(names.difference(excluding))
+
+
+def _preserved_fields(entry: _Entry, names: Collection[str]) -> dict[str, str]:
+    """The entry's values for the flexible attributes in `names`: the album's, else the first item's holding one.
+
+    A field counts as held when its value is neither None nor blank, as in `DownloaderHook.query_params`. Fixed
+    fields never qualify; the fresh import derives those itself.
+    """
+    preserved: dict[str, str] = {}
+    for name in names:
+        for model in _models(entry):
+            value = model._values_flex.get(name)
+            if value is not None and str(value).strip():
+                preserved[name] = str(value)
+                break
+    return preserved
 
 
 def _normalized_source(source_path: str) -> bytes:

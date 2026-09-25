@@ -114,7 +114,7 @@ def test_downloader_hook_section_is_loaded(tmp_path: Path) -> None:
   downloader_hook:
     base_url: http://qbit.local:8080
     search_endpoint_path: /api/v2/torrents/info
-    beets_field_names_to_query_param_names:
+    beet_field_to_dl_search_field:
       album: name
     filepath_json_key: content_path
     replace_downloader_paths_prefix: /data/torrents
@@ -126,21 +126,19 @@ def test_downloader_hook_section_is_loaded(tmp_path: Path) -> None:
     assert hook.enabled is True
     assert str(hook.base_url) == "http://qbit.local:8080/"
     assert hook.search_endpoint_path == "/api/v2/torrents/info"
-    assert hook.beets_field_names_to_query_param_names == {"album": "name"}
+    assert hook.beet_field_to_dl_search_field == {"album": "name"}
     assert hook.filepath_json_key == "content_path"
     assert hook.replace_downloader_paths_prefix == "/data/torrents"
     assert hook.api_key is not None and hook.api_key.get_secret_value() == "s3cret"
     assert config.downloads_path == Path("/mnt/downloads")
 
 
-@pytest.mark.parametrize(
-    "omitted", ["search_endpoint_path", "filepath_json_key", "beets_field_names_to_query_param_names"]
-)
+@pytest.mark.parametrize("omitted", ["search_endpoint_path", "filepath_json_key", "beet_field_to_dl_search_field"])
 def test_enabled_downloader_hook_requires_its_search_settings(tmp_path: Path, omitted: str) -> None:
     lines = {
         "search_endpoint_path": "    search_endpoint_path: /search\n",
         "filepath_json_key": "    filepath_json_key: path\n",
-        "beets_field_names_to_query_param_names": "    beets_field_names_to_query_param_names: {album: name}\n",
+        "beet_field_to_dl_search_field": "    beet_field_to_dl_search_field: {album: name}\n",
     }
     section = "  downloader_hook:\n    base_url: http://dl.local\n" + "".join(
         line for name, line in lines.items() if name != omitted

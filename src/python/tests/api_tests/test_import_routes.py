@@ -169,7 +169,10 @@ def wav_album_library(tmp_path: Path, make_tagged_wav: TaggedWavWriter) -> Beets
             path, title=title, artist="Artist", albumartist="Artist", album="Album", track=track, tracktotal=2
         )
         items.append(Item.from_path(path))
-    library.add_album(items)
+    album = library.add_album(items)
+    album.torrent_hash = "abcdefg12345678"
+    album.mood = "calm"
+    album.store()
     (tmp_path / "music" / "Artist" / "Album" / "02 Two.wav").unlink()
     return BeetsLibrary(beets_config)
 
@@ -192,6 +195,12 @@ def source_folder(downloads_path: Path, make_tagged_wav: TaggedWavWriter) -> Pat
 
 
 class TestCleanSlate:
+    @pytest.fixture
+    def user_config(self, user_config: UserConfig) -> UserConfig:
+        """The downloader hook searches by `torrent_hash`, so a clean slate carries it over."""
+        hook = DownloaderHookConfSection(beet_field_to_dl_search_field={"torrent_hash": "hashes"})
+        return user_config.model_copy(update={"downloader_hook": hook})
+
     @pytest.fixture
     def app_dependency_overrides(
         self, import_store: ImportStore, wav_album_library: BeetsLibrary, user_config: UserConfig
@@ -222,6 +231,8 @@ class TestCleanSlate:
         assert body["files_to_delete"] == [str(tmp_path / "music" / "Artist" / "Album" / "01 One.wav")]
         assert body["missing_paths"] == [str(tmp_path / "music" / "Artist" / "Album" / "02 Two.wav")]
         assert (body["source_audio_files"], body["source_album_groups"]) == (2, 1)
+        assert body["fields_preserved"] == {"torrent_hash": "abcdefg12345678"}
+        assert body["flexible_attributes_lost"] == ["mood"]
         assert (tmp_path / "music" / "Artist" / "Album" / "01 One.wav").exists()
 
     @pytest.mark.anyio
@@ -323,7 +334,7 @@ class TestFindMissingSourcePath:
         config = DownloaderHookConfSection(
             base_url="http://qbit.local:8080",
             search_endpoint_path="/api/v2/torrents/info",
-            beets_field_names_to_query_param_names={"album": "name", "albumartist": "artist"},
+            beet_field_to_dl_search_field={"album": "name", "albumartist": "artist"},
             filepath_json_key="content_path",
             replace_downloader_paths_prefix="/data/complete",
         )

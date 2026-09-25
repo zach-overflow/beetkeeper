@@ -22,7 +22,7 @@ def _config(**overrides: Any) -> DownloaderHookConfSection:
     settings: dict[str, Any] = {
         "base_url": "http://qbit.local:8080",
         "search_endpoint_path": "/api/v2/torrents/info",
-        "beets_field_names_to_query_param_names": {"album": "name", "albumartist": "artist"},
+        "beet_field_to_dl_search_field": {"album": "name", "albumartist": "artist"},
         "filepath_json_key": "content_path",
         "replace_downloader_paths_prefix": "/data/torrents/complete",
     }
@@ -45,7 +45,7 @@ def test_query_params_renames_configured_fields_and_skips_empty_ones() -> None:
 
 
 def test_query_params_stringifies_values() -> None:
-    hook = _hook(_json([]), _config(beets_field_names_to_query_param_names={"year": "year", "mb_albumid": "mbid"}))
+    hook = _hook(_json([]), _config(beet_field_to_dl_search_field={"year": "year", "mb_albumid": "mbid"}))
     assert hook.query_params({"year": 2002, "mb_albumid": None}) == {"year": "2002"}
 
 

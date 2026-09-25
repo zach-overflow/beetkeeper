@@ -393,7 +393,7 @@ class TestDownloaderSourcePathLookup:
         config = DownloaderHookConfSection(
             base_url="http://dl.local",
             search_endpoint_path="/search",
-            beets_field_names_to_query_param_names={"album": "name", "title": "title"},
+            beet_field_to_dl_search_field={"album": "name", "title": "title"},
             filepath_json_key="save_path",
         )
         return DownloaderHook(config, Path("/downloads"), transport=httpx.MockTransport(handler))

@@ -55,8 +55,8 @@
 
 <h2 id="clean-slate">Clean-slate import</h2>
 <p>Remove a library entry (like <code>beet remove -d</code>) and import its original download folder afresh.
-   Nothing carries over, and the entry is removed <em>before</em> the import runs. <strong>Preview</strong>
-   first to see what would be deleted.</p>
+   Nothing carries over (other than the downloader hook's search fields), and the entry is removed
+   <em>before</em> the import runs. <strong>Preview</strong> first to see what would be deleted.</p>
 
 {% if clean_slate and clean_slate.source %}
 <form hx-post="{{ url_for('import_clean_slate_submit') }}" hx-target="#active-imports" hx-swap="afterbegin">

@@ -32,7 +32,7 @@ def search_missing_source_path(
         str | None,
         Query(
             description=(
-                "One query param per entry in the `downloader_hook.beets_field_names_to_query_param_names` "
+                "One query param per entry in the `downloader_hook.beet_field_to_dl_search_field` "
                 "config: the param is named by the mapping's value and carries the library entry's beets field "
                 "value (e.g. `album=Geogaddi&albumartist=Boards+of+Canada`)."
             )

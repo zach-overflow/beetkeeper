@@ -20,9 +20,10 @@ session and decision flow applies; the removal itself lives in `core.clean_slate
 import copy
 import logging
 import os
+import re
 import socket
 import threading
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
@@ -39,6 +40,7 @@ from beets.importer import Action, DuplicateAction, ImportSession
 from beets.library import Album, Item, Library  # noqa: TC002
 from beets.plugins import BeetsPlugin
 from beets.util import bytestring_path
+from beets.util.functemplate import ESCAPE_CHAR, Parser
 
 from beetkeeper.core.clean_slate import CleanSlateError, RemovedEntry, preview, remove_entry, require_ok, saved_id
 from beetkeeper.core.import_jobs import (  # pants: no-infer-dep
@@ -285,8 +287,25 @@ def _session_config_overrides(job: ImportJob) -> dict[str, object]:
     return overrides
 
 
-def _apply_job_import_config(job: ImportJob) -> None:
-    """Overlay the job's persisted per-job settings onto beets' global `import` config.
+_TEMPLATE_SPECIALS: Final = re.compile(f"[{re.escape(''.join(Parser.escapable_chars))}]")
+
+
+def _escape_template_literal(value: str) -> str:
+    """Quote `value` so beets' path-format template engine, which evaluates every `--set` value, keeps it as is."""
+    return _TEMPLATE_SPECIALS.sub(lambda match: ESCAPE_CHAR + match[0], value)
+
+
+def _merged_set_fields(job: ImportJob, preserved: Mapping[str, str]) -> dict[str, str]:
+    """The job's `set_fields` plus a clean slate's preserved fields, which win for a name both carry.
+
+    Only the preserved values are escaped: they are literal library values, whereas the job's own entries may
+    deliberately be templates (`$albumartist`).
+    """
+    return {**job.set_fields, **{name: _escape_template_literal(value) for name, value in preserved.items()}}
+
+
+def _apply_job_import_config(job: ImportJob, preserved_fields: Mapping[str, str]) -> None:
+    """Overlay the job's per-job settings, plus a clean slate's `preserved_fields`, onto beets' global `import` config.
 
     beets reads these keys from the global config while the session runs (`ImportSession.set_config` copies
     `group_albums`/`flat` at `run()`, and `ImportTask.set_fields` reads the `--set` values mid-pipeline), so
@@ -298,7 +317,7 @@ def _apply_job_import_config(job: ImportJob) -> None:
 
     beets_config["import"]["group_albums"] = job.group_albums
     beets_config["import"]["flat"] = job.flat
-    beets_config["import"]["set_fields"] = dict(job.set_fields)
+    beets_config["import"]["set_fields"] = _merged_set_fields(job, preserved_fields)
 
 
 def _job_loghandler(job: ImportJob) -> logging.FileHandler | None:
@@ -644,15 +663,24 @@ class ImportWorker:
     the shared `ImportStore` (not this object), so they work no matter which process handles the request.
     """
 
-    def __init__(self, beets_config_filepath: Path, store: ImportStore, downloads_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        beets_config_filepath: Path,
+        store: ImportStore,
+        downloads_path: Path | None = None,
+        *,
+        preserve_fields: Collection[str] = (),
+    ) -> None:
         """Create the worker over the shared store; mint a unique-per-process worker id.
 
         `downloads_path` (beetkeeper's `downloads_path` setting) bounds clean-slate source folders; a clean-slate
-        job fails up front when it is unset.
+        job fails up front when it is unset. `preserve_fields` names the flexible attributes a clean slate carries
+        onto its fresh import (see `core.clean_slate`).
         """
         self._beets_config_filepath = beets_config_filepath
         self._store = store
         self._downloads_path = downloads_path
+        self._preserve_fields = tuple(preserve_fields)
         self._bridge = DecisionBridge(store)
         self._worker_id = f"{socket.gethostname()}:{os.getpid()}:{uuid4().hex[:8]}"
         self._was_leader = False
@@ -837,9 +865,10 @@ class ImportWorker:
             for warning in (_failed_plugins_warning(), _metadata_source_warning()):
                 if warning is not None:
                     output.append(warning)
+            preserved: Mapping[str, str] = {}
             if job.is_clean_slate:
-                result.removed = self._clean_slate_blocking(job, library, output)
-            _apply_job_import_config(job)
+                result.removed, preserved = self._clean_slate_blocking(job, library, output)
+            _apply_job_import_config(job, preserved)
             loghandler = _job_loghandler(job)
             session = WebImportSession(
                 library,
@@ -875,8 +904,12 @@ class ImportWorker:
         finally:
             beets_logger.removeHandler(handler)
 
-    def _clean_slate_blocking(self, job: ImportJob, library: Library, output: _OutputBuffer) -> RemovedEntry:
+    def _clean_slate_blocking(
+        self, job: ImportJob, library: Library, output: _OutputBuffer
+    ) -> tuple[RemovedEntry, dict[str, str]]:
         """Re-run the clean-slate preview as the guard, narrate the plan, then remove the entry.
+
+        Returns the removal record plus the preserved field values the import that follows re-applies.
 
         Raises `CleanSlateError` (failing the job, library untouched) when the entry or source changed since
         the job was submitted in a way the preview rejects.
@@ -892,6 +925,7 @@ class ImportWorker:
             job.paths[0],
             downloads_path=self._downloads_path,
             allow_fewer_files=job.clean_slate_allow_fewer_files,
+            preserve_fields=self._preserve_fields,
         )
         require_ok(plan)
         output.append(
@@ -907,8 +941,14 @@ class ImportWorker:
         if plan.files_kept_outside_library:
             output.append(f"Leaving {len(plan.files_kept_outside_library)} file(s) outside the library untouched:")
             output.extend_lines(plan.files_kept_outside_library)
+        if plan.fields_preserved:
+            kept = ", ".join(f"{name}={value}" for name, value in plan.fields_preserved.items())
+            output.append(f"Preserving fields (re-applied to the new import): {kept}.")
+            overridden = [name for name in plan.fields_preserved if name in job.set_fields]
+            if overridden:
+                output.append(f"The job's set_fields for {', '.join(overridden)} are ignored: the entry's values win.")
         if plan.flexible_attributes_lost:
             output.append(f"Flexible attributes not carried over: {', '.join(plan.flexible_attributes_lost)}.")
         for warning in plan.warnings:
             output.append(f"Warning: {warning}")
-        return remove_entry(library, target, job.paths[0], narrate=output.append)
+        return remove_entry(library, target, job.paths[0], narrate=output.append), plan.fields_preserved

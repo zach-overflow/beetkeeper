@@ -14,7 +14,12 @@ from typing import Any
 import pytest
 
 from beetkeeper.core.import_jobs import ImportJob, ImportJobStatus
-from beetkeeper.core.import_worker import _apply_job_import_config, _job_loghandler, _session_config_overrides
+from beetkeeper.core.import_worker import (
+    _apply_job_import_config,
+    _escape_template_literal,
+    _job_loghandler,
+    _session_config_overrides,
+)
 
 
 def _job(**overrides: Any) -> ImportJob:
@@ -45,7 +50,7 @@ def restore_beets_import_config() -> Iterator[Any]:
 def test_apply_job_import_config_overlays_job_settings() -> None:
     from beets import config
 
-    _apply_job_import_config(_job(group_albums=True, flat=True, set_fields={"genre": "Jazz"}))
+    _apply_job_import_config(_job(group_albums=True, flat=True, set_fields={"genre": "Jazz"}), {})
 
     assert config["import"]["group_albums"].get(bool) is True
     assert config["import"]["flat"].get(bool) is True
@@ -56,12 +61,39 @@ def test_apply_job_import_config_overlays_job_settings() -> None:
 def test_apply_job_import_config_does_not_leak_between_jobs() -> None:
     from beets import config
 
-    _apply_job_import_config(_job(group_albums=True, flat=True, set_fields={"genre": "Jazz"}))
-    _apply_job_import_config(_job())
+    _apply_job_import_config(_job(group_albums=True, flat=True, set_fields={"genre": "Jazz"}), {})
+    _apply_job_import_config(_job(), {})
 
     assert config["import"]["group_albums"].get(bool) is False
     assert config["import"]["flat"].get(bool) is False
     assert config["import"]["set_fields"].get() == {}
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param("abcdefg12345678", id="plain"),
+        pytest.param("$title", id="symbol"),
+        pytest.param("%upper{x}", id="function-call"),
+        pytest.param("a,b} {c", id="delimiters"),
+    ],
+)
+def test_escape_template_literal_round_trips_through_beets_templates(value: str) -> None:
+    from beets.util.functemplate import Template
+
+    assert Template(_escape_template_literal(value)).substitute({"title": "T"}, {"upper": str.upper}) == value
+
+
+@pytest.mark.usefixtures("restore_beets_import_config")
+def test_apply_job_import_config_overlays_escaped_preserved_fields_over_the_jobs_own() -> None:
+    from beets import config
+
+    job = _job(set_fields={"genre": "$albumartist", "torrent_hash": "typed-over"})
+
+    _apply_job_import_config(job, {"torrent_hash": "abc$def", "foo": "some-value"})
+
+    expected = {"genre": "$albumartist", "torrent_hash": "abc$$def", "foo": "some-value"}
+    assert config["import"]["set_fields"].get() == expected
 
 
 def test_job_loghandler_is_none_without_logpath() -> None:

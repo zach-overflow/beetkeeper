@@ -166,7 +166,15 @@ class CleanSlatePreview(BaseModel):
     )
     art_to_delete: str | None = Field(default=None, description="The album art file the removal deletes, if any.")
     flexible_attributes_lost: list[str] = Field(
-        default_factory=list, description="Flexible attribute names on the entry that a clean slate does not keep."
+        default_factory=list,
+        description="Flexible attribute names on the entry that a clean slate does not keep (`fields_preserved` aside).",
+    )
+    fields_preserved: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "The entry's flexible attributes named as keys of the `downloader_hook.beet_field_to_dl_search_field` "
+            "config, with their values: re-applied to the fresh import via beets' `--set`."
+        ),
     )
     source_path: str
     source_audio_files: int = Field(default=0, description="Readable audio files found under the source path.")

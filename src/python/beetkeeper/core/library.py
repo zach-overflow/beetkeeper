@@ -32,7 +32,7 @@ Concurrency:
 import logging
 import threading
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, TypeVar
@@ -329,14 +329,27 @@ class BeetsLibrary:
         return await self._read(_do)
 
     async def clean_slate_preview(
-        self, target: CleanSlateTarget, source_path: str, *, downloads_path: Path, allow_fewer_files: bool = False
+        self,
+        target: CleanSlateTarget,
+        source_path: str,
+        *,
+        downloads_path: Path,
+        allow_fewer_files: bool = False,
+        preserve_fields: Collection[str] = (),
     ) -> CleanSlatePreview:
         """Dry-run a clean slate of `target` from `source_path` (see `core.clean_slate.preview`); read-only."""
 
         def _do(lib: Library) -> CleanSlatePreview:
             from beetkeeper.core.clean_slate import preview
 
-            return preview(lib, target, source_path, downloads_path=downloads_path, allow_fewer_files=allow_fewer_files)
+            return preview(
+                lib,
+                target,
+                source_path,
+                downloads_path=downloads_path,
+                allow_fewer_files=allow_fewer_files,
+                preserve_fields=preserve_fields,
+            )
 
         return await self._read(_do)
 

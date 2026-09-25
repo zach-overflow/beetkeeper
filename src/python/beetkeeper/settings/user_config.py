@@ -143,11 +143,12 @@ class DownloaderHookConfSection(BaseModel):
     search_endpoint_path: str | None = Field(
         default=None, description="The endpoint route (relative to `base_url`) to submit GET search requests to."
     )
-    beets_field_names_to_query_param_names: dict[str, str] = Field(
+    beet_field_to_dl_search_field: dict[str, str] = Field(
         default_factory=dict,
         description=(
             "The beets field name(s) of the library entry being looked up, mapped to the query param name(s) they "
-            "are sent as in the downloader API search request (e.g. `{album: name}`)."
+            "are sent as in the downloader API search request (e.g. `{album: name}`). A clean slate import also "
+            "carries the entry's values for these fields (flexible attributes only) onto the fresh import."
         ),
     )
     filepath_json_key: str | None = Field(
@@ -182,7 +183,7 @@ class DownloaderHookConfSection(BaseModel):
             for name, value in (
                 ("search_endpoint_path", self.search_endpoint_path),
                 ("filepath_json_key", self.filepath_json_key),
-                ("beets_field_names_to_query_param_names", self.beets_field_names_to_query_param_names),
+                ("beet_field_to_dl_search_field", self.beet_field_to_dl_search_field),
             )
             if not value
         ]

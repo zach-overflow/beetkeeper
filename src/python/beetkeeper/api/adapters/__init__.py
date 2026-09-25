@@ -10,9 +10,11 @@ from beetkeeper.api.adapters.hooks_adapters import (
     inferred_source_paths,
     record_inferred_source_path,
 )
+from beetkeeper.api.adapters.import_adapters import clean_slate_preview
 from beetkeeper.api.adapters.search_adapters import import_source_paths_by_album_id, import_source_paths_by_track_id
 
 __all__ = [
+    "clean_slate_preview",
     "find_missing_source_path",
     "import_source_paths_by_album_id",
     "import_source_paths_by_track_id",

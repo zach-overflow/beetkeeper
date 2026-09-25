@@ -75,6 +75,14 @@ def worker(beets_config_file: Path, downloads: Path, mocker: MockerFixture) -> I
     return ImportWorker(beets_config_file, mocker.MagicMock(spec=ImportStore), downloads)
 
 
+@pytest.fixture
+def preserving_worker(beets_config_file: Path, downloads: Path, mocker: MockerFixture) -> ImportWorker:
+    """A worker configured as if `downloader_hook.beet_field_to_dl_search_field` named `torrent_hash` and `foo`."""
+    return ImportWorker(
+        beets_config_file, mocker.MagicMock(spec=ImportStore), downloads, preserve_fields=("torrent_hash", "foo")
+    )
+
+
 def _tags(title: str, track: int, total: int, album: str = "Album") -> dict[str, Any]:
     return dict(title=title, artist="Artist", albumartist="Artist", album=album, track=track, tracktotal=total)
 
@@ -168,6 +176,59 @@ def test_clean_slate_of_a_standalone_track_imports_a_singleton(
     assert result.removed is not None and result.removed.item_ids == [old.id]
     assert result.imported_item_ids == [item.id] and result.imported_album_ids == []
     assert "Imported standalone track: Artist - Solo." in text
+
+
+def test_clean_slate_carries_the_preserved_fields_onto_the_new_album(
+    preserving_worker: ImportWorker,
+    mocker: MockerFixture,
+    tmp_path: Path,
+    library: Library,
+    make_tagged_wav: TaggedWavWriter,
+) -> None:
+    """The configured fields survive as literal values (template characters included) and win over the job's own."""
+    old = _add_album(
+        library, make_tagged_wav, tmp_path / "music" / "Artist" / "Album", ["One", "Two"], missing=("Two",)
+    )
+    old.mood = "calm"
+    old.torrent_hash = "abcdefg12345678"
+    old.foo = "a$b%c,d}e{f"
+    old.store()
+    source = _source(make_tagged_wav, tmp_path / "downloads" / "Artist - Album", ["One", "Two"])
+    job = _job(source, clean_slate_album_id=old.id, set_fields={"torrent_hash": "typed-over", "bar": "kept"})
+
+    text, result = _run(preserving_worker, mocker, job)
+
+    reopened = Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
+    (album,) = reopened.albums()
+    assert album.get("torrent_hash") == "abcdefg12345678" and album.get("foo") == "a$b%c,d}e{f"
+    assert album.get("bar") == "kept" and album.get("mood") is None
+    for item in album.items():
+        assert item.get("torrent_hash", with_album=False) == "abcdefg12345678"
+        assert item.get("foo", with_album=False) == "a$b%c,d}e{f"
+    assert "Preserving fields (re-applied to the new import): torrent_hash=abcdefg12345678, foo=a$b%c,d}e{f." in text
+    assert "The job's set_fields for torrent_hash are ignored: the entry's values win." in text
+    assert "Flexible attributes not carried over: mood." in text
+
+
+def test_clean_slate_of_a_standalone_track_keeps_its_preserved_fields(
+    preserving_worker: ImportWorker,
+    mocker: MockerFixture,
+    tmp_path: Path,
+    library: Library,
+    make_tagged_wav: TaggedWavWriter,
+) -> None:
+    old = Item.from_path(make_tagged_wav(tmp_path / "music" / "solo.wav", title="Solo", artist="Artist"))
+    library.add(old)
+    old.torrent_hash = "abcdefg12345678"
+    old.store()
+    source = make_tagged_wav(tmp_path / "downloads" / "solo.wav", title="Solo", artist="Artist")
+
+    text, _ = _run(preserving_worker, mocker, _job(source, clean_slate_item_id=old.id))
+
+    reopened = Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
+    (item,) = reopened.items()
+    assert item.title == "Solo" and item.get("torrent_hash") == "abcdefg12345678"
+    assert "Preserving fields (re-applied to the new import): torrent_hash=abcdefg12345678." in text
 
 
 def test_nothing_imported_leaves_the_entry_removed_and_says_so(
