@@ -104,7 +104,7 @@ jobs:
       # their `vcs_version`-derived versions. The tag doesn't exist yet, so these carry a dev version.
       - name: Build wheels
         run: |
-          pants package src/python:beetkeeper-whl src/beetsplug:plugin-whl
+          pants package beetkeeper-core:beetkeeper-whl plugin:plugin-whl
 
       - name: Upload Pants log
         if: always()

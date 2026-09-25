@@ -1,7 +1,9 @@
 # CLAUDE.md
 
 Dev notes for `beetkeeper` — a self-hosted FastAPI web app for managing [beets](https://beets.io/).
-Source root is `src/python` (package: `src/python/beetkeeper`).
+Each component lives at `<component>/src/<package>` with its tests at `<component>/src/tests`: the app is
+`beetkeeper-core/src/beetkeeper`, the beets plugin `plugin/src/beetsplug/beetkeeper_plugin`, cross-component
+tests `integration_tests/`, and Rust crates under the `crates/` Cargo workspace.
 
 ## Build tooling
 - **Pants 2.33** is the build system (`pants.toml`). Run `pants <goal> ::` for everything.
@@ -9,19 +11,19 @@ Source root is `src/python` (package: `src/python/beetkeeper`).
   the `beetkeeper-resolve` lockfile, tools (mypy, bandit, pytest, ...) from `tools-resolve` — both under
   `3rdparty/`, regenerated with `pants generate-lockfiles`.
 - **uv** manages the dev venv and workspace: root `pyproject.toml` is the workspace root;
-  `src/python/pyproject.toml` is the member that holds the real distribution `[project]`. Keep `uv.lock`
+  `beetkeeper-core/pyproject.toml` is the member that holds the real distribution `[project]`. Keep `uv.lock`
   in sync (`uv lock`).
 
 ## Two pyproject.toml files (intentional — don't merge)
 - **Root `pyproject.toml`**: tool config only (ruff, mypy, pytest, bandit), `[dependency-groups]`
   dev deps, and `[tool.uv.workspace]`. No `[project]` table here.
-- **`src/python/pyproject.toml`**: the distribution's `[project]` (name, deps, scripts, metadata)
+- **`beetkeeper-core/pyproject.toml`**: the distribution's `[project]` (name, deps, scripts, metadata)
   + `[build-system]`. It lives in the source root so setuptools' PEP 517 backend (run there by
   Pants) reads it. Version is dynamic from the `vMAJOR.MINOR.PATCH` git tag via Pants' `vcs_version`
   targets (setuptools-scm under the hood), which generate `_scm_version.py` modules that each package's
   committed `_version.py` re-exports (falling back to `0.0.0.dev0` outside Pants, e.g. uv dev builds).
-- The wheel is built with `generate_setup=False` (see `src/python/BUILD`), so Pants does NOT inject
-  metadata — runtime deps/scripts are maintained by hand in `src/python/pyproject.toml` and must
+- The wheel is built with `generate_setup=False` (see `beetkeeper-core/BUILD`), so Pants does NOT inject
+  metadata — runtime deps/scripts are maintained by hand in `beetkeeper-core/pyproject.toml` and must
   stay consistent with what the code imports.
 
 ## Testing — IMPORTANT
@@ -41,7 +43,7 @@ Source root is `src/python` (package: `src/python/beetkeeper`).
 pants test ::                         # pytest (per-file, native Pants) + uv-lockfile check hook
 pants lint ::                         # ruff, bandit, shellcheck, shfmt, hadolint, taplo, yamllint, visibility
 pants check ::                        # mypy
-pants package src/python:beetkeeper-whl   # build the wheel -> dist/
+pants package beetkeeper-core:beetkeeper-whl   # build the wheel -> dist/
 pants package //:beetkeeper-server-image  # build app docker image
 pants package ::                      # Packages all pants targets which support the package command.
 pants generate-lockfiles              # regenerate the Pants resolve lockfiles under 3rdparty/
@@ -62,8 +64,8 @@ plus actionlint and an MkDocs build check. Install git hooks with `prek install`
   list — see `.github/workflows/publish.yml`.
 
 ## Releases
-- **Versioning**: no committed version. `vcs_version` targets (`src/python/beetkeeper/BUILD`,
-  `src/beetsplug/beetkeeper_plugin/BUILD`) generate `_scm_version.py` from git via setuptools-scm; each
+- **Versioning**: no committed version. `vcs_version` targets (`beetkeeper-core/src/beetkeeper/BUILD`,
+  `plugin/src/beetsplug/beetkeeper_plugin/BUILD`) generate `_scm_version.py` from git via setuptools-scm; each
   package's committed `_version.py` re-exports it, falling back to `0.0.0.dev0` outside Pants (uv builds).
   An exact `vMAJOR.MINOR.PATCH` tag yields a clean version; anything else is a dev version.
 - **Flow** (details: `docs/contributor_docs/release_management.md`): releases are driven by
@@ -86,7 +88,7 @@ Additionally, [this beets blog post](https://beets.io/blog/sqlite-nightmare.html
 
 ## Beets event flow (beetkeeper-plugin → API)
 - **All recorded beets listener events originate exclusively from the `beetkeeper` beets plugin**
-  (`src/beetsplug/beetkeeper_plugin`), which POSTs them to the `/api/events/*` endpoints. The API parses
+  (`plugin/src/beetsplug/beetkeeper_plugin`), which POSTs them to the `/api/events/*` endpoints. The API parses
   those requests and stores them (`ListenerEvent` + `AlbumEvent`/`TrackEvent` rows). The server must
   **never** synthesize or "fill in" event records itself — not even for imports it runs. If no POST
   arrived, no record exists, period. (The server distribution depends on `beetkeeper-plugin` for exactly
@@ -99,7 +101,7 @@ Additionally, [this beets blog post](https://beets.io/blog/sqlite-nightmare.html
 - The shared event-type vocabulary is `beetkeeper.constants.BeetsEventType`. It lives at the top level
   (not under `beetkeeper.api`) because `beetkeeper.api.__init__` pulls in the whole FastAPI app, whose
   routers import `beetkeeper.db.models` — the db layer importing it from `beetkeeper.api.*` would be a
-  circular import. Integration tests (`src/integration_tests/events_plugin_integration_tests/`) keep it
+  circular import. Integration tests (`integration_tests/events_plugin_integration_tests/`) keep it
   in sync with the plugin's `_EVENT_PAYLOAD_KEYS` and beets' own `beets.events.EventType` literals.
 
 ## Relevant public docs
@@ -127,28 +129,28 @@ explaining at length. (Python docstrings are documentation, not comments, and ar
 	- Use the [anyio](https://anyio.readthedocs.io/en/stable/) library instead of the builtin `asyncio` library.
 	- Prefer async coroutine definitions for FastAPI route definitions.
 2. Whenever possible, aim to keep the code modular. Avoid monolithic files in preference of breaking out into functional domains.
-	- The source code under `src/python/beetkeeper` shows a starting point for this structure, but feel free to create or consolidate things if needed.
+	- The source code under `beetkeeper-core/src/beetkeeper` shows a starting point for this structure, but feel free to create or consolidate things if needed.
 3. Type hints are required.
-4. Test code should live under `src/python/tests`, and not colocated with the source code, as some Pantsbuild examples show.
+4. Test code should live under each component's `src/tests/` dir (e.g. `beetkeeper-core/src/tests`), and not colocated with the source code, as some Pantsbuild examples show.
 
 
 #### FastAPI Code Structure
 
-1. All FastAPI code lives under `src/python/beetkeeper/api`
-2. The app is created from a factory function in `src/python/beetkeeper/api/fastapi_app.py`
-3. All custom [FastAPI Dependencies](https://fastapi.tiangolo.com/tutorial/dependencies/) should live in `src/python/beetkeeper/api/dependencies.py`
-4. All public REST API endpoints are defined in FastAPI `APIRouter` instances created under `src/python/beetkeeper/api/api_routes`
-5. All ui-related endpoints are defined in FastAPI `APIRouter` instances created under `src/python/beetkeeper/api/ui_routes`
+1. All FastAPI code lives under `beetkeeper-core/src/beetkeeper/api`
+2. The app is created from a factory function in `beetkeeper-core/src/beetkeeper/api/fastapi_app.py`
+3. All custom [FastAPI Dependencies](https://fastapi.tiangolo.com/tutorial/dependencies/) should live in `beetkeeper-core/src/beetkeeper/api/dependencies.py`
+4. All public REST API endpoints are defined in FastAPI `APIRouter` instances created under `beetkeeper-core/src/beetkeeper/api/api_routes`
+5. All ui-related endpoints are defined in FastAPI `APIRouter` instances created under `beetkeeper-core/src/beetkeeper/api/ui_routes`
 
 #### Frontend
 
 1. The frontend should be handled ONLY by the following, both for any static components, as well as for dynamic HTML + event-based DOM manipulation:
-	1. A monolithic classless CSS file at `src/python/beetkeeper/api/static/css/classless.css`
-	2. [HTMX](https://htmx.org/docs/) (vendored in-repo, and baked into the common base HTML template at `src/python/beetkeeper/api/static/html_templates/base_template.html`.)
+	1. A monolithic classless CSS file at `beetkeeper-core/src/beetkeeper/api/static/css/classless.css`
+	2. [HTMX](https://htmx.org/docs/) (vendored in-repo, and baked into the common base HTML template at `beetkeeper-core/src/beetkeeper/api/static/html_templates/base_template.html`.)
 	3. Any pure, simple javascript -- only if absolutely needed -- and should be defined in the common shared base HTML template within a `<script> block.
-2. Read the docstring at `src/python/beetkeeper/api/ui_routes/__init__.py` for details on the frontend code structure expectations. 
+2. Read the docstring at `beetkeeper-core/src/beetkeeper/api/ui_routes/__init__.py` for details on the frontend code structure expectations. 
 	
-3. Do not use ANY javascript framework or any other additional frontend library other than the vendored HTMX (`src/python/beetkeeper/api/static/js/htmx.min.js`). No CDN scripts, no npm/build step, no CSS frameworks beyond the classless stylesheet above.
+3. Do not use ANY javascript framework or any other additional frontend library other than the vendored HTMX (`beetkeeper-core/src/beetkeeper/api/static/js/htmx.min.js`). No CDN scripts, no npm/build step, no CSS frameworks beyond the classless stylesheet above.
 
 ### Test code
 

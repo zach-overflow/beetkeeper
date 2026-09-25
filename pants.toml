@@ -36,11 +36,9 @@ pants_ignore = [
 dependents = "transitive"
 
 [source]
-# Longest-matching prefix wins, so files under `src/python` resolve to that root, not `src`. The beets
-# plugin intentionally has NO `src/beetsplug` root: resolving from `src` gives its sources the
-# `beetsplug.beetkeeper_plugin` import path — the same path beets imports after a wheel install (beets
-# only discovers plugins under the `beetsplug` namespace), so dev/test imports match production.
-root_patterns = ["src", "src/python", "build_scripts"]
+# Components live at `<component>/src/<package>` (tests included, as `<component>/src/tests`), so the unanchored
+# `src` roots every component. Cross-component `integration_tests/` sits at the repo root, hence anchored.
+root_patterns = ["src", "/integration_tests", "build_scripts"]
 
 [docker]
 use_buildx = true

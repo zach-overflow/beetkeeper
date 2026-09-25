@@ -10,7 +10,6 @@ members = [
 constraints = [{ name = "beets", specifier = ">=2.14.1" }]
 
 [manifest.dependency-groups]
-app-image = [{ name = "beetkeeper", editable = "src/python" }]
 dev = [
     { name = "bandit", specifier = ">=1.9.4" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.138.0" },
@@ -147,7 +146,7 @@ wheels = [
 
 [[package]]
 name = "beetkeeper"
-source = { editable = "src/python" }
+source = { editable = "beetkeeper-core" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
@@ -174,7 +173,7 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21" },
     { name = "alembic", specifier = ">=1.18.5" },
     { name = "anyio", specifier = ">=4.15.1" },
-    { name = "beetkeeper-plugin", editable = "src/beetsplug" },
+    { name = "beetkeeper-plugin", editable = "plugin" },
     { name = "beets", specifier = ">=2.14.1" },
     { name = "click", specifier = ">=8.4.1" },
     { name = "fastapi", specifier = ">=0.138.0" },
@@ -193,7 +192,7 @@ requires-dist = [
 
 [[package]]
 name = "beetkeeper-plugin"
-source = { editable = "src/beetsplug" }
+source = { editable = "plugin" }
 dependencies = [
     { name = "beets" },
     { name = "pydantic" },

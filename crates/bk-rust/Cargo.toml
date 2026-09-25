@@ -1,0 +1,11 @@
+[package]
+name = "beetkeeper"
+description = "Stub for eventual rust components to the beetkeeper Python library."
+version = "0.0.1-alpha"
+readme = "README.md"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]

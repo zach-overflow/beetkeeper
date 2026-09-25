@@ -46,7 +46,7 @@ repos:
         entry: "pants run build_scripts:openapi-json-exporter -- --check"
         # Whole package, not just `api/`: core DTOs (e.g. `core.import_jobs.ImportCandidate`) surface in
         # API response models, so their fields land in the exported schema too.
-        files: '^src/python/beetkeeper/.*$'
+        files: '^beetkeeper-core/src/beetkeeper/.*$'
         language: system
         pass_filenames: false
         priority: 3
