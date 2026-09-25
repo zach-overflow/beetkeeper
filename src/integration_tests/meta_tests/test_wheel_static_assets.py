@@ -1,4 +1,5 @@
-"""Guard that the webserver's static assets ship in the `beetkeeper` wheel.
+"""
+Guard that the webserver's static assets ship in the `beetkeeper` wheel.
 
 The wheel is built with `generate_setup=False` (see `src/python/BUILD`), so *setuptools* — not Pants —
 decides which non-`.py` files land in the wheel, driven entirely by `[tool.setuptools.package-data]` in

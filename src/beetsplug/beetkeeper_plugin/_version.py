@@ -1,4 +1,5 @@
-"""Version for the `beetkeeper-plugin` distribution (read by setuptools at wheel-build time).
+"""
+Version for the `beetkeeper-plugin` distribution (read by setuptools at wheel-build time).
 
 Pants generates `_scm_version.py` from the git state via the `vcs_version` target (setuptools-scm under
 the hood), so Pants-built wheels carry the real version. The plain import below covers every context where

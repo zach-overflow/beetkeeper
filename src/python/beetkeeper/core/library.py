@@ -67,7 +67,8 @@ _T = TypeVar("_T")
 
 
 def failed_plugin_names() -> tuple[str, ...]:
-    """Configured beets plugin names that failed to load (empty until the first `open_library`).
+    """
+    Configured beets plugin names that failed to load (empty until the first `open_library`).
 
     A failed plugin (missing package, missing dependency, init error) silently changes import behavior —
     e.g. losing the only metadata-source plugin makes every autotag find 0 candidates — so callers surface
@@ -77,7 +78,8 @@ def failed_plugin_names() -> tuple[str, ...]:
 
 
 def _apply_config_file_once(beets_config_filepath: Path) -> None:
-    """Point beets' global config at the user's file, once per process (per distinct path).
+    """
+    Point beets' global config at the user's file, once per process (per distinct path).
 
     confuse's `set_file` *prepends* a source on every call: repeating it per `open_library` would grow the
     source list without bound and, worse, re-prioritise the file over the per-job `import` keys the worker
@@ -95,7 +97,8 @@ def _apply_config_file_once(beets_config_filepath: Path) -> None:
 
 
 def _load_plugins_once() -> None:
-    """Load the plugins listed in the (already-set) global beets config, exactly once per process.
+    """
+    Load the plugins listed in the (already-set) global beets config, exactly once per process.
 
     beets' `load_plugins()` reads the global config itself, instantiates each plugin — registering its
     event listeners (e.g. the importer's `album_imported`/`item_imported` hooks), DB field types, and
@@ -167,7 +170,8 @@ def _paged_jsonify(results: Results[AnyLibModel], offset: int, limit: int | None
 
 
 def open_library(beets_config_filepath: Path) -> Library:
-    """Load the user's beets config and return an open `beets.library.Library`.
+    """
+    Load the user's beets config and return an open `beets.library.Library`.
 
     Performs blocking I/O (opens the SQLite DB); call only from a worker thread, never the event loop.
     """
@@ -293,7 +297,8 @@ class BeetsLibrary:
         return await self._read(_do)
 
     async def album_file_health(self, beets_album_ids: Sequence[int]) -> dict[int, AlbumFileHealth]:
-        """Rows vs. files-on-disk vs. claimed track total for each album id (ids with no items are omitted).
+        """
+        Rows vs. files-on-disk vs. claimed track total for each album id (ids with no items are omitted).
 
         One items query covers the whole page; the per-file existence checks run in the worker thread.
         """

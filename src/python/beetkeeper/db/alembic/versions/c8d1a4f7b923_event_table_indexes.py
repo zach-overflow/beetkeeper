@@ -1,4 +1,5 @@
-"""event table indexes
+"""
+event table indexes
 
 Revision ID: c8d1a4f7b923
 Revises: b6e0f3a9c512

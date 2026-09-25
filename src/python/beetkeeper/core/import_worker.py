@@ -81,7 +81,8 @@ _FINALIZE_RETRY_INTERVAL = 1.0
 
 
 class _OutputBuffer:
-    """Thread-safe, append-only accumulator for an import job's human-readable output.
+    """
+    Thread-safe, append-only accumulator for an import job's human-readable output.
 
     beets' importer is multi-threaded and our `WebImportSession` hooks run in those threads, so lines are
     appended under a lock. `snapshot()` returns a monotonic version (to skip redundant DB writes) plus the
@@ -129,7 +130,8 @@ class _BufferLogHandler(logging.Handler):
 
 
 class DecisionBridge:
-    """Bridges an interactive decision from a beets pipeline thread to the cross-process DB store.
+    """
+    Bridges an interactive decision from a beets pipeline thread to the cross-process DB store.
 
     `request()` runs on the event loop (invoked from a beets thread via the portal): it parks the job on a
     `DecisionRequest` and polls the store until the UI's `ImportDecision` arrives (or abort is requested).
@@ -152,7 +154,8 @@ class DecisionBridge:
 
 
 def _build_album_diff(task: Any, match: Any) -> list[str]:
-    """Verbose, human-readable diff of what applying `match` (a beets `AlbumMatch`) changes for the album.
+    """
+    Verbose, human-readable diff of what applying `match` (a beets `AlbumMatch`) changes for the album.
 
     Mirrors the essentials of beets' terminal `show_change` — album identity/provenance/match strength,
     changed album fields, per-track title changes, and missing/unmatched tracks — without ANSI color or
@@ -207,7 +210,8 @@ def _track_label(item: Any) -> str:
 
 
 def _build_track_diff(task: Any, match: Any) -> list[str]:
-    """Human-readable diff of what applying `match` (a beets `TrackMatch`) changes for a singleton track.
+    """
+    Human-readable diff of what applying `match` (a beets `TrackMatch`) changes for a singleton track.
 
     The singleton counterpart of `_build_album_diff`, with the same defensive attribute access.
     """
@@ -227,7 +231,8 @@ def _build_track_diff(task: Any, match: Any) -> list[str]:
 
 
 def _candidate_str(info: Any, attr: str) -> str | None:
-    """A candidate `AlbumInfo` attribute as a non-empty string, else None.
+    """
+    A candidate `AlbumInfo` attribute as a non-empty string, else None.
 
     Coerces non-string values: only MusicBrainz guarantees string fields — e.g. Discogs release
     `album_id`s are ints — and `ImportCandidate` (a beets-agnostic DTO) validates strictly.
@@ -273,7 +278,8 @@ def _track_candidate(index: int, match: Any) -> ImportCandidate:
 
 
 def _session_config_overrides(job: ImportJob) -> dict[str, object]:
-    """The job's overrides for the `import` config keys beets reads from `ImportSession.config`.
+    """
+    The job's overrides for the `import` config keys beets reads from `ImportSession.config`.
 
     A clean slate additionally pins `incremental` off — its source folder was, in all likelihood, imported
     before, and beets' incremental mode would silently skip it by path history — plus `resume` off, one task
@@ -296,7 +302,8 @@ def _escape_template_literal(value: str) -> str:
 
 
 def _merged_set_fields(job: ImportJob, preserved: Mapping[str, str]) -> dict[str, str]:
-    """The job's `set_fields` plus a clean slate's preserved fields, which win for a name both carry.
+    """
+    The job's `set_fields` plus a clean slate's preserved fields, which win for a name both carry.
 
     Only the preserved values are escaped: they are literal library values, whereas the job's own entries may
     deliberately be templates (`$albumartist`).
@@ -305,7 +312,8 @@ def _merged_set_fields(job: ImportJob, preserved: Mapping[str, str]) -> dict[str
 
 
 def _apply_job_import_config(job: ImportJob, preserved_fields: Mapping[str, str]) -> None:
-    """Overlay the job's per-job settings, plus a clean slate's `preserved_fields`, onto beets' global `import` config.
+    """
+    Overlay the job's per-job settings, plus a clean slate's `preserved_fields`, onto beets' global `import` config.
 
     beets reads these keys from the global config while the session runs (`ImportSession.set_config` copies
     `group_albums`/`flat` at `run()`, and `ImportTask.set_fields` reads the `--set` values mid-pipeline), so
@@ -321,7 +329,8 @@ def _apply_job_import_config(job: ImportJob, preserved_fields: Mapping[str, str]
 
 
 def _job_loghandler(job: ImportJob) -> logging.FileHandler | None:
-    """A handler appending beets' import log lines to the job's `logpath` (`beet import -l`), or None.
+    """
+    A handler appending beets' import log lines to the job's `logpath` (`beet import -l`), or None.
 
     Mirrors beets' own CLI wiring: the handler is passed to `ImportSession`, whose logger records the
     session narrative (import started, skipped/as-is paths, duplicates). The caller must `close()` it after
@@ -333,7 +342,8 @@ def _job_loghandler(job: ImportJob) -> logging.FileHandler | None:
 
 
 def _failed_plugins_warning() -> str | None:
-    """Return a hint line if any configured beets plugins failed to load (else None).
+    """
+    Return a hint line if any configured beets plugins failed to load (else None).
 
     Plugins load once per process (see `core.library._load_plugins_once`) and the failure tracebacks land
     only in the server log — usually during some earlier request, not this job — so every job repeats the
@@ -349,7 +359,8 @@ def _failed_plugins_warning() -> str | None:
 
 
 def _metadata_source_warning() -> str | None:
-    """Return a hint line if autotag is on but no metadata-source plugins are loaded (else None).
+    """
+    Return a hint line if autotag is on but no metadata-source plugins are loaded (else None).
 
     In beets 2.x MusicBrainz is a *plugin* (not built in), and a custom `plugins:` list REPLACES beets'
     default `[musicbrainz]` rather than extending it — so it's easy to disable every metadata source by
@@ -380,7 +391,8 @@ def _metadata_source_warning() -> str | None:
 
 
 class WebImportSession(ImportSession):
-    """A `beets.importer.ImportSession` whose interactive hooks defer to the web UI via a `BlockingPortal`.
+    """
+    A `beets.importer.ImportSession` whose interactive hooks defer to the web UI via a `BlockingPortal`.
 
     The `choose_*`/`resolve_*` methods run in beets' pipeline threads, so they reach the loop with
     `portal.call(...)`; decisions and the abort flag are read/written through the DB-backed store.
@@ -400,7 +412,8 @@ class WebImportSession(ImportSession):
         loghandler: logging.Handler | None = None,
         config_overrides: Mapping[str, object] | None = None,
     ) -> None:
-        """Construct the beets session and stash the async-bridge handles used by the decision hooks.
+        """
+        Construct the beets session and stash the async-bridge handles used by the decision hooks.
 
         `loghandler`, when given, becomes the session logger's handler — beets' `-l` import log.
         `config_overrides` are applied to the session's detached `import` config (see `set_config`).
@@ -416,7 +429,8 @@ class WebImportSession(ImportSession):
         self._config_overrides = dict(config_overrides or {})
 
     def set_config(self, config: Any) -> None:
-        """Run the session on a detached copy of beets' `import` config, with the job's overrides applied.
+        """
+        Run the session on a detached copy of beets' `import` config, with the job's overrides applied.
 
         beets reads these keys live for the whole run (`copy`/`move`/`write` once per task) from the global
         config, which other requests may touch underneath a running import; the copy keeps the job's
@@ -483,7 +497,8 @@ class WebImportSession(ImportSession):
     def _quiet_choice(
         self, task: Any, album_label: str, build_diff: Callable[[Any, Any], list[str]] = _build_album_diff
     ) -> Any:
-        """Decide a match without prompting (the `beet import -q` rule).
+        """
+        Decide a match without prompting (the `beet import -q` rule).
 
         Apply the best candidate iff beets rates the match a *strong* recommendation; otherwise fall back to
         beets' `import.quiet_fallback` config (skip by default, or import as-is).
@@ -518,7 +533,8 @@ class WebImportSession(ImportSession):
         return Action.ASIS if choice == "asis" else Action.SKIP
 
     def get_duplicate_action(self, task: Any, found_duplicates: Any) -> Any:
-        """Resolve an import that duplicates existing library entries per beets' `import.duplicate_action`.
+        """
+        Resolve an import that duplicates existing library entries per beets' `import.duplicate_action`.
 
         The base class returns the configured action (`skip`/`keep`/`remove`/`merge`/`ask`). There is no
         interactive duplicate prompt here yet, so `ask` (beets' default) degrades to the same safe choice
@@ -547,7 +563,8 @@ class WebImportSession(ImportSession):
         prompt: str = "Choose a match for this album.",
         to_candidate: Callable[[int, Any], ImportCandidate] = _album_candidate,
     ) -> DecisionRequest:
-        """Map a beets `task` and its candidates into a serializable `DecisionRequest`.
+        """
+        Map a beets `task` and its candidates into a serializable `DecisionRequest`.
 
         `to_candidate` builds each `ImportCandidate` (`_album_candidate` carries the differentiating release
         attributes so the UI can tell otherwise-identical candidates apart; `_track_candidate` is the
@@ -564,7 +581,8 @@ class WebImportSession(ImportSession):
 
 
 class _ImportNarrator:
-    """Thread-safe narrator of what a running import adds, fed by beets' import events.
+    """
+    Thread-safe narrator of what a running import adds, fed by beets' import events.
 
     beets' pipeline fires `album_imported`/`item_imported` from its worker threads as each task's files
     land in the library, so the count is locked and the narrative output line is emitted live per event.
@@ -605,7 +623,8 @@ class _ImportNarrator:
 
 
 class _ImportEventsPlugin(BeetsPlugin):
-    """Routes beets' `album_imported`/`item_imported` events to the currently-running job's narrator.
+    """
+    Routes beets' `album_imported`/`item_imported` events to the currently-running job's narrator.
 
     beets dispatches events from the process-global `BeetsPlugin.listeners` registry, which has no
     unregister API — so exactly one instance is created lazily (`_import_events`) and lives for the
@@ -645,7 +664,8 @@ def _import_events() -> _ImportEventsPlugin:
 
 @dataclass
 class _ImportRunResult:
-    """What one `_run_import_blocking` did, for the post-run bookkeeping on the event loop.
+    """
+    What one `_run_import_blocking` did, for the post-run bookkeeping on the event loop.
 
     Filled in as the run progresses (the caller keeps a reference), so a clean slate's removal is known even
     when the import that follows raises.
@@ -657,7 +677,8 @@ class _ImportRunResult:
 
 
 class ImportWorker:
-    """Per-process import runner; only the lease holder actually runs imports (see module docstring).
+    """
+    Per-process import runner; only the lease holder actually runs imports (see module docstring).
 
     Launch `run()` as a background task in the FastAPI lifespan. Submit/answer/abort/status all go through
     the shared `ImportStore` (not this object), so they work no matter which process handles the request.
@@ -671,7 +692,8 @@ class ImportWorker:
         *,
         preserve_fields: Collection[str] = (),
     ) -> None:
-        """Create the worker over the shared store; mint a unique-per-process worker id.
+        """
+        Create the worker over the shared store; mint a unique-per-process worker id.
 
         `downloads_path` (beetkeeper's `downloads_path` setting) bounds clean-slate source folders; a clean-slate
         job fails up front when it is unset. `preserve_fields` names the flexible attributes a clean slate carries
@@ -686,7 +708,8 @@ class ImportWorker:
         self._was_leader = False
 
     async def run(self) -> None:
-        """Leader loop: acquire/renew the lease, recover orphans on election, then claim + run jobs.
+        """
+        Leader loop: acquire/renew the lease, recover orphans on election, then claim + run jobs.
 
         The lock row is ensured once up front, unguarded: migrations have just run, so a failure there is
         a real misconfiguration that should fail startup loudly. After that, each cycle is guarded against
@@ -762,7 +785,8 @@ class ImportWorker:
             await self._retarget_inferences(job, result)
 
     async def _retarget_inferences(self, job: ImportJob, result: _ImportRunResult) -> None:
-        """Move the clean-slated entry's inferred source path onto its fresh import, or drop it (best-effort).
+        """
+        Move the clean-slated entry's inferred source path onto its fresh import, or drop it (best-effort).
 
         Guarded like the other post-import bookkeeping: a failure here is logged and never fails the job,
         whose library changes are already done.
@@ -781,7 +805,8 @@ class ImportWorker:
     async def _finalize_job(
         self, job_id: str, output: _OutputBuffer, status: ImportJobStatus, *, error: str | None
     ) -> None:
-        """Persist the job's final output and terminal status, retrying DB errors.
+        """
+        Persist the job's final output and terminal status, retrying DB errors.
 
         Losing the terminal write would leave the job RUNNING forever: `claim_next` only claims PENDING
         jobs and `recover_orphans` spares this worker's own claims, so nothing else could repair it while
@@ -806,7 +831,8 @@ class ImportWorker:
         )
 
     async def _renew_lease_until_cancelled(self) -> None:
-        """Renew the leader lease periodically; any error skips one renewal, never the running import.
+        """
+        Renew the leader lease periodically; any error skips one renewal, never the running import.
 
         Guarded with a broad `except Exception`: an escaping exception would cancel `_run_job`'s task
         group (anyio wraps it in an `ExceptionGroup`), aborting the import over a background renewal blip.
@@ -819,7 +845,8 @@ class ImportWorker:
                 _LOGGER.warning("Import lease renewal failed; retrying on the next interval.", exc_info=True)
 
     async def _flush_output_until_cancelled(self, job_id: str, output: _OutputBuffer) -> None:
-        """Persist the job's output to the DB whenever it grows (so pollers see incremental progress).
+        """
+        Persist the job's output to the DB whenever it grows (so pollers see incremental progress).
 
         Any error skips this flush (without advancing the version, so the same text is retried next
         interval) rather than aborting the running import — see `_renew_lease_until_cancelled` on why the
@@ -841,7 +868,8 @@ class ImportWorker:
     def _run_import_blocking(
         self, job: ImportJob, portal: BlockingPortal, output: _OutputBuffer, result: _ImportRunResult | None = None
     ) -> _ImportRunResult:
-        """Open the library, run the clean-slate removal (if any) and the beets import to completion, narrating.
+        """
+        Open the library, run the clean-slate removal (if any) and the beets import to completion, narrating.
 
         Executes in a worker thread (beets connections are thread-local). The added albums/items are
         narrated through beets' own `album_imported`/`item_imported` events (fired by the pipeline as each
@@ -907,7 +935,8 @@ class ImportWorker:
     def _clean_slate_blocking(
         self, job: ImportJob, library: Library, output: _OutputBuffer
     ) -> tuple[RemovedEntry, dict[str, str]]:
-        """Re-run the clean-slate preview as the guard, narrate the plan, then remove the entry.
+        """
+        Re-run the clean-slate preview as the guard, narrate the plan, then remove the entry.
 
         Returns the removal record plus the preserved field values the import that follows re-applies.
 

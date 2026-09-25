@@ -1,4 +1,5 @@
-"""event subject name columns
+"""
+event subject name columns
 
 Revision ID: e1b7d5c2a984
 Revises: c8d1a4f7b923

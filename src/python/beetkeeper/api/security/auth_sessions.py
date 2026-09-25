@@ -1,4 +1,5 @@
-"""DB-backed bearer-token session store for beetkeeper's opt-in login protection.
+"""
+DB-backed bearer-token session store for beetkeeper's opt-in login protection.
 
 Tokens are opaque `secrets.token_urlsafe` strings handed out by `POST /api/auth/login`; only their SHA-256
 digests are persisted (see `beetkeeper.db.models.AuthSessionRecord`), so the DB is the cross-worker source

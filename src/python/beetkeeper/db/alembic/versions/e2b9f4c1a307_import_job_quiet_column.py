@@ -1,4 +1,5 @@
-"""import job quiet column
+"""
+import job quiet column
 
 Revision ID: e2b9f4c1a307
 Revises: c7a2f4e1b9d0

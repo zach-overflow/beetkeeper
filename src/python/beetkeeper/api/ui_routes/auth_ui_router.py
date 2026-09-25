@@ -1,6 +1,8 @@
-"""Browser login/logout flow: the `/login` page + form posts, backed by the same DB session store as the
+"""
+Browser login/logout flow: the `/login` page + form posts, backed by the same DB session store as the
 JSON API (`api_routes/auth_router.py`). Successful logins set the session token as an HttpOnly cookie
-(`SESSION_COOKIE_NAME`), which `LoginProtectionMiddleware` accepts alongside bearer headers."""
+(`SESSION_COOKIE_NAME`), which `LoginProtectionMiddleware` accepts alongside bearer headers.
+"""
 
 from datetime import timedelta
 from typing import Annotated
@@ -21,7 +23,8 @@ NextFormField = Annotated[str | None, Form(alias="next")]
 
 
 def _safe_next_path(raw_next: str | None) -> str:
-    """Clamp a `?next=` value to a same-site path, defaulting to the site root.
+    """
+    Clamp a `?next=` value to a same-site path, defaulting to the site root.
 
     Only site-relative paths pass: anything with a scheme/host (`https://...`) or a scheme-relative
     `//host` (browsers also treat `/\\host` that way) would be an open redirect to another origin.
@@ -33,7 +36,8 @@ def _safe_next_path(raw_next: str | None) -> str:
 
 @auth_ui_router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, user_config: UserConfigDep, next_path: NextQueryParam = None) -> Response:
-    """Render the login form (or bounce to the site root when login protection is off).
+    """
+    Render the login form (or bounce to the site root when login protection is off).
 
     A `?next=` query (set by the middleware's redirect) is carried through the form as a hidden field so a
     successful login can return to the originally requested page.

@@ -17,7 +17,8 @@ query_router = APIRouter(prefix="/query", tags=[RouteTag.QUERY])
 async def list_(  # trailing underscore: avoid shadowing the builtin `list` (used in the return annotation).
     library: BeetsLibraryDep, params: ListQueryParams
 ) -> list[dict[str, Any]]:
-    """Execute `beet list ...`: return one page of matching tracks (or albums) as JSON objects.
+    """
+    Execute `beet list ...`: return one page of matching tracks (or albums) as JSON objects.
 
     The query params (pagination plus the beets query inputs, some repeatable) are documented on
     `ListQueryParamsModel`.
@@ -31,7 +32,8 @@ async def list_(  # trailing underscore: avoid shadowing the builtin `list` (use
 
 @query_router.get("/stats")
 async def stats(library: BeetsLibraryDep) -> dict[str, Any]:
-    """Execute `beet stats`: track count, total time, approximate size, and artist/album counts.
+    """
+    Execute `beet stats`: track count, total time, approximate size, and artist/album counts.
 
     See: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#stats
     """
@@ -40,7 +42,8 @@ async def stats(library: BeetsLibraryDep) -> dict[str, Any]:
 
 @query_router.get("/fields")
 async def fields(library: BeetsLibraryDep) -> dict[str, list[str]]:
-    """Execute `beet fields`: the item/album query fields and flexible attributes available.
+    """
+    Execute `beet fields`: the item/album query fields and flexible attributes available.
 
     See: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#fields
     """

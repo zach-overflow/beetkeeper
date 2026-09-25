@@ -11,7 +11,8 @@ from beetkeeper.settings import UserConfig
 async def clean_slate_preview(
     library: BeetsLibrary, user_config: UserConfig, request: CleanSlatePreviewRequest
 ) -> CleanSlatePreview:
-    """Run the read-only clean-slate preview for a route: an unknown entry is a 404, any other refusal a 422.
+    """
+    Run the read-only clean-slate preview for a route: an unknown entry is a 404, any other refusal a 422.
 
     The fields carried onto the fresh import are the keys of the `downloader_hook.beet_field_to_dl_search_field`
     setting, i.e. the fields the downloader hook searches by.

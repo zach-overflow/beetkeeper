@@ -1,4 +1,5 @@
-"""import job clean-slate columns, dropping the library-reimport ones
+"""
+import job clean-slate columns, dropping the library-reimport ones
 
 Revision ID: d7c3a9e5f218
 Revises: b3f9d7c1e845

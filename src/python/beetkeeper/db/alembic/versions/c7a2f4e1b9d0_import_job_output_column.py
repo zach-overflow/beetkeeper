@@ -1,4 +1,5 @@
-"""import job output column
+"""
+import job output column
 
 Revision ID: c7a2f4e1b9d0
 Revises: bcdd3073515d

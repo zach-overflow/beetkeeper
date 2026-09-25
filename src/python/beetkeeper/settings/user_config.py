@@ -21,7 +21,8 @@ class BeetKeeperConfigError(ValueError):
 
 
 class ServerConfSection(BaseModel):
-    """Model for the `server` subsection of the beets config's `beetkeeper` section.
+    """
+    Model for the `server` subsection of the beets config's `beetkeeper` section.
 
     beetkeeper always runs as a single server worker process: both its own SQLite database and the beets
     library are effectively single-writer, and in-process coordination (e.g. the beets write limiter)
@@ -225,7 +226,8 @@ class UserConfig(BaseSettings):
 
 
 def load_config(raw_conf_path: Path) -> UserConfig:
-    """Load beetkeeper settings from the beets config at `raw_conf_path`, returning a `UserConfig`.
+    """
+    Load beetkeeper settings from the beets config at `raw_conf_path`, returning a `UserConfig`.
 
     `raw_conf_path` is the path to the *beets* YAML config. Beetkeeper reads its own settings from that
     file's top-level `beetkeeper:` mapping. The beets config path itself becomes `UserConfig.beets_config_filepath`. Raises a

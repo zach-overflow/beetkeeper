@@ -1,4 +1,5 @@
-"""import job per-job settings columns
+"""
+import job per-job settings columns
 
 Revision ID: f5d81c9a4b26
 Revises: e2b9f4c1a307

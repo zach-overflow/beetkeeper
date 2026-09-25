@@ -1,4 +1,5 @@
-"""import path tables
+"""
+import path tables
 
 Revision ID: b6e0f3a9c512
 Revises: d4e8a2c6b1f3

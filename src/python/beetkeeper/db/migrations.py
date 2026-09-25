@@ -80,7 +80,8 @@ def current_revision(cfg: Config) -> str | None:
 
 
 def startup_upgrade(cfg: Config, *, sqlite_path: Path, auto_upgrade: bool) -> None:
-    """Brings the database schema to head before the server starts serving.
+    """
+    Brings the database schema to head before the server starts serving.
 
     No-op when the schema is already current. Otherwise the SQLite file (if it exists) is backed up
     alongside itself first, then `upgrade head` is applied — so a fresh install and a version upgrade are

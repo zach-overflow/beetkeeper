@@ -122,7 +122,8 @@ def file_exists(item: Item) -> bool:
 
 
 def expected_tracks(items: Sequence[Item]) -> int | None:
-    """The track total an album's tags claim, computed as beets' `Album.albumtotal` does (None when unknown).
+    """
+    The track total an album's tags claim, computed as beets' `Album.albumtotal` does (None when unknown).
 
     Takes the album's items (which carry the album-level `disctotal`) so a page of albums needs one items
     query rather than one per album.
@@ -162,7 +163,8 @@ def preview(
     allow_fewer_files: bool = False,
     preserve_fields: Collection[str] = (),
 ) -> CleanSlatePreview:
-    """Dry-run a clean slate of `target` from `source_path` (read-only; see the module docstring's rules).
+    """
+    Dry-run a clean slate of `target` from `source_path` (read-only; see the module docstring's rules).
 
     `preserve_fields` names the flexible attributes whose values the clean slate carries onto the fresh import;
     they are reported as `fields_preserved` and left out of `flexible_attributes_lost`.
@@ -244,7 +246,8 @@ def require_ok(preview_result: CleanSlatePreview) -> None:
 def remove_entry(
     lib: Library, target: CleanSlateTarget, source_path: str, *, narrate: Callable[[str], None]
 ) -> RemovedEntry:
-    """Take `target` out of the library like `beet remove -d`, minus anything outside the beets directory.
+    """
+    Take `target` out of the library like `beet remove -d`, minus anything outside the beets directory.
 
     Rows always go. A file goes only when it lies inside the beets directory and not under `source_path`
     (mirroring how beets itself removes duplicate albums), so an in-place library never loses the very files
@@ -306,7 +309,8 @@ def _flexible_attributes(entry: _Entry, *, excluding: Collection[str] = ()) -> l
 
 
 def _preserved_fields(entry: _Entry, names: Collection[str]) -> dict[str, str]:
-    """The entry's values for the flexible attributes in `names`: the album's, else the first item's holding one.
+    """
+    The entry's values for the flexible attributes in `names`: the album's, else the first item's holding one.
 
     A field counts as held when its value is neither None nor blank, as in `DownloaderHook.query_params`. Fixed
     fields never qualify; the fresh import derives those itself.

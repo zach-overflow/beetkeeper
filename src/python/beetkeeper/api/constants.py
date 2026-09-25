@@ -29,8 +29,10 @@ class LibrarySubject(StrEnum):
 
 @unique
 class EventLookupEntityType(StrEnum):
-    """The viable entity types which the `GET /api/events/(album|track)/{id}` and `GET /api/events/{event_id}`
-    routes support."""
+    """
+    The viable entity types which the `GET /api/events/(album|track)/{id}` and `GET /api/events/{event_id}`
+    routes support.
+    """
 
     ALBUM = "album"
     TRACK = "track"

@@ -1,4 +1,5 @@
-"""initial event tables
+"""
+initial event tables
 
 Revision ID: 7f3051110f7f
 Revises:
