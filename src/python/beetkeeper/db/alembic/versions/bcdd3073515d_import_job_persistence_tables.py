@@ -1,4 +1,5 @@
-"""import job persistence tables
+"""
+import job persistence tables
 
 Revision ID: bcdd3073515d
 Revises: 7f3051110f7f

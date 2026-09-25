@@ -47,7 +47,8 @@ def create_app() -> FastAPI:
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    """Initializes app-lifetime state (DB engine + session-maker) from the configured `UserConfig`.
+    """
+    Initializes app-lifetime state (DB engine + session-maker) from the configured `UserConfig`.
 
     The beets config directory (whose `config.yaml`'s optional `beetkeeper` section holds beetkeeper's
     settings) is read from the `BEETSDIR` env var (set by `beetkeeper run`); startup fails if it is unset.

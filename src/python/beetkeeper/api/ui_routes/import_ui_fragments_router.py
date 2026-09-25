@@ -104,7 +104,8 @@ def _split_typed_path(text: str, import_root: Path) -> tuple[AsyncPath, str]:
 
 
 async def _dir_suggestions(raw_path: str, import_root: Path) -> list[str]:
-    """Real subdirectories matching the partial path being typed, restricted to under `import_root`.
+    """
+    Real subdirectories matching the partial path being typed, restricted to under `import_root`.
 
     Autocomplete is offered only for paths inside the import root (beetkeeper's `downloads_path`); anything
     else — or a `..` that would escape the root — yields no suggestions. A trailing `/` lists everything in
@@ -161,7 +162,8 @@ _CANDIDATE_COLUMNS: tuple[tuple[str, str, Callable[[Any], str], str | None], ...
 
 
 def build_candidate_table(candidates: Sequence[ImportCandidate]) -> dict[str, Any] | None:
-    """Build a table model for the candidate chooser, one row per candidate.
+    """
+    Build a table model for the candidate chooser, one row per candidate.
 
     Columns are the *union of differentiating attributes*: a column is included only when the candidates
     hold more than one distinct value for it (so identical-across-all fields are hidden). For a lone
@@ -232,7 +234,8 @@ def _clean_slate_request(
 
 @import_ui_fragments_router.get("", response_class=HTMLResponse)
 async def import_active_list(request: Request, store: ImportStoreDep) -> HTMLResponse:
-    """Render every currently-active import job (newest first).
+    """
+    Render every currently-active import job (newest first).
 
     The /import page loads this on page load, so ongoing / awaiting-decision jobs persist across leaving
     and returning to the page (state lives in the DB-backed store, not the page DOM).
@@ -255,7 +258,8 @@ async def import_submit(
     logpath: Annotated[str, Form()] = "",
     set_fields: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
-    """Start an import of a single path (which must live under `downloads_path`) and render its job fragment.
+    """
+    Start an import of a single path (which must live under `downloads_path`) and render its job fragment.
 
     The remaining form fields are the per-job import settings (see `ImportStore.create`); the page's form
     prefills them from the beets config, and unchecked checkboxes simply arrive absent (i.e. off).
@@ -293,7 +297,8 @@ async def import_clean_slate_submit(
     logpath: Annotated[str, Form()] = "",
     set_fields: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
-    """Start a clean-slate import (remove the entry, then import `source_path`) and render its job fragment.
+    """
+    Start a clean-slate import (remove the entry, then import `source_path`) and render its job fragment.
 
     Mirrors `POST /api/import/clean_slate`: the preview runs first, and a blocking error (422) or a source
     with fewer files than the entry has on disk without the opt-in (409) refuses the job.
@@ -329,7 +334,8 @@ async def clean_slate_preview(
     beets_item_id: int | None = None,
     allow_fewer_files: bool = False,
 ) -> HTMLResponse:
-    """Render the clean-slate dry run: what would be deleted, what the source holds, warnings and errors.
+    """
+    Render the clean-slate dry run: what would be deleted, what the source holds, warnings and errors.
 
     Defined before `/{job_id}` so the literal route wins over the job-status path parameter.
     """
@@ -344,7 +350,8 @@ async def clean_slate_preview(
 
 @import_ui_fragments_router.get("/path-suggestions", response_class=HTMLResponse)
 async def path_suggestions(request: Request, user_config: UserConfigDep, path: str = "") -> HTMLResponse:
-    """Autocomplete `<option>`s of real subdirectories for the partial filesystem `path` being typed.
+    """
+    Autocomplete `<option>`s of real subdirectories for the partial filesystem `path` being typed.
 
     Defined before `/{job_id}` so the literal route wins over the job-status path parameter.
     """

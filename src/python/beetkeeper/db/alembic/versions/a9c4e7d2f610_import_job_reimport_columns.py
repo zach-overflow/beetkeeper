@@ -1,4 +1,5 @@
-"""import job reimport columns
+"""
+import job reimport columns
 
 Revision ID: a9c4e7d2f610
 Revises: e1b7d5c2a984

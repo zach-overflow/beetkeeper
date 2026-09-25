@@ -25,7 +25,8 @@ _CONNECT_ARGS: Final[dict[str, Any]] = {"check_same_thread": False}
 
 
 def _configure_sqlite_connection(dbapi_connection: Any, _connection_record: Any) -> None:
-    """`connect` event hook applying beetkeeper's non-default SQLite settings to each new connection.
+    """
+    `connect` event hook applying beetkeeper's non-default SQLite settings to each new connection.
 
     * `foreign_keys=ON` — SQLite does not enforce foreign keys by default; needed for the ON DELETE
       CASCADEs in the schema.
@@ -47,7 +48,8 @@ def _configure_sqlite_connection(dbapi_connection: Any, _connection_record: Any)
 
 
 def make_engine(async_url: str, *, echo: bool = False) -> AsyncEngine:
-    """Creates an async SQLite engine (aiosqlite); `_configure_sqlite_connection` runs per connection.
+    """
+    Creates an async SQLite engine (aiosqlite); `_configure_sqlite_connection` runs per connection.
 
     `pool_pre_ping` (SQLAlchemy's documented "pessimistic disconnect handling") heals the pool after a
     task is cancelled mid-query: cancellation leaves that aiosqlite connection permanently broken, raising
@@ -67,7 +69,8 @@ def make_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
 
 @asynccontextmanager
 async def shielded_session(sessionmaker: async_sessionmaker[AsyncSession]) -> AsyncGenerator[AsyncSession]:
-    """A session whose whole scope is shielded from task cancellation — for short, self-contained ops.
+    """
+    A session whose whole scope is shielded from task cancellation — for short, self-contained ops.
 
     Cancellation landing mid-query permanently breaks the pooled aiosqlite connection ("no active
     connection" from then on); SQLAlchemy's guidance is that in-flight DB work must be shielded from

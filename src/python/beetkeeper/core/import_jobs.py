@@ -51,7 +51,8 @@ class ImportAction(StrEnum):
 
 
 class ImportCandidate(BaseModel):
-    """A serializable view of one beets match candidate, surfaced to the UI for selection.
+    """
+    A serializable view of one beets match candidate, surfaced to the UI for selection.
 
     Beyond the headline `label`/`similarity`, the optional release attributes below let the UI tell
     otherwise-identical candidates apart (e.g. different pressings/editions of the same album); `details`
@@ -139,7 +140,8 @@ class CleanSlateTarget:
 
 
 class CleanSlatePreview(BaseModel):
-    """The dry run of a clean-slate import: what removing the library entry and importing its source would do.
+    """
+    The dry run of a clean-slate import: what removing the library entry and importing its source would do.
 
     Produced read-only by `core.clean_slate.preview` for the API/UI preview, and again by the worker as the
     guard before it removes anything. `errors` lists the conditions that block the job outright; `warnings`

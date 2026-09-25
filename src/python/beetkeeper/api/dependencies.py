@@ -31,7 +31,8 @@ BeetsLibraryDep = Annotated[BeetsLibrary, Depends(get_beets_library)]
 
 
 def get_import_store(request: Request) -> ImportStore:
-    """Return a DB-backed `ImportStore` over the app's sessionmaker (created in the lifespan).
+    """
+    Return a DB-backed `ImportStore` over the app's sessionmaker (created in the lifespan).
 
     The store is the cross-process source of truth for import jobs, so route handlers use it (not the
     per-process `ImportWorker`) to submit/poll/answer/abort — see `beetkeeper.api.fastapi_app`.

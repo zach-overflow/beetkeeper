@@ -1,4 +1,5 @@
-"""beets plugin package for beetkeeper (imported by beets as `beetsplug.beetkeeper_plugin`).
+"""
+beets plugin package for beetkeeper (imported by beets as `beetsplug.beetkeeper_plugin`).
 
 beets' plugin loader imports `beetsplug.<name>` and instantiates the last `BeetsPlugin` subclass it finds
 in that module's namespace, so the plugin class must be re-exported here at the package level.

@@ -1,4 +1,5 @@
-"""ASGI middleware enforcing beetkeeper's opt-in bearer-token login protection.
+"""
+ASGI middleware enforcing beetkeeper's opt-in bearer-token login protection.
 
 Enforcement lives at the middleware level so every router (JSON API, HTMX fragments, pages) is covered
 without per-route dependencies. The check is a no-op unless `beetkeeper.auth.enable_login_protection` is

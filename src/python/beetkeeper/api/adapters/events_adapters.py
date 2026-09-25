@@ -146,8 +146,10 @@ async def listener_event_records_lookup(session: AsyncSession, offset: int, limi
 def _append_album_summary(
     summaries: list[EventSubjectSummary], beets_album_id: int | None, album_name: str | None
 ) -> None:
-    """Adds a track row's release to an `import_task_files` event's album summaries, keeping one summary
-    per beets album id (or per bare release name for singletons, whose tracks carry no album id)."""
+    """
+    Adds a track row's release to an `import_task_files` event's album summaries, keeping one summary
+    per beets album id (or per bare release name for singletons, whose tracks carry no album id).
+    """
     if beets_album_id is None and album_name is None:
         return
     if beets_album_id is not None and any(summary.beets_id == beets_album_id for summary in summaries):
@@ -214,8 +216,10 @@ def _subject_key(summary: EventSubjectSummary) -> int | str | None:
 
 
 def _ordered_union(first: list[EventSubjectSummary], second: list[EventSubjectSummary]) -> list[EventSubjectSummary]:
-    """Union keyed on the beets id (falling back to the name for id-less singleton releases), keeping
-    `first`'s entries — its names come from the imported event's own album/track rows — over `second`'s."""
+    """
+    Union keyed on the beets id (falling back to the name for id-less singleton releases), keeping
+    `first`'s entries — its names come from the imported event's own album/track rows — over `second`'s.
+    """
     first_keys = {_subject_key(summary) for summary in first}
     return first + [summary for summary in second if _subject_key(summary) not in first_keys]
 
@@ -254,7 +258,8 @@ def _import_task_files_partner_index(
 
 
 def _defined_fields(subject_dict: dict[str, Any]) -> dict[str, Any]:
-    """Drop null fields from a beets library dict so `APIAlbum`/`APITrack` field defaults apply.
+    """
+    Drop null fields from a beets library dict so `APIAlbum`/`APITrack` field defaults apply.
 
     The generated models type some fields from beets' shipped defaults (e.g. `artpath: bytes`), but a real
     library row can hold NULL there — validating None would fail where omitting the key does not.

@@ -28,7 +28,8 @@ import_router = APIRouter(prefix="/import", tags=[RouteTag.IMPORT])
 
 @import_router.post("", status_code=status.HTTP_201_CREATED)
 async def start_import(body: ImportSubmitRequest, store: ImportStoreDep) -> ImportJob:
-    """Enqueue an import of the given paths and return the created (PENDING) job.
+    """
+    Enqueue an import of the given paths and return the created (PENDING) job.
 
     Set `quiet=true` to import non-interactively (the `beet import -q` equivalent): no decision prompts.
     The optional per-job settings (`quiet`, `logpath`, `group_albums`, `flat`, `set_fields`) default to the
@@ -48,7 +49,8 @@ async def start_import(body: ImportSubmitRequest, store: ImportStoreDep) -> Impo
 async def preview_clean_slate(
     params: CleanSlatePreviewParams, library: BeetsLibraryDep, user_config: UserConfigDep
 ) -> CleanSlatePreview:
-    """Dry-run a clean-slate import without touching anything (see `POST /api/import/clean_slate`).
+    """
+    Dry-run a clean-slate import without touching anything (see `POST /api/import/clean_slate`).
 
     Reports what the removal would delete (library files inside the beets directory, album art), what it
     would leave alone, the flexible attributes that would be lost and those re-applied to the fresh import
@@ -63,7 +65,8 @@ async def preview_clean_slate(
 async def start_clean_slate(
     body: CleanSlateSubmitRequest, store: ImportStoreDep, library: BeetsLibraryDep, user_config: UserConfigDep
 ) -> ImportJob:
-    """Enqueue a clean-slate import: remove the named library entry, then import its source folder afresh.
+    """
+    Enqueue a clean-slate import: remove the named library entry, then import its source folder afresh.
 
     The preview runs first: a blocking error is a 422, a source with fewer audio files than the entry has on
     disk is a 409 until `allow_fewer_files` is set, and an unknown beets id is a 404. The job is then
@@ -99,7 +102,8 @@ async def find_missing_source_path(
     downloader_hook: DownloaderHookDep,
     session: SessionDep,
 ) -> FindMissingSourcePathResponse:
-    """Ask the configured downloader client where a library album/track was originally downloaded to.
+    """
+    Ask the configured downloader client where a library album/track was originally downloaded to.
 
     Only useful for entries imported outside a beetkeeper context (so no source path was recorded): the
     recovered pre-import folder is what a clean-slate import of the entry needs. The entry's fields named in

@@ -130,7 +130,8 @@ async def source_path_lookup_fragment(
     beets_album_id: Annotated[int | None, Form()] = None,
     beets_item_id: Annotated[int | None, Form()] = None,
 ) -> HTMLResponse:
-    """Render the downloader's answer for an entry's source folder (persisted as an inference on a match).
+    """
+    Render the downloader's answer for an entry's source folder (persisted as an inference on a match).
 
     The button is offered on every unrecorded row; without a configured hook the cell explains how to enable
     it. The rendered cell links a match to a clean-slate import of the entry; for an album track that means

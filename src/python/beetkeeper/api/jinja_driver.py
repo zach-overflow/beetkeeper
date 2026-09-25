@@ -16,7 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 
 @jinja2.pass_context
 def _relative_url_for(context: dict[str, Any], name: str, /, **path_params: Any) -> str:
-    """Root-relative replacement for Starlette's default `url_for` template global (which is absolute).
+    """
+    Root-relative replacement for Starlette's default `url_for` template global (which is absolute).
 
     Absolute URLs bake in the scheme/host the server *believes* it has — wrong behind any TLS-terminating
     reverse proxy whose forwarded headers aren't trusted, at which point browsers block the page's `http://`

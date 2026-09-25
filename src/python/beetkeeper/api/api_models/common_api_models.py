@@ -55,7 +55,8 @@ class PageQueryParamsModel(BaseModel):
 
 
 class ListQueryParamsModel(PageQueryParamsModel):
-    """Query params for `GET /api/query/list` (pagination plus the beets `list` query inputs).
+    """
+    Query params for `GET /api/query/list` (pagination plus the beets `list` query inputs).
 
     For each query param and its corresponding beets query search filter, see:
         https://beets.readthedocs.io/en/v2.12.0/reference/query.html#combining-keywords

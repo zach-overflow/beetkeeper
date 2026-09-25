@@ -1,4 +1,5 @@
-"""inferred source path table
+"""
+inferred source path table
 
 Revision ID: b3f9d7c1e845
 Revises: a9c4e7d2f610

@@ -48,7 +48,8 @@ class DownloaderHookAuth(httpx.Auth):
 
 
 class DownloaderHook(httpx.AsyncClient):
-    """Specialized async HTTP client for the downloader's REST API, if configured by the user.
+    """
+    Specialized async HTTP client for the downloader's REST API, if configured by the user.
 
     A hook built from a config without `base_url` is *disabled*: `search` answers "not found" without any
     I/O, so callers need not special-case the unconfigured state. Extra keyword arguments reach
@@ -76,7 +77,8 @@ class DownloaderHook(httpx.AsyncClient):
         return self._config.enabled
 
     def query_params(self, entry: Mapping[str, Any]) -> dict[str, str]:
-        """The search query params for a library entry: its configured fields, renamed to the API's names.
+        """
+        The search query params for a library entry: its configured fields, renamed to the API's names.
 
         Fields the entry lacks, or holds empty, are left out; a lookup with no params is pointless, so
         `search` refuses it.
@@ -134,7 +136,8 @@ class DownloaderHook(httpx.AsyncClient):
         )
 
     def to_local_path(self, downloader_path: str) -> Path:
-        """Map a path as the downloader reports it onto beetkeeper's `downloads_path` (see the config docs).
+        """
+        Map a path as the downloader reports it onto beetkeeper's `downloads_path` (see the config docs).
 
         With no `replace_downloader_paths_prefix` both sides share a filesystem view, so the path is used
         as-is; a path that does not carry the configured prefix is also returned unchanged.

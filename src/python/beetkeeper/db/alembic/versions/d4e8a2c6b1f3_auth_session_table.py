@@ -1,4 +1,5 @@
-"""auth session table
+"""
+auth session table
 
 Revision ID: d4e8a2c6b1f3
 Revises: f5d81c9a4b26

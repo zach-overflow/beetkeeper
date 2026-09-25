@@ -41,7 +41,8 @@ async def import_page(
     clean_slate_item_id: int | None = None,
     clean_slate_source: str = "",
 ) -> HTMLResponse:
-    """The import page. The form's option controls are prefilled from the beets config's `import` section,
+    """
+    The import page. The form's option controls are prefilled from the beets config's `import` section,
     so submitting the untouched form matches a plain `beet import` (and any change is an explicit override).
 
     `path` prefills the import form; `clean_slate_album_id` (or `clean_slate_item_id`) plus
@@ -84,7 +85,8 @@ async def _clean_slate_prefill(
 
 @pages_ui_router.get("/search", response_class=HTMLResponse)
 async def search_page(request: Request) -> HTMLResponse:
-    """UI for the read-only `query_router` endpoints: search (list), library stats, and field reference.
+    """
+    UI for the read-only `query_router` endpoints: search (list), library stats, and field reference.
 
     The page is static shell; its data loads via the `search_ui_fragments_router` HTMX fragments.
     """

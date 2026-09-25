@@ -61,7 +61,8 @@ class ImportStore:
 
     @asynccontextmanager
     async def _session(self) -> AsyncIterator[AsyncSession]:
-        """A store session shielded from task cancellation (see `db.session.shielded_session`).
+        """
+        A store session shielded from task cancellation (see `db.session.shielded_session`).
 
         The worker (and its renew/flush subtasks) are cancelled at shutdown; store operations are tiny,
         so they run to completion under the shield and cancellation is delivered at the caller's next
@@ -107,7 +108,8 @@ class ImportStore:
         clean_slate_item_id: int | None = None,
         clean_slate_allow_fewer_files: bool = False,
     ) -> ImportJob:
-        """Insert a new PENDING job and return its view.
+        """
+        Insert a new PENDING job and return its view.
 
         The keyword arguments are the per-job import settings, mirroring `beet import` flags: `quiet` runs
         non-interactively (`-q`), plus `logpath` (`-l`), `group_albums`, `flat`, and `set_fields` (`--set`).
@@ -180,7 +182,8 @@ class ImportStore:
     async def retarget_inferred_source_paths(
         self, subject: CleanSlateSubject, old_id: int, new_id: int | None, old_item_ids: Sequence[int]
     ) -> None:
-        """Move a clean-slated entry's inferred source path onto the id its fresh import got, or drop it.
+        """
+        Move a clean-slated entry's inferred source path onto the id its fresh import got, or drop it.
 
         beets re-numbers rows on every import, so after a clean slate the inference stored under the old id
         would dangle (or, since beets reuses freed ids, attach to an unrelated entry later). When the import

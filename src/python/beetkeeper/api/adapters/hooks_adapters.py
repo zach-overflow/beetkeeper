@@ -24,7 +24,8 @@ DOWNLOADER_HOOK_METHOD = "downloader_hook"
 async def find_missing_source_path(
     library: BeetsLibrary, downloader: DownloaderHook, session: AsyncSession, request: FindMissingSourcePathRequest
 ) -> FindMissingSourcePathResponse | None:
-    """Look the entry up by beets id, search the downloader with its configured fields, and persist a match.
+    """
+    Look the entry up by beets id, search the downloader with its configured fields, and persist a match.
 
     Returns None when no library entry has that id.
     """
