@@ -11,7 +11,8 @@ from beetkeeper.settings.user_config import BeetKeeperConfigError
 _BEETS_PREAMBLE = "directory: /music\nlibrary: /lib.db\n"
 _BEETKEEPER_SECTION = """\
 beetkeeper:
-  log_level: DEBUG
+  logging:
+    log_level: DEBUG
   server:
     hostname: 0.0.0.0
     port: 9999
@@ -31,11 +32,33 @@ def test_loads_settings_from_beetkeeper_section(tmp_path: Path) -> None:
     config_path = _write_config(tmp_path, _BEETS_PREAMBLE + _BEETKEEPER_SECTION)
     config = load_config(config_path)
     assert isinstance(config, UserConfig)
-    assert config.log_level == "DEBUG"
+    assert config.logging.log_level == "DEBUG"
     assert config.server.hostname == "0.0.0.0"
     assert config.server.port == 9999
     assert config.database.sqlite_path == Path("/var/lib/beetkeeper/bk.db")
     assert config.beets_config_filepath == config_path.resolve()
+
+
+def test_logging_defaults_when_section_absent(tmp_path: Path) -> None:
+    """No `logging` subsection means INFO to stdout, with the rotation size already coerced to a byte count."""
+    body = (_BEETS_PREAMBLE + _BEETKEEPER_SECTION).replace("  logging:\n    log_level: DEBUG\n", "")
+    config = load_config(_write_config(tmp_path, body))
+    assert config.logging.log_level == "INFO"
+    assert config.logging.log_filepath is None
+    assert config.logging.log_rotation_max_bytes == 100_000_000
+
+
+@pytest.mark.parametrize(("raw_size", "expected_bytes"), [("1KB", 1_000), ("2KiB", 2_048), ("5MB", 5_000_000)])
+def test_logging_section_accepts_new_log_file_and_sized_rotation(
+    tmp_path: Path, raw_size: str, expected_bytes: int
+) -> None:
+    """`log_filepath` may point at a not-yet-created file; `log_rotation_max_bytes` accepts human-readable sizes."""
+    log_path = tmp_path / "beetkeeper.log"
+    logging_section = f"    log_level: DEBUG\n    log_filepath: {log_path}\n    log_rotation_max_bytes: {raw_size}\n"
+    body = (_BEETS_PREAMBLE + _BEETKEEPER_SECTION).replace("    log_level: DEBUG\n", logging_section)
+    config = load_config(_write_config(tmp_path, body))
+    assert config.logging.log_filepath == log_path
+    assert config.logging.log_rotation_max_bytes == expected_bytes
 
 
 def test_removed_server_workers_key_is_ignored_with_warning(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:

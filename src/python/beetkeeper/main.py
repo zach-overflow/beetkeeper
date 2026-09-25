@@ -1,12 +1,12 @@
 """Entrypoint for the beetkeeper server and FastAPI application."""
 
-import logging
 import os
 from pathlib import Path
 
 import click
 
-from beetkeeper._cli_utils.cli_state import CliState
+from beetkeeper._utils import CliState
+from beetkeeper._utils.log_utils import configure_app_logging
 from beetkeeper._version import __version__ as beetkeeper_version
 from beetkeeper.settings import BEETS_DIR_ENVVAR
 
@@ -59,29 +59,35 @@ def run(cli_state: CliState) -> None:
     from beetkeeper.db.migrations import MigrationStateError, alembic_config_from_user_config, startup_upgrade
 
     user_config = cli_state.user_config
-    # Required for uvicorn logging to be at all configurable: https://github.com/Kludex/uvicorn/issues/945#issuecomment-819692145
-    logging.basicConfig(level=user_config.log_level, handlers=[logging.StreamHandler()])
-    # Migrate before uvicorn starts the app process, so its lifespan sees a current schema.
+    background_thread_log_queue_listener = configure_app_logging(log_conf=user_config.logging)
     try:
-        startup_upgrade(
-            alembic_config_from_user_config(user_config),
-            sqlite_path=user_config.database.resolved_sqlite_path,
-            auto_upgrade=user_config.database.auto_upgrade,
+        # Migrate before uvicorn starts the app process, so its lifespan sees a current schema.
+        try:
+            startup_upgrade(
+                alembic_config_from_user_config(user_config),
+                sqlite_path=user_config.database.resolved_sqlite_path,
+                auto_upgrade=user_config.database.auto_upgrade,
+            )
+        except MigrationStateError as e:
+            raise click.ClickException(str(e)) from e
+
+        # Strictly single-worker by design: SQLite (beets' library and beetkeeper's own db) plus in-process
+        # write serialization assume exactly one server process.
+        uvicorn.run(
+            app="beetkeeper.api:create_app",
+            factory=True,
+            host=user_config.server.hostname,
+            port=user_config.server.port,
+            # Apparently need to set `log_config` to `None` to prevent `uvicorn` from overwriting config.
+            # https://medium.com/@muh.bazm/how-i-unified-logging-in-fastapi-with-uvicorn-and-loguru-6813058c48fc
+            log_config=None,
+            log_level=None,
+            workers=1,
+            # `None` preserves uvicorn's fallbacks (the `FORWARDED_ALLOW_IPS` env var, else loopback only).
+            forwarded_allow_ips=user_config.server.forwarded_allow_ips,
         )
-    except MigrationStateError as e:
-        raise click.ClickException(str(e)) from e
-    # Strictly single-worker by design: SQLite (beets' library and beetkeeper's own db) plus in-process
-    # write serialization assume exactly one server process. uvicorn wants a lowercase log level string.
-    uvicorn.run(
-        app="beetkeeper.api:create_app",
-        factory=True,
-        host=user_config.server.hostname,
-        port=user_config.server.port,
-        log_level=user_config.log_level.lower(),
-        workers=1,
-        # `None` preserves uvicorn's fallbacks (the `FORWARDED_ALLOW_IPS` env var, else loopback only).
-        forwarded_allow_ips=user_config.server.forwarded_allow_ips,
-    )
+    finally:
+        background_thread_log_queue_listener.stop()
 
 
 @cli.group(help="Database migration commands (alembic).")

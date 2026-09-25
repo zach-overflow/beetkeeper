@@ -21,7 +21,8 @@ directory: /data/music
 library: /data/library.db
 
 beetkeeper:
-  log_level: INFO
+  logging:
+    log_level: INFO
   server:
     hostname: 0.0.0.0   # bind all interfaces so the published port is reachable from the host
     port: 8337

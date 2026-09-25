@@ -11,6 +11,6 @@ python_sources(
         "./db:db",
         ":pytyped-marker",
         "./settings:settings",
-        "./_cli_utils:_cli_utils",
+        "./_utils:_utils",
     ],
 )
