@@ -3,7 +3,18 @@ import logging
 from pathlib import Path
 from typing import Any, Final, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, FilePath, HttpUrl, SecretStr, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ByteSize,
+    ConfigDict,
+    Field,
+    FilePath,
+    HttpUrl,
+    NewPath,
+    SecretStr,
+    ValidationError,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
 # beets' own convention: `BEETSDIR` names the *directory* holding the beets config, and the config file
@@ -85,11 +96,6 @@ class AuthConfSection(BaseModel):
                 "`beetkeeper.auth.password` must both be set."
             )
         return self
-
-    @classmethod
-    def default(cls) -> Self:
-        """Default factory when this config section is not present."""
-        return cls()
 
 
 class DatabaseConfSection(BaseModel):
@@ -195,10 +201,32 @@ class DownloaderHookConfSection(BaseModel):
             raise ValueError(f"`downloader_hook.base_url` is set, so these settings are required: {', '.join(missing)}")
         return self
 
-    @classmethod
-    def default(cls) -> Self:
-        """Default factory when this config section is not present."""
-        return cls()
+
+class LoggingConfSection(BaseModel):
+    """
+    Model for the optional `logging` subsection of the beets config's `beetkeeper` section.
+
+    Every setting has a default, so the section may be omitted entirely (INFO-level logging to stdout).
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    log_level: Literal["CRITICAL", "DEBUG", "ERROR", "INFO", "NOTSET", "WARNING"] = Field(
+        default="INFO", description="The beetkeeper app server's logging level."
+    )
+    log_filepath: FilePath | NewPath | None = Field(
+        default=None,
+        description=(
+            "Optional filepath the app logs write to. When not specified, defaults to logging directly to stdout. "
+            "When set, log rotation is enforced (max size controlled by optional `log_rotation_max_bytes` setting)."
+        ),
+    )
+    log_rotation_max_bytes: ByteSize = Field(
+        default="100MB",
+        validate_default=True,
+        description=(
+            "The max size of the log file before rotating. Only relevant if `beetkeeper.logging.log_filepath` is set."
+        ),
+    )
 
 
 class UserConfig(BaseSettings):
@@ -212,11 +240,11 @@ class UserConfig(BaseSettings):
     # The pre-import staging root beetkeeper imports from (the container's `/downloads` mount); downloader
     # hook paths are mapped into it.
     downloads_path: Path = Path("/downloads")
-    log_level: Literal["CRITICAL", "DEBUG", "ERROR", "INFO", "NOTSET", "WARNING"]
     server: ServerConfSection
     database: DatabaseConfSection
-    downloader_hook: DownloaderHookConfSection = Field(default_factory=DownloaderHookConfSection.default)
-    auth: AuthConfSection = Field(default_factory=AuthConfSection.default)
+    logging: LoggingConfSection = Field(default_factory=LoggingConfSection)
+    downloader_hook: DownloaderHookConfSection = Field(default_factory=DownloaderHookConfSection)
+    auth: AuthConfSection = Field(default_factory=AuthConfSection)
 
     @model_validator(mode="after")
     def final_config_checks(self) -> Self:

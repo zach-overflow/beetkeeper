@@ -6,7 +6,8 @@ directory: /data/music
 library: /data/library.db
 
 beetkeeper:
-  log_level: INFO
+  logging:
+    log_level: INFO
   server:
     # 0.0.0.0 (not localhost) so the server is reachable from the host via the published port.
     hostname: 0.0.0.0

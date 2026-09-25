@@ -16,7 +16,8 @@ You tell beetkeeper which beets config to read via either:
 # ... your usual beets config (directory, library, plugins, ...) ...
 
 beetkeeper:
-  log_level: INFO
+  logging:
+    log_level: INFO
   server:
     hostname: 0.0.0.0
     port: 8337
@@ -42,7 +43,9 @@ beetkeeper:
 
 | Key                       | Type    | Default | Description                                                     |
 | :------------------------ | :------ | :------ | :-------------------------------------------------------------- |
-| `log_level`               | string  | —       | One of `CRITICAL`, `DEBUG`, `ERROR`, `INFO`, `NOTSET`, `WARNING`. |
+| `logging.log_level`       | string  | `INFO`  | One of `CRITICAL`, `DEBUG`, `ERROR`, `INFO`, `NOTSET`, `WARNING`. |
+| `logging.log_filepath`    | path    | —       | Write logs to this file instead of stdout. The file is created if missing; its directory must exist. |
+| `logging.log_rotation_max_bytes` | size | `100MB` | Max size of the log file before it is rotated (only used with `logging.log_filepath`). Accepts units, e.g. `50MiB`. |
 | `server.hostname`         | string  | `127.0.0.1` | Interface to bind (e.g. `0.0.0.0` to listen on all interfaces; the default binds loopback only). |
 | `server.port`             | int     | `8337`  | Port the server listens on (must be `> 0`).                     |
 | `server.forwarded_allow_ips` | string | —    | Reverse-proxy addresses (comma-separated IPs and/or CIDR networks like `192.168.40.0/24`, or `"*"` for all) whose `X-Forwarded-*` headers the server trusts. The UI renders root-relative URLs and works through any proxy without this; set it behind a reverse proxy so the request scheme and client address reflect the real client (accurate logs, correct absolute URLs anywhere one is ever emitted). Hostnames are **not** supported — uvicorn compares the raw peer IP. Note that setting this **replaces** the loopback default, so include `127.0.0.1` if a local proxy is also in play. Unset, uvicorn's default applies (the `FORWARDED_ALLOW_IPS` env var, else loopback only). |

@@ -70,7 +70,8 @@ def auth_user_config(tmp_path: Path, db_file: Path, enable_login_protection: boo
         "directory: /music\n"
         "library: /lib.db\n"
         "beetkeeper:\n"
-        "  log_level: INFO\n"
+        "  logging:\n"
+        "    log_level: INFO\n"
         "  server:\n"
         "    hostname: 127.0.0.1\n"
         f"  database:\n    sqlite_path: {db_file}\n"
@@ -139,7 +140,7 @@ def user_config(tmp_path: Path, db_file: Path, downloads_path: Path) -> UserConf
     return UserConfig(
         beets_config_filepath=config_path,
         downloads_path=downloads_path,
-        log_level="INFO",
+        logging={"log_level": "INFO"},
         server={"hostname": "127.0.0.1"},
         database={"sqlite_path": db_file},
     )
