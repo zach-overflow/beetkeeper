@@ -19,6 +19,7 @@ from beetkeeper.api import create_app
 from beetkeeper.core import BeetsLibrary
 from beetkeeper.db.session import get_session
 from beetkeeper.settings import UserConfig, load_config
+from tests.conftest import TaggedWavWriter
 
 SessionOverride = Callable[[], AsyncIterator[AsyncSession]]
 
@@ -26,6 +27,13 @@ DependencyOverrides = dict[Callable[..., object], Callable[..., object]]
 
 AUTH_TEST_USERNAME = "admin"
 AUTH_TEST_PASSWORD = "correct-horse-battery-staple"
+
+
+def _write_throwaway_beets_config(tmp_path: Path) -> Path:
+    """Write a minimal beets config (library DB and music dir under `tmp_path`) and return its path."""
+    beets_config = tmp_path / "beets.yaml"
+    beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n", encoding="utf-8")
+    return beets_config
 
 
 @pytest.fixture
@@ -107,9 +115,7 @@ def get_session_override(session_factory: async_sessionmaker[AsyncSession]) -> S
 @pytest.fixture
 def beets_library(tmp_path: Path) -> BeetsLibrary:
     """A `BeetsLibrary` pointed at a fresh, empty throwaway beets config (no music files, no network)."""
-    beets_config = tmp_path / "beets.yaml"
-    beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n")
-    return BeetsLibrary(beets_config)
+    return BeetsLibrary(_write_throwaway_beets_config(tmp_path))
 
 
 @pytest.fixture
@@ -129,7 +135,7 @@ def user_config(tmp_path: Path, db_file: Path, downloads_path: Path) -> UserConf
     """
     config_path = tmp_path / "beets.yaml"
     if not config_path.exists():
-        config_path.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n", encoding="utf-8")
+        _write_throwaway_beets_config(tmp_path)
     return UserConfig(
         beets_config_filepath=config_path,
         downloads_path=downloads_path,
@@ -144,8 +150,7 @@ def populated_beets_library(tmp_path: Path) -> BeetsLibrary:
     """A `BeetsLibrary` over a throwaway beets config whose library holds 30 synthetic tracks."""
     from beets.library import Item, Library
 
-    beets_config = tmp_path / "beets.yaml"
-    beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n")
+    beets_config = _write_throwaway_beets_config(tmp_path)
     library = Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
     for index in range(30):
         library.add(
@@ -160,6 +165,45 @@ def populated_beets_library(tmp_path: Path) -> BeetsLibrary:
             )
         )
     return BeetsLibrary(beets_config)
+
+
+@pytest.fixture
+def wav_album_library(tmp_path: Path, make_tagged_wav: TaggedWavWriter) -> BeetsLibrary:
+    """A library (config shared with `user_config`) holding one two-track album whose second file is gone."""
+    from beets.library import Item, Library
+
+    beets_config = _write_throwaway_beets_config(tmp_path)
+    library = Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
+    items = []
+    for track, title in ((1, "One"), (2, "Two")):
+        path = tmp_path / "music" / "Artist" / "Album" / f"{track:02d} {title}.wav"
+        make_tagged_wav(
+            path, title=title, artist="Artist", albumartist="Artist", album="Album", track=track, tracktotal=2
+        )
+        items.append(Item.from_path(path))
+    album = library.add_album(items)
+    album.torrent_hash = "abcdefg12345678"
+    album.mood = "calm"
+    album.store()
+    (tmp_path / "music" / "Artist" / "Album" / "02 Two.wav").unlink()
+    return BeetsLibrary(beets_config)
+
+
+@pytest.fixture
+def source_folder(downloads_path: Path, make_tagged_wav: TaggedWavWriter) -> Path:
+    """The album's raw download folder under `downloads_path`, holding both tracks."""
+    folder = downloads_path / "Artist - Album"
+    for track, title in ((1, "One"), (2, "Two")):
+        make_tagged_wav(
+            folder / f"{track:02d} {title}.wav",
+            title=title,
+            artist="Artist",
+            albumartist="Artist",
+            album="Album",
+            track=track,
+            tracktotal=2,
+        )
+    return folder
 
 
 @pytest.fixture

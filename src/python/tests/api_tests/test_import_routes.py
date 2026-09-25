@@ -154,46 +154,6 @@ async def test_health_reports_pid_and_shared_job_count(client: AsyncClient) -> N
     assert (await client.get("/api/health")).json()["job_count"] == before + 1
 
 
-@pytest.fixture
-def wav_album_library(tmp_path: Path, make_tagged_wav: TaggedWavWriter) -> BeetsLibrary:
-    """A library (config shared with `user_config`) holding one two-track album whose second file is gone."""
-    from beets.library import Item, Library
-
-    beets_config = tmp_path / "beets.yaml"
-    beets_config.write_text(f"library: {tmp_path}/lib.db\ndirectory: {tmp_path}/music\n", encoding="utf-8")
-    library = Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
-    items = []
-    for track, title in ((1, "One"), (2, "Two")):
-        path = tmp_path / "music" / "Artist" / "Album" / f"{track:02d} {title}.wav"
-        make_tagged_wav(
-            path, title=title, artist="Artist", albumartist="Artist", album="Album", track=track, tracktotal=2
-        )
-        items.append(Item.from_path(path))
-    album = library.add_album(items)
-    album.torrent_hash = "abcdefg12345678"
-    album.mood = "calm"
-    album.store()
-    (tmp_path / "music" / "Artist" / "Album" / "02 Two.wav").unlink()
-    return BeetsLibrary(beets_config)
-
-
-@pytest.fixture
-def source_folder(downloads_path: Path, make_tagged_wav: TaggedWavWriter) -> Path:
-    """The album's raw download folder under `downloads_path`, holding both tracks."""
-    folder = downloads_path / "Artist - Album"
-    for track, title in ((1, "One"), (2, "Two")):
-        make_tagged_wav(
-            folder / f"{track:02d} {title}.wav",
-            title=title,
-            artist="Artist",
-            albumartist="Artist",
-            album="Album",
-            track=track,
-            tracktotal=2,
-        )
-    return folder
-
-
 class TestCleanSlate:
     @pytest.fixture
     def user_config(self, user_config: UserConfig) -> UserConfig:

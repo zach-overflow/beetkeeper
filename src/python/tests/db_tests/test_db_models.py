@@ -11,11 +11,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlmodel import select
 
+from beetkeeper.constants import BeetsEventType
 from beetkeeper.db.models import AlbumEvent, ListenerEvent
 
 
-async def _insert_listener_event(session: AsyncSession, event_type: str) -> ListenerEvent:
-    event = ListenerEvent(event_type=event_type, pushed_at=datetime.now(UTC))  # type: ignore[arg-type]
+async def _insert_listener_event(session: AsyncSession, event_type: BeetsEventType) -> ListenerEvent:
+    event = ListenerEvent(event_type=event_type, pushed_at=datetime.now(UTC))
     session.add(event)
     await session.commit()
     await session.refresh(event)
@@ -25,7 +26,7 @@ async def _insert_listener_event(session: AsyncSession, event_type: str) -> List
 @pytest.mark.anyio
 async def test_insert_and_read_back_child_event(session_factory: async_sessionmaker[AsyncSession]) -> None:
     async with session_factory() as session:
-        parent = await _insert_listener_event(session, "album_imported")
+        parent = await _insert_listener_event(session, BeetsEventType.ALBUM_IMPORTED)
         assert parent.event_id is not None
         session.add(AlbumEvent(listener_event_id=parent.event_id, beets_album_id=42))
         await session.commit()
@@ -40,7 +41,7 @@ async def test_insert_and_read_back_child_event(session_factory: async_sessionma
 @pytest.mark.anyio
 async def test_on_delete_cascade_removes_children(session_factory: async_sessionmaker[AsyncSession]) -> None:
     async with session_factory() as session:
-        parent = await _insert_listener_event(session, "album_removed")
+        parent = await _insert_listener_event(session, BeetsEventType.ALBUM_REMOVED)
         session.add(AlbumEvent(listener_event_id=parent.event_id, beets_album_id=7))
         await session.commit()
 

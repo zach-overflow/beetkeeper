@@ -2,21 +2,21 @@
 DB-backed bearer-token session store for beetkeeper's opt-in login protection.
 
 Tokens are opaque `secrets.token_urlsafe` strings handed out by `POST /api/auth/login`; only their SHA-256
-digests are persisted (see `beetkeeper.db.models.AuthSessionRecord`), so the DB is the cross-worker source
-of truth without ever storing a usable credential.
+digests are persisted (see `beetkeeper.db.models.AuthSessionRecord`), so the DB is the source of truth
+without ever storing a usable credential.
 """
 
 import hashlib
 import secrets
-from datetime import UTC, datetime, timedelta
-from typing import Any, Final
+from datetime import timedelta
+from typing import Final
 
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlmodel import col
 
-from beetkeeper.db.models import AuthSessionRecord
-from beetkeeper.db.session import shielded_session
+from beetkeeper.db.models import AuthSessionRecord, naive_utcnow
+from beetkeeper.db.session import affected_rows, shielded_session
 from beetkeeper.settings import AuthConfSection
 
 _TOKEN_NUM_BYTES = 32
@@ -51,11 +51,6 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def _utcnow() -> datetime:
-    """Naive UTC now, matching how the DB's `DateTime` columns are stored (see `core.import_store`)."""
-    return datetime.now(UTC).replace(tzinfo=None)
-
-
 class AuthSessionStore:
     """Creates, validates, and revokes login sessions against the `auth_session` table."""
 
@@ -66,7 +61,7 @@ class AuthSessionStore:
     async def open_session(self, ttl: timedelta) -> str:
         """Persist a new session valid for `ttl` and return its raw bearer token (never stored)."""
         token = secrets.token_urlsafe(_TOKEN_NUM_BYTES)
-        now = _utcnow()
+        now = naive_utcnow()
         async with shielded_session(self._sessionmaker) as session:
             await session.execute(delete(AuthSessionRecord).where(col(AuthSessionRecord.expires_at) <= now))
             session.add(AuthSessionRecord(token_hash=hash_token(token), created_at=now, expires_at=now + ttl))
@@ -77,13 +72,13 @@ class AuthSessionStore:
         """True if `token` matches an unexpired session."""
         async with shielded_session(self._sessionmaker) as session:
             record = await session.get(AuthSessionRecord, hash_token(token))
-        return record is not None and record.expires_at > _utcnow()
+        return record is not None and record.expires_at > naive_utcnow()
 
     async def revoke_token(self, token: str) -> bool:
         """Delete the session for `token` (logout). Returns whether a session existed."""
         async with shielded_session(self._sessionmaker) as session:
-            result: Any = await session.execute(
+            result = await session.execute(
                 delete(AuthSessionRecord).where(col(AuthSessionRecord.token_hash) == hash_token(token))
             )
             await session.commit()
-        return bool(result.rowcount)
+        return bool(affected_rows(result))

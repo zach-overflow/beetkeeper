@@ -10,7 +10,7 @@ from beetkeeper.api.adapters.hooks_adapters import (
     inferred_source_paths,
     record_inferred_source_path,
 )
-from beetkeeper.api.adapters.import_adapters import clean_slate_preview
+from beetkeeper.api.adapters.import_adapters import clean_slate_preview, reject_unsafe_clean_slate, require_import_job
 from beetkeeper.api.adapters.search_adapters import import_source_paths_by_album_id, import_source_paths_by_track_id
 
 __all__ = [
@@ -23,4 +23,6 @@ __all__ = [
     "listener_event_records_lookup",
     "merge_import_event_records",
     "record_inferred_source_path",
+    "reject_unsafe_clean_slate",
+    "require_import_job",
 ]

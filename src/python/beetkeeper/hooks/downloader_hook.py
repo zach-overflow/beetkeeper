@@ -1,11 +1,10 @@
 """
-Integration tooling for downloader clients which offer a REST API. This may be used by `beetkeeper` to fill in any
-missing source (pre-import) associative data the application needs for specific operations, such as fresh import retries.
+Integration tooling for downloader clients which offer a REST API. This may be used by `beetkeeper` to fill in
+any missing source (pre-import) associative data the application needs for specific operations, such as fresh
+import retries.
 
 The search contract is deliberately generic so any downloader can be wired up through config alone
-(`beetkeeper.settings.DownloaderHookConfSection`): a GET to `search_endpoint_path` with the library entry's
-fields as query params, answered with a JSON list of result objects (or a single object), each holding the
-download's path under `filepath_json_key`. Only the first result is used.
+(`beetkeeper.settings.DownloaderHookConfSection`); see `DownloaderHook.search` for the request/response shape.
 
 This package must not import `beetkeeper.api` (the API layer depends on it; see `api.dependencies`).
 """
@@ -92,7 +91,12 @@ class DownloaderHook(httpx.AsyncClient):
         return params
 
     async def search(self, params: Mapping[str, str]) -> DownloaderSearchResult:
-        """Ask the downloader for the download matching `params`; never raises for API/network failures."""
+        """
+        Ask the downloader for the download matching `params`; never raises for API/network failures.
+
+        The request is a GET to the configured `search_endpoint_path` with the library entry's fields (see
+        `query_params`) as query params; `_parse` reads the answer.
+        """
         if not self.enabled:
             return DownloaderSearchResult(found=False, detail="No downloader API is configured.")
         if not params:
@@ -117,6 +121,10 @@ class DownloaderHook(httpx.AsyncClient):
         return self._parse(raw_json, response.status_code)
 
     def _parse(self, raw_json: Any, status_code: int) -> DownloaderSearchResult:
+        """
+        Turn the search response into a result: a JSON list of result objects (or a single object), each
+        holding the download's path under the configured `filepath_json_key`. Only the first result is used.
+        """
         results = raw_json if isinstance(raw_json, list) else [raw_json]
         if not results:
             return DownloaderSearchResult(found=False, status_code=status_code, detail="No search results.")

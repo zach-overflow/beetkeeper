@@ -159,7 +159,6 @@ dependencies = [
     { name = "greenlet" },
     { name = "httpx" },
     { name = "jinja2" },
-    { name = "jinja2-fragments" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
@@ -182,7 +181,6 @@ requires-dist = [
     { name = "greenlet", specifier = ">=3.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "jinja2" },
-    { name = "jinja2-fragments", specifier = ">=1.12.0" },
     { name = "pydantic", specifier = ">=2.13.5" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
     { name = "python-multipart", specifier = ">=0.0.20" },
@@ -667,18 +665,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
-]
-
-[[package]]
-name = "jinja2-fragments"
-version = "1.12.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "jinja2" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/0b/25/dbe39572f06a259609ba8257e99f341c75d7add8c05f06b8761c359a58f7/jinja2_fragments-1.12.0.tar.gz", hash = "sha256:a24f8faf29be86f309edeb500e6709d93c3068d023b3dd79aefd2b16a4179e68", size = 22392, upload-time = "2026-04-08T02:53:05.302Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/30/d7/97b241dea417966ae523b6395b371ba6ec6ec637df0a4ca42f0251bbd4a4/jinja2_fragments-1.12.0-py3-none-any.whl", hash = "sha256:3267924edd358104056e7416507b1e101be5fc9ced771473663ffbec8883d2f3", size = 16620, upload-time = "2026-04-08T02:53:02.711Z" },
 ]
 
 [[package]]

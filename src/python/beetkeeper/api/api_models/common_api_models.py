@@ -15,10 +15,10 @@ See also:
 from collections.abc import Sequence
 from enum import IntEnum
 from pathlib import Path
-from typing import Annotated, TypeVar
+from typing import Annotated, Any, TypeVar
 
-from fastapi import Query
-from pydantic import BaseModel, Field
+from fastapi import HTTPException, Query, status
+from pydantic import BaseModel, Field, ValidationError
 
 
 class PageSize(IntEnum):
@@ -36,7 +36,7 @@ class PageQueryParamsModel(BaseModel):
     """
     Common pagination query parameters with standardized limits.
 
-    Should be used as in FastAPI route handler signatures with a `Annotated[PageQueryParams, Query()]` type hint.
+    Route handler signatures use it through the `PageQueryParams` alias (`Annotated[..., Query()]`) below.
     """
 
     page: int = Field(default=1, ge=1, description="The page number, 1-indexed.")
@@ -97,6 +97,14 @@ class SearchResultsQueryParamsModel(PageQueryParamsModel):
     albums: bool = Field(default=False, description="Return albums instead of individual tracks.")
     filepath: str | None = Field(default=None, description="A path within the beets library.")
     sort_by: str | None = Field(default=None, description="A beets sort token, e.g. `year+` or `artist-`.")
+
+
+def validated_or_422[ModelT: BaseModel](model: type[ModelT], **fields: Any) -> ModelT:
+    """Build `model` from loosely typed form/query inputs, turning a pydantic `ValidationError` into a 422."""
+    try:
+        return model(**fields)
+    except ValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 # A `type` (PEP 695) alias is lazy, which hides the `Query()` metadata from FastAPI's signature

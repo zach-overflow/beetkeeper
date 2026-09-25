@@ -140,7 +140,6 @@ class CleanSlatePreviewRequest(LibraryEntryRef):
     )
 
 
-# https://fastapi.tiangolo.com/tutorial/query-param-models/#query-parameters-with-a-pydantic-model
 CleanSlatePreviewParams = Annotated[CleanSlatePreviewRequest, Query()]
 
 

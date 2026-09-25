@@ -57,8 +57,6 @@ def _get_req_names_to_reqs_dict(
     pyproj_data: tomlkit.TOMLDocument, lookup_keys: list[str] | None = None
 ) -> dict[str, Requirement]:
     """Helper which returns the list of `Requirement` objects from a given `pyproject.toml` file's data."""
-    # if lookup_keys:
-    #     import pdb; pdb.set_trace()
     lookup_keys = lookup_keys or ["project", "dependencies"]
     deps_data = pyproj_data
     for lk in lookup_keys:

@@ -47,26 +47,27 @@ def _get_latest_available_version_semver() -> str:
         pypi_pkg_response_json = httpx.get(pypi_url).raise_for_status().json()
         latest_available_app_version = pypi_pkg_response_json["info"]["version"]
     except httpx.HTTPStatusError as e:
-        _LOGGER.error(f"Failed to pulling version info from {pypi_url}. Got http error code {e.response.status_code}.")
+        _LOGGER.error(f"Failed to pull version info from {pypi_url}. Got http error code {e.response.status_code}.")
     except KeyError:
         pretty_json = json.dumps(pypi_pkg_response_json, indent=2)
         _LOGGER.error(f"Failed to get version info from PyPI version response JSON from {pypi_url}:\n{pretty_json}")
     except Exception as e:
-        _LOGGER.error(f"Unexpected failure during version lookup attempt: {str(e)}")
+        _LOGGER.error(f"Unexpected failure during version lookup attempt: {e}")
     return latest_available_app_version
 
 
-# TODO[Claude]: two things to resolve here:
-#   1. HTMX fragment rendering: this is a plain Starlette `Jinja2Templates`, but `jinja2-fragments` is a
-#      declared dependency. If routes need to return a single template block for an HTMX swap, switch to
-#      `jinja2_fragments.fastapi.Jinja2Blocks` (and standardize block usage). Decide and document.
-#   2. Templates live inside the publicly mounted `static/` tree, so raw `.html` template source is also reachable at
-#      `/static/html_templates/...`. If that exposure is unintended, relocate templates out of `static/`.
 class _TemplatesSingleton:
     _instance: ClassVar[Jinja2Templates | None] = None
 
     @classmethod
     def load(cls) -> Jinja2Templates:
+        """
+        Build (once) and return the app's `Jinja2Templates`, rooted at `static/html_templates`.
+
+        Registers the template globals: `url_for` (root-relative, see `_relative_url_for`),
+        `current_app_version` (`__version__` without any `+local` suffix), `session_cookie_name`, and
+        `latest_available_app_version` (looked up on PyPI once).
+        """
         if not cls._instance:
             tpls = Jinja2Templates(directory=STATIC_DIRPATH / "html_templates")
             tpls.env.globals["url_for"] = _relative_url_for
@@ -81,4 +82,5 @@ class _TemplatesSingleton:
 
 
 def get_templates() -> Jinja2Templates:
+    """The shared `Jinja2Templates` instance every UI route renders with."""
     return _TemplatesSingleton.load()

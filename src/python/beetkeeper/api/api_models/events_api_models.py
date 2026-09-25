@@ -14,6 +14,8 @@ class _BaseEventResponse(BaseModel):
 
 
 class EventIngestResponse(_BaseEventResponse):
+    """Outcome of ingesting one pushed event: the beets id of the album/track it concerned, if any."""
+
     ingested_id: int | None = Field(
         default=None, description="The beets db ID of the processed album / item, if successful."
     )
@@ -21,6 +23,8 @@ class EventIngestResponse(_BaseEventResponse):
 
 
 class MultiItemEventIngestResponse(_BaseEventResponse):
+    """Outcome of ingesting a push covering several tracks (`import_task_files`): one result per imported item."""
+
     event_ingest_responses: list[EventIngestResponse] = Field(default_factory=list)
 
 
@@ -42,7 +46,6 @@ class ListenerEventDetails(_BaseEventResponse):
     One ingested beets listener event, with the album/track summaries of its child rows and, for
     `import_task_files` events, the import's source/destination filepaths (with `albums` holding the
     imported tracks' distinct releases, since those events have no album child rows of their own).
-    `album_ids`/`track_ids` are derived views kept for response compatibility.
     """
 
     pushed_at: datetime
@@ -54,11 +57,13 @@ class ListenerEventDetails(_BaseEventResponse):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def album_ids(self) -> list[int]:
+        """The beets ids in `albums`, a derived view kept for response compatibility."""
         return [album.beets_id for album in self.albums if album.beets_id is not None]
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def track_ids(self) -> list[int]:
+        """The beets ids in `tracks`, a derived view kept for response compatibility."""
         return [track.beets_id for track in self.tracks if track.beets_id is not None]
 
 
@@ -143,6 +148,13 @@ class TrackEventBody(_BaseEventBody):
 
 
 class ImportTaskFilesEventBody(_BaseEventBody):
+    """
+    A post request payload expected from the plugin's listener for `import_task_files` event pushes.
+
+    Carries the import task's decision (`choice_flag`), its source paths, and the tracks it wrote to the
+    library (each as a `TrackEventBody`, so their destination paths and album association travel along).
+    """
+
     choice_flag: str | None
     source_paths: list[str] = Field(
         default_factory=list,

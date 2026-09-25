@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from beetkeeper.api.adapters import clean_slate_preview as _clean_slate_preview
 from beetkeeper.api.adapters import find_missing_source_path as _lookup_source_path
+from beetkeeper.api.adapters import reject_unsafe_clean_slate, require_import_job
 from beetkeeper.api.api_models import (
     CleanSlatePreviewParams,
     CleanSlateSubmitRequest,
@@ -74,16 +75,13 @@ async def start_clean_slate(
     re-runs the preview as its guard right before removing anything.
     """
     plan = await _clean_slate_preview(library, user_config, body)
-    if plan.errors:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=" ".join(plan.errors))
-    if plan.needs_confirmation:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"The source holds {plan.source_audio_files} audio file(s) but the entry has {plan.files_present} "
-                "on disk; set allow_fewer_files=true to proceed anyway."
-            ),
-        )
+    reject_unsafe_clean_slate(
+        plan,
+        needs_confirmation_detail=(
+            f"The source holds {plan.source_audio_files} audio file(s) but the entry has {plan.files_present} "
+            "on disk; set allow_fewer_files=true to proceed anyway."
+        ),
+    )
     return await store.create(
         [body.source_path],
         quiet=body.quiet,
@@ -129,35 +127,28 @@ async def find_missing_source_path(
 async def list_imports(store: ImportStoreDep, page: PageQueryParams) -> list[ImportJob]:
     """List one page of known import jobs, newest first (so page 1 shows the most recent submissions)."""
     jobs = await store.list()
-    jobs.reverse()  # store.list() is oldest-first
+    jobs.reverse()
     return page.slice(jobs)
 
 
 @import_router.get("/{job_id}")
 async def get_import(job_id: str, store: ImportStoreDep) -> ImportJob:
     """Return a single import job (poll this for status / the pending decision)."""
-    return await _require_job(store, job_id)
+    return await require_import_job(store, job_id)
 
 
 @import_router.post("/{job_id}/decision")
 async def decide_import(job_id: str, decision: ImportDecision, store: ImportStoreDep) -> ImportJob:
     """Answer the decision an import is parked on; 409 if it isn't awaiting one."""
-    await _require_job(store, job_id)
+    await require_import_job(store, job_id)
     if not await store.submit_decision(job_id, decision):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Job is not awaiting a decision.")
-    return await _require_job(store, job_id)
+    return await require_import_job(store, job_id)
 
 
 @import_router.post("/{job_id}/abort")
 async def abort_import(job_id: str, store: ImportStoreDep) -> ImportJob:
     """Request cooperative cancellation of an in-flight import."""
-    await _require_job(store, job_id)
+    await require_import_job(store, job_id)
     await store.request_abort(job_id)
-    return await _require_job(store, job_id)
-
-
-async def _require_job(store: ImportStoreDep, job_id: str) -> ImportJob:
-    job = await store.get(job_id)
-    if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No import job '{job_id}'.")
-    return job
+    return await require_import_job(store, job_id)

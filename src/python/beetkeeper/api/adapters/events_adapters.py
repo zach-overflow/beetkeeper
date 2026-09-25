@@ -1,7 +1,7 @@
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Collection, Sequence
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,14 +45,15 @@ def _event_ids_of_types(events: Sequence[ListenerEvent], event_types: frozenset[
     return [event.event_id for event in events if event.event_id is not None and event.event_type in event_types]
 
 
-# TODO[https://github.com/zach-overflow/beetkeeper/issues/75]: Add async, non-blocking logging here.
-async def listener_event_records_lookup(session: AsyncSession, offset: int, limit: int) -> list[ListenerEventDetails]:
-    """
-    Queries the `beetkeeper` events table ordered from newest to oldest. This is the underlying bridge between
-    the beetkeeper UI / API surfacing `beetsplug.beetkeeper_plugin` events information pushed from the
-    `beetsplug.beetkeeper_plugin` event listener.
-    """
-    recent_events = (
+class _ListenerEventChild(Protocol):
+    """A row of one of `listener_event`'s child tables (the `*_event` and `import_*_path` models)."""
+
+    listener_event_id: int | None
+
+
+async def _recent_listener_events(session: AsyncSession, offset: int, limit: int) -> Sequence[ListenerEvent]:
+    """One page of `listener_event` rows, newest first (`pushed_at` desc, ties broken by `event_id` desc)."""
+    return (
         (
             await session.execute(
                 select(ListenerEvent)
@@ -65,68 +66,81 @@ async def listener_event_records_lookup(session: AsyncSession, offset: int, limi
         .all()
     )
 
+
+async def _child_rows[ChildT: _ListenerEventChild](
+    session: AsyncSession, model: type[ChildT], listener_event_ids: Sequence[int]
+) -> Sequence[ChildT]:
+    """The `model` rows belonging to `listener_event_ids`; no query runs when there are no ids."""
+    if not listener_event_ids:
+        return []
+    return (
+        (await session.execute(select(model).where(col(model.listener_event_id).in_(listener_event_ids))))
+        .scalars()
+        .all()
+    )
+
+
+def _grouped_by_event[ChildT: _ListenerEventChild, ValueT](
+    rows: Sequence[ChildT], value_of: Callable[[ChildT], ValueT]
+) -> dict[int, list[ValueT]]:
+    """`value_of(row)` for every row, grouped by the row's listener event id (row order kept within an event)."""
+    grouped: defaultdict[int, list[ValueT]] = defaultdict(list)
+    for row in rows:
+        grouped[cast("int", row.listener_event_id)].append(value_of(row))
+    return grouped
+
+
+def _album_summary(album_row: AlbumEvent) -> EventSubjectSummary:
+    """The album summary an `album_event` row records."""
+    return EventSubjectSummary(beets_id=album_row.beets_album_id, name=album_row.album_name)
+
+
+def _track_summary(track_row: TrackEvent) -> EventSubjectSummary:
+    """The track summary a `track_event` row records."""
+    return EventSubjectSummary(beets_id=track_row.beets_item_id, name=track_row.track_title)
+
+
+def _append_import_release_summaries(
+    albums_by_event: dict[int, list[EventSubjectSummary]],
+    track_rows: Sequence[TrackEvent],
+    import_task_files_event_ids: Collection[int],
+) -> None:
+    """
+    Adds each `import_task_files` event's imported releases to `albums_by_event`, derived from its track rows
+    since those events push no album rows of their own.
+    """
+    for track_row in track_rows:
+        listener_event_id = cast("int", track_row.listener_event_id)
+        if listener_event_id in import_task_files_event_ids:
+            _append_album_summary(
+                albums_by_event.setdefault(listener_event_id, []),
+                beets_album_id=track_row.beets_album_id,
+                album_name=track_row.album_name,
+            )
+
+
+# TODO[https://github.com/zach-overflow/beetkeeper/issues/75]: Add async, non-blocking logging here.
+async def listener_event_records_lookup(session: AsyncSession, offset: int, limit: int) -> list[ListenerEventDetails]:
+    """
+    Queries the `beetkeeper` events table ordered from newest to oldest. This is the underlying bridge between
+    the beetkeeper UI / API surfacing `beetsplug.beetkeeper_plugin` events information pushed from the
+    `beetsplug.beetkeeper_plugin` event listener.
+    """
+    recent_events = await _recent_listener_events(session, offset, limit)
     album_event_ids = _event_ids_of_types(recent_events, _EVENT_TYPES_WITH_ALBUM_ROWS)
     track_event_ids = _event_ids_of_types(recent_events, _EVENT_TYPES_WITH_TRACK_ROWS)
     path_event_ids = _event_ids_of_types(recent_events, _EVENT_TYPES_WITH_PATH_ROWS)
-    albums_by_event: dict[int, list[EventSubjectSummary]] = defaultdict(list)
-    tracks_by_event: dict[int, list[EventSubjectSummary]] = defaultdict(list)
-    source_paths_by_event: dict[int, list[str]] = defaultdict(list)
-    destination_paths_by_event: dict[int, list[str]] = defaultdict(list)
-    if album_event_ids:
-        album_events = (
-            (await session.execute(select(AlbumEvent).where(col(AlbumEvent.listener_event_id).in_(album_event_ids))))
-            .scalars()
-            .all()
-        )
-        for album_event in album_events:
-            albums_by_event[cast("int", album_event.listener_event_id)].append(
-                EventSubjectSummary(beets_id=album_event.beets_album_id, name=album_event.album_name)
-            )
-    if track_event_ids:
-        track_events = (
-            (await session.execute(select(TrackEvent).where(col(TrackEvent.listener_event_id).in_(track_event_ids))))
-            .scalars()
-            .all()
-        )
-        import_task_files_event_ids = frozenset(path_event_ids)
-        for track_event in track_events:
-            listener_event_id = cast("int", track_event.listener_event_id)
-            tracks_by_event[listener_event_id].append(
-                EventSubjectSummary(beets_id=track_event.beets_item_id, name=track_event.track_title)
-            )
-            if listener_event_id in import_task_files_event_ids:
-                _append_album_summary(
-                    albums_by_event[listener_event_id],
-                    beets_album_id=track_event.beets_album_id,
-                    album_name=track_event.album_name,
-                )
-    if path_event_ids:
-        source_path_rows = (
-            (
-                await session.execute(
-                    select(ImportSourcePath).where(col(ImportSourcePath.listener_event_id).in_(path_event_ids))
-                )
-            )
-            .scalars()
-            .all()
-        )
-        for source_path_row in source_path_rows:
-            source_paths_by_event[cast("int", source_path_row.listener_event_id)].append(source_path_row.source_path)
-        destination_path_rows = (
-            (
-                await session.execute(
-                    select(ImportDestinationPath).where(
-                        col(ImportDestinationPath.listener_event_id).in_(path_event_ids)
-                    )
-                )
-            )
-            .scalars()
-            .all()
-        )
-        for destination_path_row in destination_path_rows:
-            destination_paths_by_event[cast("int", destination_path_row.listener_event_id)].append(
-                destination_path_row.destination_path
-            )
+    album_rows = await _child_rows(session, AlbumEvent, album_event_ids)
+    track_rows = await _child_rows(session, TrackEvent, track_event_ids)
+    source_path_rows = await _child_rows(session, ImportSourcePath, path_event_ids)
+    destination_path_rows = await _child_rows(session, ImportDestinationPath, path_event_ids)
+
+    albums_by_event = _grouped_by_event(album_rows, _album_summary)
+    _append_import_release_summaries(albums_by_event, track_rows, frozenset(path_event_ids))
+    tracks_by_event = _grouped_by_event(track_rows, _track_summary)
+    source_paths_by_event = _grouped_by_event(source_path_rows, lambda row: row.source_path)
+    destination_paths_by_event = _grouped_by_event(destination_path_rows, lambda row: row.destination_path)
+
     event_records: list[ListenerEventDetails] = []
     for event in recent_events:
         event_id = cast("int", event.event_id)
@@ -167,11 +181,10 @@ def merge_import_event_records(event_records: Sequence[ListenerEventDetails]) ->
     or `item_imported` (singleton import), so listing pushes verbatim shows every import as two rows. Each
     pair merges into one record labeled "Album imported" / "Singleton imported" that keeps the later
     push's timestamp and adopts the `import_task_files` record's paths and album/track summaries (so a
-    singleton row carries its release name, which only the `import_task_files` push knows). Records with
-    no partner in
-    `event_records` (removals, one half's push having failed) pass through with their raw event type as
-    the label. Display-only: the stored rows and the JSON `GET /api/events` listing keep one record per
-    push.
+    singleton row carries its release name, which only the `import_task_files` push knows). Records with no
+    partner in `event_records` (removals, one half's push having failed) pass through with their raw event
+    type as the label. Display-only: the stored rows and the JSON `GET /api/events` listing keep one record
+    per push.
 
     `event_records` must be ordered newest-first (the `listener_event_records_lookup` order).
     """
@@ -270,7 +283,7 @@ def _defined_fields(subject_dict: dict[str, Any]) -> dict[str, Any]:
 async def _query_listener_event_join(
     session: AsyncSession,
     beets_library: BeetsLibrary,
-    join_events_table: type[AlbumEvent] | type[TrackEvent],
+    join_events_table: type[AlbumEvent | TrackEvent],
     conditions: Sequence[ColumnElement[bool]],
     offset: int = 0,
     limit: int | None = None,

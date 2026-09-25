@@ -1,6 +1,6 @@
 """
-beets library adapter — opens the user's beets `Library` and runs *one-shot* operations
-(query / modify / remove / stats) off the event loop.
+beets library adapter — opens the user's beets `Library` and runs *one-shot* read operations (queries,
+stats, field listings, file-health checks, clean-slate previews) off the event loop.
 
 Integration model (decided): beetkeeper drives beets **in-process via its Python API**, NOT by shelling
 out to the `beet` CLI. beetkeeper and beets are co-located (same container/node), so they share the
@@ -8,16 +8,16 @@ filesystem and the beets library SQLite DB. In-process access avoids per-call in
 yields structured objects instead of parsed stdout, and is the only clean way to drive the *interactive*
 importer (see `beetkeeper.core.import_worker`).
 
-beets' internal API is NOT a stable public contract, so ALL beets access is confined to this `core`
-package (keep `beets` imports out of the `api` layer) and beets is version-pinned in
-`src/python/pyproject.toml`.
+beets' internal API is NOT a stable public contract, so beets access is confined to this `core` package
+(keep `beets` imports out of the `api` layer; the one exception is `api.api_models.import_api_models`, which
+reads the `import` config defaults) and beets is version-pinned in `src/python/pyproject.toml`.
 
 beets dev docs: https://beets.readthedocs.io/en/v2.12.0/dev/
 
 Concurrency:
-  * The beets library is SQLite (single writer) and the app runs multiple uvicorn workers, so every
-    *mutating* beets call is serialized app-wide through `library_write_limiter` (a `CapacityLimiter(1)`,
-    also shared by the import worker). Reads are not serialized.
+  * The beets library is SQLite (single writer) and request handlers run beets calls on worker threads
+    concurrently with the import worker, so every *mutating* beets call is serialized app-wide through
+    `library_write_limiter` (a `CapacityLimiter(1)`). Reads are not serialized.
   * All blocking beets calls are pushed off the event loop with `anyio.to_thread.run_sync`.
   * beets opens thread-local SQLite connections, so a `Library` is opened *inside* the worker thread that
     uses it (we open per operation here; caching is a future optimization).
@@ -48,7 +48,6 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-# App-wide serialization point for every mutating beets operation (import worker shares this).
 library_write_limiter: Final[CapacityLimiter] = CapacityLimiter(1)
 
 # beets' plugin registry is process-global (not per-`Library`), so plugins are loaded exactly once per
@@ -110,7 +109,6 @@ def _load_plugins_once() -> None:
     """
     if _plugins_state["loaded"]:
         return
-    # Imported lazily (like the rest of beets here) so importing this module stays cheap.
     from beets import plugins
 
     with _plugins_lock:
@@ -119,7 +117,7 @@ def _load_plugins_once() -> None:
         # The resolved set (honors `disabled_plugins` etc.), not the raw `plugins:` list — diffing the raw
         # list against what loaded would report intentionally-skipped plugins as load failures.
         plugin_names = plugins.get_plugin_names()
-        plugins.load_plugins()  # reads the global config set just above; instantiates + fires 'pluginload'
+        plugins.load_plugins()
         loaded_names = {plugin.name for plugin in plugins.find_plugins()}
         _failed_plugin_names.extend(name for name in plugin_names if name not in loaded_names)
         _plugins_state["loaded"] = True
@@ -173,15 +171,13 @@ def open_library(beets_config_filepath: Path) -> Library:
     """
     Load the user's beets config and return an open `beets.library.Library`.
 
-    Performs blocking I/O (opens the SQLite DB); call only from a worker thread, never the event loop.
+    Performs blocking I/O (opens the SQLite DB); call only from a worker thread, never the event loop. The
+    config file is applied and its plugins loaded first (once per process) so plugin-provided field types and
+    queries are registered before the `Library` opens.
     """
-    # Imported lazily so merely importing this module doesn't pull in (heavy) beets internals.
     from beets import config as beets_config
     from beets.library import Library
 
-    # Point beets' confuse config at the user's file, load the plugins it lists (both once per process, before
-    # opening the Library so plugin-provided field types/queries are registered), then open the Library at
-    # the configured db path + music directory.
     _apply_config_file_once(beets_config_filepath)
     _load_plugins_once()
     db_path = beets_config["library"].as_filename()
@@ -194,10 +190,11 @@ class BeetsLibrary:
     Async facade over a beets `Library` for one-shot operations.
 
     Each call opens the library inside a worker thread (beets connections are thread-local) and runs off
-    the event loop. Mutating calls additionally hold `library_write_limiter`. Read results are returned as
-    JSON-safe dicts (see `_jsonify`). Queries are beets query *parts* (a list of tokens like the CLI args);
-    beets parses them — fields (`artist:Beatles`), keywords, phrases, path queries, and trailing sort
-    tokens (`year+`): https://beets.readthedocs.io/en/v2.12.0/reference/query.html
+    the event loop. Every operation here is read-only; mutations belong to the import worker, which holds
+    `library_write_limiter`. Read results are returned as JSON-safe dicts (see `_jsonify`). Queries are
+    beets query *parts* (a list of tokens like the CLI args); beets parses them — fields
+    (`artist:Beatles`), keywords, phrases, path queries, and trailing sort tokens (`year+`):
+    https://beets.readthedocs.io/en/v2.12.0/reference/query.html
 
     See also:
         https://beets.readthedocs.io/en/stable/dev/library.html
@@ -209,15 +206,13 @@ class BeetsLibrary:
         self._beets_config_filepath = beets_config_filepath
 
     async def _read(self, work: Callable[[Library], _T]) -> _T:
+        """Open the library on a worker thread and run `work` against it there."""
+
         def _do() -> _T:
             library = open_library(self._beets_config_filepath)
             return work(library)
 
         return await to_thread.run_sync(_do)
-
-    async def _write(self, work: Callable[[Library], _T]) -> _T:
-        async with library_write_limiter:
-            return await self._read(work)
 
     async def query_items(
         self, query: Sequence[str] | None = None, *, offset: int = 0, limit: int | None = None
@@ -228,7 +223,7 @@ class BeetsLibrary:
         `query` of None/empty matches all items. Only the `[offset, offset + limit)` window is converted to
         dicts (`limit=None` -> everything from `offset`): the dict conversion dominates query cost (~90
         lazily-typed fields per item), so a page stays cheap no matter how many items match. The total comes
-        from `Results.__len__` — a plain row count for SQL-able queries, which is every windex/CLI-style
+        from `Results.__len__` — a plain row count for SQL-able queries, which is every index/CLI-style
         field, substring, and range query; only Python-predicate "slow queries" pay a full iteration.
         """
         parts = list(query) if query else None
@@ -282,9 +277,8 @@ class BeetsLibrary:
             from beets.library import Album, Item
 
             with lib.transaction() as tx:
-                # inline bandit ignores: table names are trusted beets class constants (not user input), and SQL
-                # identifiers can't be parameter-bound. No injection vector.
-                # NOTE: Cannot use individual bandit error codes here because it will give erroneous, unsuppressable warnings  (see https://github.com/PyCQA/bandit/issues/942)
+                # nosec: the table names are beets class constants, not user input; bare `# nosec` because
+                # per-code ignores misfire here (https://github.com/PyCQA/bandit/issues/942).
                 item_flex = [row["key"] for row in tx.query(f"SELECT DISTINCT key FROM {Item._flex_table}")]  # nosec
                 album_flex = [row["key"] for row in tx.query(f"SELECT DISTINCT key FROM {Album._flex_table}")]  # nosec
             return {

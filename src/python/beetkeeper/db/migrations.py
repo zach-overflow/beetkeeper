@@ -44,7 +44,6 @@ def make_alembic_config(*, async_url: str, sync_url: str) -> Config:
     cfg.set_main_option("version_locations", str(_ALEMBIC_DIR / "versions"))
     # Use OS path separator semantics for version_locations (silences alembic's legacy-split warning).
     cfg.set_main_option("path_separator", "os")
-    # `sqlalchemy.url` is alembic's default URL key; env.py prefers the explicit beetkeeper options below.
     cfg.set_main_option("sqlalchemy.url", sync_url)
     cfg.set_main_option(ASYNC_URL_OPT, async_url)
     cfg.set_main_option(SYNC_URL_OPT, sync_url)

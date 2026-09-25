@@ -1,16 +1,8 @@
 """
 HTMX fragment routes backing the `/search` page — the UI counterpart of the `/api/query/*` JSON routes.
 
-Both call the same `core.BeetsLibrary` adapter; these return HTML partials for HTMX to swap in:
-  * `GET /fragment/search/results` — run a beets list-style query, render the matching tracks/albums
-    alongside each one's library location, file health, and the import source path(s) the beetkeeper plugin
-    recorded (each a starting point for a clean-slate import).
-  * `GET /fragment/search/stats`   — run a beets stats-style query over the same inputs (`beet stats`).
-  * `GET /fragment/search/fields`  — render the available query fields reference (`beet fields`).
-  * `POST /fragment/search/source-path` — ask the configured downloader client for an entry's unrecorded
-    source folder (the `find_missing_source_path` API route's HTMX counterpart; a POST since a match is stored).
-
-The `/search` page lets the user dispatch the same form inputs to either `results` (list) or `stats`.
+Both call the same `core.BeetsLibrary` adapter; these return HTML partials for HTMX to swap in. The `/search`
+page lets the user dispatch the same form inputs to either `results` (list) or `stats`.
 """
 
 import logging
@@ -18,9 +10,8 @@ import shlex
 from typing import Annotated, Any
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Form, HTTPException, Request, status
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
-from pydantic import ValidationError
 
 from beetkeeper.api.adapters import (
     find_missing_source_path,
@@ -29,6 +20,7 @@ from beetkeeper.api.adapters import (
     inferred_source_paths,
 )
 from beetkeeper.api.api_models import FindMissingSourcePathRequest, SearchResultsQueryParams
+from beetkeeper.api.api_models.common_api_models import validated_or_422
 from beetkeeper.api.constants import LibrarySubject
 from beetkeeper.api.dependencies import BeetsLibraryDep, DownloaderHookDep
 from beetkeeper.api.jinja_driver import get_templates
@@ -133,14 +125,12 @@ async def source_path_lookup_fragment(
     """
     Render the downloader's answer for an entry's source folder (persisted as an inference on a match).
 
-    The button is offered on every unrecorded row; without a configured hook the cell explains how to enable
-    it. The rendered cell links a match to a clean-slate import of the entry; for an album track that means
-    the track's album, so its album id is looked up alongside.
+    The HTMX counterpart of the `find_missing_source_path` API route; a POST since a match is stored. The
+    button is offered on every unrecorded row; without a configured hook the cell explains how to enable it.
+    The rendered cell links a match to a clean-slate import of the entry; for an album track that means the
+    track's album, so its album id is looked up alongside.
     """
-    try:
-        req = FindMissingSourcePathRequest(beets_album_id=beets_album_id, beets_item_id=beets_item_id)
-    except ValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    req = validated_or_422(FindMissingSourcePathRequest, beets_album_id=beets_album_id, beets_item_id=beets_item_id)
     response = await find_missing_source_path(library, downloader, session, req)
     album_id: int | None = req.beets_album_id
     item_id: int | None = None
@@ -191,7 +181,7 @@ async def search_stats_fragment(
 
 @search_ui_fragments_router.get("/fields", response_class=HTMLResponse)
 async def search_fields_fragment(request: Request, library: BeetsLibraryDep) -> HTMLResponse:
-    """Render the available query fields reference fragment."""
+    """Render the available query fields reference (the `beet fields` listing)."""
     return get_templates().TemplateResponse(
         request=request, name="fragment_templates/search_fields.html", context={"fields": await library.fields()}
     )

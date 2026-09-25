@@ -25,18 +25,6 @@ from beetkeeper.core.import_jobs import CleanSlatePreview, CleanSlateTarget
 from tests.conftest import TaggedWavWriter
 
 
-@pytest.fixture
-def library(tmp_path: Path) -> Library:
-    return Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
-
-
-@pytest.fixture
-def downloads(tmp_path: Path) -> Path:
-    path = tmp_path / "downloads"
-    path.mkdir()
-    return path
-
-
 def _album_items(
     make_tagged_wav: TaggedWavWriter,
     directory: Path,

@@ -59,18 +59,6 @@ def beets_config_file(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def library(tmp_path: Path) -> Library:
-    return Library(str(tmp_path / "lib.db"), str(tmp_path / "music"))
-
-
-@pytest.fixture
-def downloads(tmp_path: Path) -> Path:
-    path = tmp_path / "downloads"
-    path.mkdir()
-    return path
-
-
-@pytest.fixture
 def worker(beets_config_file: Path, downloads: Path, mocker: MockerFixture) -> ImportWorker:
     return ImportWorker(beets_config_file, mocker.MagicMock(spec=ImportStore), downloads)
 

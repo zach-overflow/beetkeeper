@@ -3,26 +3,18 @@
 The worker narrates imported albums/items through beets' own `album_imported`/`item_imported` events
 (process-global `BeetsPlugin.listeners` registry). These tests dispatch through `beets.plugins.send` — the
 same call path the importer pipeline uses — to prove the listener registration end-to-end, rather than
-invoking the handlers directly. Albums/items are attribute stand-ins (see `_Attrs` in `test_import_diff`).
+invoking the handlers directly. Albums/items are attribute stand-ins (`Attrs` from this package's `conftest`).
 """
-
-from typing import Any
 
 from beets import plugins
 
 from beetkeeper.core.import_worker import _import_events, _ImportNarrator, _OutputBuffer
+from tests.core_tests.conftest import Attrs
 
 
-class _Attrs:
-    """Minimal attribute bag standing in for beets `Album`/`Item` objects."""
-
-    def __init__(self, **attrs: Any) -> None:
-        self.__dict__.update(attrs)
-
-
-def _album(album_id: int, item_ids: list[int]) -> _Attrs:
-    items = [_Attrs(id=item_id) for item_id in item_ids]
-    return _Attrs(id=album_id, albumartist="Artist", album="Album", items=lambda: items)
+def _album(album_id: int, item_ids: list[int]) -> Attrs:
+    items = [Attrs(id=item_id) for item_id in item_ids]
+    return Attrs(id=album_id, albumartist="Artist", album="Album", items=lambda: items)
 
 
 def test_send_routes_events_to_the_active_narrator_and_narrates_output() -> None:
@@ -32,7 +24,7 @@ def test_send_routes_events_to_the_active_narrator_and_narrates_output() -> None
     events.narrator = narrator
     try:
         plugins.send("album_imported", lib=None, album=_album(7, [11, 12]))  # type: ignore[call-overload]
-        plugins.send("item_imported", lib=None, item=_Attrs(id=99, artist="Solo Artist", title="Solo Track"))  # type: ignore[call-overload]
+        plugins.send("item_imported", lib=None, item=Attrs(id=99, artist="Solo Artist", title="Solo Track"))  # type: ignore[call-overload]
     finally:
         events.narrator = None
 
@@ -49,7 +41,7 @@ def test_events_with_no_active_narrator_are_ignored() -> None:
     # Fires the registered listeners with no narrator installed (e.g. an import run by another beets
     # client in-process while the worker is idle); nothing should be narrated anywhere or raise.
     plugins.send("album_imported", lib=None, album=_album(1, [2]))  # type: ignore[call-overload]
-    plugins.send("item_imported", lib=None, item=_Attrs(id=3, artist="A", title="T"))  # type: ignore[call-overload]
+    plugins.send("item_imported", lib=None, item=Attrs(id=3, artist="A", title="T"))  # type: ignore[call-overload]
 
     assert events.narrator is None
 

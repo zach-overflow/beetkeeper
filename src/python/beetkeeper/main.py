@@ -18,8 +18,8 @@ def _inject_beetsdir_envvar_callback(ctx: click.Context, param: click.Parameter,
     the server app since `uvicorn.run` doesn't allow passing arbitrary custom commands to the target ASGI.
     """
     resolved_path = value.expanduser().resolve()
-    # Export the config's directory as BEETSDIR so the app's lifespan (a fresh import under uvicorn
-    # reload/workers) resolves the same `<BEETSDIR>/config.yaml` to initialize its DB engine. Assumes the
+    # Export the config's directory as BEETSDIR so the app's lifespan (a fresh import in the uvicorn app
+    # process) resolves the same `<BEETSDIR>/config.yaml` to initialize its DB engine. Assumes the
     # config file is named `config.yaml` (beets' convention). See `beetkeeper.api.fastapi_app.lifespan`.
     if not os.getenv(BEETS_DIR_ENVVAR):
         os.environ[BEETS_DIR_ENVVAR] = str(resolved_path)
@@ -40,13 +40,19 @@ def _inject_beetsdir_envvar_callback(ctx: click.Context, param: click.Parameter,
 )
 @click.pass_context
 def cli(ctx: click.Context, beetsdir_path: Path) -> None:
-    # https://click.palletsprojects.com/en/stable/complex/#the-root-command
+    """
+    Self-hosted web app for managing a beets music library.
+
+    The beets directory is shared by every subcommand through the click context
+    (https://click.palletsprojects.com/en/stable/complex/#the-root-command).
+    """
     ctx.obj = CliState(beetsdir_path=beetsdir_path)
 
 
 @cli.command(help="Run the webserver with the given configuration.")
 @click.pass_obj
 def run(cli_state: CliState) -> None:
+    """Apply pending DB migrations (per `database.auto_upgrade`), then serve the app with a single uvicorn worker."""
     # Function-scoped import for quicker top-level CLI loading.
     import uvicorn
 
@@ -80,7 +86,7 @@ def run(cli_state: CliState) -> None:
 
 @cli.group(help="Database migration commands (alembic).")
 def db() -> None:
-    pass
+    """Group for the `upgrade` / `downgrade` migration subcommands."""
 
 
 @db.command(name="upgrade", help="Apply migrations up to a revision (default: head).")
@@ -90,6 +96,7 @@ def db() -> None:
 )
 @click.pass_obj
 def db_upgrade(cli_state: CliState, revision: str, as_sql: bool) -> None:
+    """Upgrade beetkeeper's database schema to `revision` (or print the SQL with `--sql`)."""
     # Function-scoped import keeps alembic/sqlalchemy off the hot path for non-db CLI invocations.
     from beetkeeper.db.migrations import upgrade
 
@@ -103,6 +110,7 @@ def db_upgrade(cli_state: CliState, revision: str, as_sql: bool) -> None:
 )
 @click.pass_obj
 def db_downgrade(cli_state: CliState, revision: str, as_sql: bool) -> None:
+    """Downgrade beetkeeper's database schema to `revision` (or print the SQL with `--sql`)."""
     from beetkeeper.db.migrations import downgrade
 
     downgrade(cli_state.alembic_config, revision, sql=as_sql)

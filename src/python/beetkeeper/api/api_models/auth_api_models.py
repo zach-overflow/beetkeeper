@@ -4,6 +4,8 @@ from pydantic import BaseModel, SecretStr
 
 
 class LoginRequestBody(BaseModel):
+    """Credentials for `POST /api/auth/login`: the single configured `beetkeeper.auth` username/password pair."""
+
     username: SecretStr
     password: SecretStr
 
@@ -19,4 +21,6 @@ class LoginResponseBody(BaseModel):
 
 
 class LogoutResponseBody(BaseModel):
+    """Confirmation returned by `POST /api/auth/logout` once the session token has been revoked."""
+
     detail: str = "Logged out."

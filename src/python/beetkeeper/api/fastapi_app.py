@@ -1,6 +1,6 @@
 """
 This module should only contain the `FastAPI` app instantiation, along with any sub-APIRouter inclusions.
-`beetkeeper.main:cli` (`beatkeeper run` CLI command) imports the app and starts a webserver with it.
+`beetkeeper.main:cli` (`beetkeeper run` CLI command) imports the app and starts a webserver with it.
 """
 
 import os
@@ -39,7 +39,6 @@ def create_app() -> FastAPI:
     beetkeeper_app.mount("/static", StaticFiles(directory=STATIC_DIRPATH, html=True), name="static")
     beetkeeper_app.include_router(api_router)
     beetkeeper_app.include_router(ui_router)
-    # Documentation-only: describes the outgoing downloader search (see `api.webhooks`).
     beetkeeper_app.webhooks.include_router(webhook_router)
     beetkeeper_app.add_middleware(LoginProtectionMiddleware)
     return beetkeeper_app
