@@ -1,15 +1,16 @@
 # Using the CLI
 
-beetkeeper ships a single `beetkeeper` command with a small set of subcommands. Every command reads your
-beets config via `--config-path`/`-c` (the config file), or the `BEETSDIR` environment variable (the
-directory holding your beets `config.yaml`) — see [Configuration](../configuration.md).
+beetkeeper ships a single `beetkeeper` command with a small set of subcommands. Every command takes your
+beets directory (the directory holding your beets `config.yaml` and library database) via the
+`--beetsdir`/`-b` option, placed before the subcommand, or the `BEETSDIR` environment variable — see
+[Configuration](../configuration.md).
 
 ## `beetkeeper run`
 
 Runs the web server.
 
 ```shell
-beetkeeper run --config-path /path/to/beets/config.yaml
+beetkeeper --beetsdir /path/to/beetsdir run
 ```
 
 Once running, open the web UI at `http://<hostname>:<port>/` (defaults to port `8337`).
@@ -26,7 +27,7 @@ Applies database migrations up to a target revision (default: `head`). With the 
 when `auto_upgrade` is disabled, or with `--sql` to review the DDL offline.
 
 ```shell
-beetkeeper db upgrade --config-path /path/to/beets/config.yaml
+beetkeeper --beetsdir /path/to/beetsdir db upgrade
 ```
 
 - `--revision <id>` — target a specific revision instead of `head`.
@@ -37,7 +38,7 @@ beetkeeper db upgrade --config-path /path/to/beets/config.yaml
 Reverts migrations down to a target revision (for example `base` to drop all beetkeeper tables).
 
 ```shell
-beetkeeper db downgrade --revision base --config-path /path/to/beets/config.yaml
+beetkeeper --beetsdir /path/to/beetsdir db downgrade --revision base
 ```
 
 !!! tip
