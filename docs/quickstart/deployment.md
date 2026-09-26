@@ -7,6 +7,10 @@ top-level `beetkeeper` section; the rest is an ordinary beets config — see [Co
 
 For a throwaway try-it-out run, start with the [Quick Start Demo](demo.md) instead.
 
+Running without Docker? Install from [PyPI](installation.md#pypi) or download the
+[standalone binary](installation.md#standalone-binary) instead. The automatic migration, backup, and SQLite
+notes below apply to those installs too; only the container commands differ.
+
 ## First-time setup
 
 ### 1. Get the image
