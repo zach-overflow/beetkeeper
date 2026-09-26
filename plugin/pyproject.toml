@@ -24,7 +24,7 @@ description = "A peripheral beets plugin component for event tracking in the bee
 readme = "README.md"
 
 [project.urls]
-Documentation = "https://github.com/zach-overflow/beetkeeper/README.md"
+Documentation = "https://beetkeeper.dadbodaudio.com/latest/"
 Repository = "https://github.com/zach-overflow/beetkeeper"
 "Bug Tracker" = "https://github.com/zach-overflow/beetkeeper/issues"
 Changelog = "https://github.com/zach-overflow/beetkeeper/releases"

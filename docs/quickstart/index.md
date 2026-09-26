@@ -9,7 +9,7 @@ users less familiar with Docker or the command line.
 </div>
 
 <div class="grid cards" markdown>
-- :material-download: **[Install](./installation.md)** — Installation instructions and options.
+- :material-download: **[Install](./installation.md)** — Docker image, PyPI package, or standalone binary.
 </div>
 
 <div class="grid cards" markdown>

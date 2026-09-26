@@ -124,7 +124,9 @@ a clean slate the inference follows the entry to its new beets id (or is dropped
 
 The [`beetkeeper-plugin`](https://pypi.org/project/beetkeeper-plugin/) package provides the beets-side
 plugin that pushes library events (imports, removals) to the server's `/api/events` endpoints — this is
-what populates the **Beets Events** page. Enable it like any beets plugin:
+what populates the **Beets Events** page. It ships inside the Docker image and the standalone binary; a
+`beet` command installed separately needs `pip install beetkeeper-plugin` in its own environment (see
+[Installation](quickstart/installation.md#pypi)). Enable it like any beets plugin:
 
 ```yaml
 plugins:

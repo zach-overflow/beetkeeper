@@ -6,8 +6,9 @@ point it at a real one later; see [Configuration](../configuration.md) and [Depl
 
 !!! info "Recommended"
     We recommend using [Docker](https://docs.docker.com/get-docker/) to run beetkeeper.
-	
-	However, for anyone wishing to run beetkeeper without Docker, you may use the standalone [PyPI package](https://pypi.org/project/beetkeeper/) instead.
+
+    To run without Docker, install the [PyPI package](installation.md#pypi) or download the
+    [standalone binary](installation.md#standalone-binary) instead.
 
 ## 1. Create a demo config
 
@@ -47,13 +48,26 @@ initialization step.
 		ghcr.io/zach-overflow/beetkeeper:latest
 	```
 
-=== "Python Standalone"
+=== "PyPI"
 
     ```shell
-	pip install beetkeeper
-	export BEETSDIR=<path to folder holding beets config.yaml>
+    pip install beetkeeper
+    export BEETSDIR=<path to folder holding config.yaml>
     beetkeeper run
     ```
+
+=== "Standalone binary"
+
+    ```shell
+    export BEETSDIR=<path to folder holding config.yaml>
+    beetkeeper run
+    ```
+
+    Install the binary first — see [Installation](installation.md#standalone-binary).
+
+!!! tip "Paths outside Docker"
+    The demo config uses in-container paths. For a PyPI or standalone-binary run, point the `/data/...`
+    entries in `config.yaml` at writable directories on your machine first.
 
 ## 3. Explore
 
