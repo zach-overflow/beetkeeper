@@ -80,9 +80,10 @@ own Python runtime on first run, so nothing needs to be installed beforehand —
 | File | Platform |
 | :--- | :------- |
 | `beetkeeper-macos-aarch64` | Apple Silicon macOS |
-| `beetkeeper-macos-x86_64` | Intel macOS |
 | `beetkeeper-linux-x86_64` | x64 Linux |
 | `beetkeeper-linux-aarch64` | ARM64 Linux |
+
+No Intel macOS binary is published; on an Intel Mac, install from PyPI or use the Docker image instead.
 
 Download the file for your platform and its `.sha256` checksum, verify it, and make it executable. The commands
 below fetch the latest release; to pin a version, replace `releases/latest/download` with

@@ -10,3 +10,8 @@ log = true
 [docker]
 # Clear the credential helper pants.toml sets for local macOS; CI runners lack it and would fail to find it.
 tools = []
+
+[subprocess-environment]
+# science (pex's scie builder) resolves python-build-standalone releases via api.github.com; the workflows
+# set this to GITHUB_TOKEN so shared-IP runners avoid the anonymous rate limit.
+env_vars.add = ["SCIENCE_AUTH_API_GITHUB_COM_BEARER"]

@@ -11,7 +11,7 @@ A release publishes four artifacts, all carrying the **same** semver:
 | `beetkeeper` wheel | `beetkeeper-core:beetkeeper-whl` | PyPI (`beetkeeper`) |
 | `beetkeeper-plugin` wheel | `plugin:plugin-whl` | PyPI (`beetkeeper-plugin`) |
 | `beetkeeper-server` image | `//:beetkeeper-server-image` | GHCR `ghcr.io/zach-overflow/beetkeeper` (`:latest` + `:<version>`) |
-| standalone binaries (one per platform) | `//:beetkeeper-<slug>-standalone` | GitHub release assets (`beetkeeper-<scie platform>` + `.sha256`) |
+| standalone binaries (linux x86_64 / aarch64, macOS aarch64) | `//:beetkeeper-<slug>-standalone` | GitHub release assets (`beetkeeper-<scie platform>` + `.sha256`) |
 
 The docs site (GitHub Pages) is also rebuilt and redeployed as part of every release: mike publishes
 the release's `MAJOR.MINOR` docs version to the `gh-pages` branch and points the `latest` alias at it.
@@ -105,8 +105,10 @@ Triggered manually via `workflow_dispatch` (must be run from the default branch)
    - `validate` — actionlint, `pants update-build-files --check ::`, `pants lint check test ::`, and a
      wheel build (versioned as a dev build — the tag doesn't exist yet).
    - `build-image` — the Docker image on native amd64 + arm64 runners (built, not pushed).
-   - `build-standalone` — the four standalone binaries on native runners, built and smoke-tested
-     (`--version`, `--help`, `.sha256`), nothing uploaded.
+   - `build-standalone` — the three standalone binaries (linux x86_64 / aarch64, macOS aarch64) on native
+     runners, built and smoke-tested (`--version`, `--help`, `.sha256`), nothing uploaded. There is no Intel
+     macOS binary: Pants ships no macOS x86_64 wheel and scie-pants >= 0.13 no launcher, so Pants cannot run
+     on GitHub's `macos-15-intel` runner.
    - `docs-build` — `mkdocs build --strict`.
 3. **`approve-and-tag`** — pauses on the **`release`** environment (the one manual gate). On approval,
    `cog bump --auto` (via `cocogitto/cocogitto-action`) computes the version and pushes the `vX.Y.Z` tag,
@@ -130,7 +132,7 @@ builds succeed:
 | :--------------- | :--------------------------------------- | :------------ |
 | `build-wheels` — both wheels, versioned from the tag checkout | `publish-pypi` — OIDC trusted publishing, one upload per project | `pypi` environment |
 | `build-image` — native per-arch builds, exported as tarball artifacts | `publish-image` — push per-arch tags, stitch the `:<version>` + `:latest` manifest list with `buildx imagetools` | none (GHCR, `GITHUB_TOKEN`) |
-| `build-standalone` — one scie per platform on its native runner, smoke-tested (`--version` = release version, `--help`, checksum) and uploaded as `standalone-<slug>` artifacts | `publish-binaries` — `gh release upload --clobber` of the four binaries + checksums onto the release `approve-and-tag` created (fails if that release doesn't exist) | none (`GITHUB_TOKEN`, `contents: write`) |
+| `build-standalone` — one scie per platform on its native runner, smoke-tested (`--version` = release version, `--help`, checksum) and uploaded as `standalone-<slug>` artifacts | `publish-binaries` — `gh release upload --clobber` of the three binaries + checksums onto the release `approve-and-tag` created (fails if that release doesn't exist) | none (`GITHUB_TOKEN`, `contents: write`) |
 | `build-docs` — `mkdocs build --strict` (validation only) | `docs-deploy` — mike deploys the `MAJOR.MINOR` docs version (+ `latest` alias) to `gh-pages` | `github-pages` environment |
 
 ## Required configuration
@@ -188,3 +190,8 @@ builds succeed:
   vX.Y.Z)`) and re-run Publish.
 - **`build-standalone` fails the `--version` check** — same cause as dev-versioned wheels: the job must check
   out the release tag with `fetch-depth: 0`.
+- **`build-standalone` (or the Build workflow's `pants package`) fails with `403 rate limit exceeded` for
+  `api.github.com/repos/astral-sh/python-build-standalone/releases/...`** — science, the scie builder pex
+  runs, is calling the GitHub API anonymously. The job must set `SCIENCE_AUTH_API_GITHUB_COM_BEARER` to
+  `github.token`, and `pants.ci.toml`'s `[subprocess-environment].env_vars` must still forward it into the
+  pex process.
