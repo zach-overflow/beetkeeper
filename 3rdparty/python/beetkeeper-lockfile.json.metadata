@@ -26,7 +26,7 @@
     "requests>=2.34",
     "ruamel.yaml>=0.19.1",
     "sqlalchemy",
-    "sqlmodel>=0.0.38",
+    "sqlmodel>=0.0.46",
     "starlette",
     "tomlkit",
     "uvicorn>=0.49.0"
