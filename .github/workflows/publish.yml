@@ -190,7 +190,7 @@ jobs:
             platform: macos-aarch64
     runs-on: ${{ matrix.runner }}
     env:
-      SCIE: dist/standalone/${{ matrix.slug }}/beetkeeper-${{ matrix.platform }}
+      STANDALONE_BIN: dist/standalone/${{ matrix.slug }}/beetkeeper-${{ matrix.platform }}
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v4
@@ -216,23 +216,23 @@ jobs:
       - name: Build standalone binary
         run: |
           pants package //:beetkeeper-${{ matrix.slug }}-standalone
-          ls -l "$(dirname "${SCIE}")"
+          ls -l "$(dirname "${STANDALONE_BIN}")"
 
       # First launch fetches the scie's CPython (network). `--version` must be the exact tag-derived semver.
       - name: Smoke test the standalone binary
         env:
           VERSION: ${{ needs.setup.outputs.version }}
         run: |
-          chmod +x "${SCIE}"
-          actual_version="$("${SCIE}" --version)"
+          chmod +x "${STANDALONE_BIN}"
+          actual_version="$("${STANDALONE_BIN}" --version)"
           if [[ "${actual_version}" != "${VERSION}" ]]; then
-            echo "::error::${SCIE} --version printed '${actual_version}', expected '${VERSION}'."
+            echo "::error::${STANDALONE_BIN} --version printed '${actual_version}', expected '${VERSION}'."
             exit 1
           fi
-          usage="$("${SCIE}" --help)"
+          usage="$("${STANDALONE_BIN}" --help)"
           usage="${usage%%$'\n'*}"
           if [[ "${usage}" != "Usage: beetkeeper"* ]]; then
-            echo "::error::${SCIE} --help does not start with 'Usage: beetkeeper' (got '${usage}')."
+            echo "::error::${STANDALONE_BIN} --help does not start with 'Usage: beetkeeper' (got '${usage}')."
             exit 1
           fi
 
@@ -240,11 +240,11 @@ jobs:
       # shasum on macOS; both accept the `<hex> *<name>` format science writes).
       - name: Verify the checksum file
         run: |
-          cd "$(dirname "${SCIE}")" || exit 1
+          cd "$(dirname "${STANDALONE_BIN}")" || exit 1
           if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum -c "$(basename "${SCIE}").sha256"
+            sha256sum -c "$(basename "${STANDALONE_BIN}").sha256"
           else
-            shasum -a 256 -c "$(basename "${SCIE}").sha256"
+            shasum -a 256 -c "$(basename "${STANDALONE_BIN}").sha256"
           fi
 
       - name: Upload standalone binary
