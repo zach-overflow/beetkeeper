@@ -37,7 +37,7 @@ Refer to the official user documentation at [beetkeeper.dadbodaudio.com](https:/
 
 ## Installation
 
-Installable as a Docker image (recommended), or as a Python package from PyPI. For detailed installation instructions,
+Installable as a Docker image (recommended), as a Python package from PyPI, or as a standalone binary. For detailed installation instructions,
 refer to the [user doc section on installation](https://beetkeeper.dadbodaudio.com/latest/installation/).
 
 

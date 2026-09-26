@@ -58,7 +58,7 @@ plus actionlint and an MkDocs build check. Install git hooks with `prek install`
   single `//:beetkeeper-server-image` `docker_image` target in root `BUILD`. The image is named/pushed via
   the `@ghcr` registry (`ghcr.io/zach-overflow/beetkeeper`); see `pants.toml` `[docker.registries.ghcr]` and
   the `env("RELEASE_TAG", "dev")` tag in `BUILD`.
-- The `app` stage runs no `uv`/resolve — it just COPYs a thin, single-arch PEX (`//:beetkeeper-linux-<arch>`, one per
+- The `app` stage runs no `uv`/resolve — it just COPYs a thin, single-arch PEX (`//:beetkeeper-linux-<arch>-pex`, one per
   linux arch via `complete_platforms`, selected by `ARG TARGETARCH`). `pants package` builds only the host
   arch; CI builds the image per-arch on native runners (no QEMU) and stitches a multi-arch manifest
   list — see `.github/workflows/publish.yml`.
@@ -77,7 +77,7 @@ plus actionlint and an MkDocs build check. Install git hooks with `prek install`
   or `CHANGELOG.md` is ever pushed to `main`, so branch protection can't conflict), and the GitHub
   release is uploaded with the cog-generated changelog → `Release` dispatches `publish.yml`
   (`workflow_dispatch`; a GITHUB_TOKEN-created tag can't fire `push` triggers, and `workflow_call` would
-  break PyPI trusted publishing), which builds wheels/image/docs in parallel from the tag, then publishes
+  break PyPI trusted publishing), which builds wheels/image/binaries/docs in parallel from the tag, then publishes
   them in parallel (PyPI + Pages keep their environment gates).
 
 ## CRITICAL: Beets DB ("Library") interactions

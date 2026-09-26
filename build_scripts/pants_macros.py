@@ -1,4 +1,5 @@
 # https://www.pantsbuild.org/stable/docs/writing-plugins/macros
+_VALID_PLATFORMS = ("linux-amd64", "linux-arm64", "macos-amd64", "macos-arm64")
 
 
 def test_cmd(
@@ -45,3 +46,57 @@ def test_cmd(
         execution_dependencies=sorted(set(builtin_exec_deps + extra_execution_dependencies)),
         tags=tags,
     )
+
+
+def app_server_pexes(complete_platforms: list[str], **kwargs):
+    """Consolidated `pex_binary` target generator for the `beetkeeper` application pex / scie (binary)."""
+    tags = kwargs.pop("tags", []) + ["app_server_pexes", "pex"]
+    for platform in complete_platforms:
+        if platform.split(":")[-1] not in _VALID_PLATFORMS:
+            raise ValueError(f"unsupported complete platform {platform!r}; expected a target named one of {_VALID_PLATFORMS}")
+        for is_scie in (False, True):
+            _generate_application_pex(complete_platform=platform, is_scie=is_scie, tags=tags, **kwargs)
+
+
+def _generate_application_pex(complete_platform: str, is_scie: bool, tags: list[str], **kwargs):
+    """The internal helper called once per distinct output PEX / SCIE by `app_server_pexes` macro (above)."""
+    plat_name = complete_platform.split(":")[-1]
+    tgt_name = _generate_application_pex_target_name(plat_name=plat_name, is_scie=is_scie)
+    scie_kwargs = dict(
+        scie="lazy",
+        scie_pbs_stripped=True,
+        scie_platform=[_translate_platform_name_to_scie_style(plat_name)],
+        scie_name_style="platform-file-suffix",
+        scie_hash_alg="sha256",
+    ) if is_scie else dict()
+
+    pex_binary(
+        name=tgt_name,
+        script="beetkeeper",
+        output_path=f"standalone/{plat_name}/beetkeeper" if is_scie else f"{tgt_name}.pex",
+        include_requirements=True,
+        include_sources=True,
+        include_tools=False,  # TODO: make sure this is compat since it was `True` before writing this macro
+        inherit_path="fallback",
+        complete_platforms=[complete_platform],
+        extra_build_args=[] if is_scie else ["--rc"],
+        tags=tags + (["scie"] if is_scie else []),
+        **scie_kwargs,
+        **kwargs,
+    )
+
+
+def _generate_application_pex_target_name(plat_name: str, is_scie: bool) -> str:
+    """Helper for generating the pants target name for the `app_server_pexes` macro above."""
+    common_prefix = f"beetkeeper-{plat_name}"
+    return f"{common_prefix}-{'standalone' if is_scie else 'pex'}"
+
+
+def _translate_platform_name_to_scie_style(docker_style_platform_name: str) -> str:
+    return {
+        "current": "current",
+        "linux-arm64": "linux-aarch64",
+        "linux-amd64": "linux-x86_64",
+        "macos-arm64": "macos-aarch64",
+        "macos-amd64": "macos-x86_64",
+    }[docker_style_platform_name]

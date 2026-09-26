@@ -50,7 +50,7 @@ Repository = "https://github.com/zach-overflow/beetkeeper"
 Changelog = "https://github.com/zach-overflow/beetkeeper/releases"
 
 [project.scripts]
-beetkeeper = "beetkeeper.main:cli"
+beetkeeper = "beetkeeper.main:main"
 
 # The version comes from the git tag: Pants' `vcs_version` target (src/beetkeeper/BUILD) generates
 # `_scm_version.py` via setuptools-scm, and `_version.py` re-exports it (falling back to a dev placeholder

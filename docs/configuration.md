@@ -8,7 +8,7 @@ You tell beetkeeper which beets config to read via either:
 
 - the `BEETSDIR` environment variable — the **directory** holding your beets `config.yaml` (beets' own
   convention), or
-- the `--config-path` CLI flag — the path to the config file itself (see [the CLI](quickstart/cli.md)).
+- the `--beetsdir`/`-b` CLI flag — the same directory, passed explicitly (see [the CLI](quickstart/cli.md)).
 
 ## Example
 

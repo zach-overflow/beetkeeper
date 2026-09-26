@@ -42,10 +42,10 @@ WORKDIR /app
 # Entrypoint installs the optional EXTRA_PIP_REQS pip requirements before exec'ing the PEX.
 COPY --chmod=0755 docker-entrypoint.sh /app/docker-entrypoint.sh
 
-# The thin, single-arch PEX for this image's arch (`//:beetkeeper-linux-<arch>`), placed at the build-context root by
+# The thin, single-arch PEX for this image's arch (`//:beetkeeper-linux-<arch>-pex`), placed at the build-context root by
 # Pants. TARGETARCH is amd64/arm64; each PEX carries only that arch's wheels.
 ARG TARGETARCH
-COPY beetkeeper-linux-${TARGETARCH}.pex /app/beetkeeper.pex
+COPY beetkeeper-linux-${TARGETARCH}-pex.pex /app/beetkeeper.pex
 ARG RELEASE_TAG=""
 ENV RELEASE_TAG=${RELEASE_TAG} PEX_ROOT=/app/.pex
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

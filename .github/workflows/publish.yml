@@ -1,13 +1,14 @@
 name: Publish
 run-name: Publish ${{ inputs.version && format('v{0}', inputs.version) || github.ref_name }}
 
-# Builds and publishes the three release artifacts from a `vMAJOR.MINOR.PATCH` tag. Normally dispatched by
+# Builds and publishes the four release artifacts from a `vMAJOR.MINOR.PATCH` tag. Normally dispatched by
 # the Release workflow right after it creates the tag (`workflow_dispatch` is the one trigger the built-in
 # GITHUB_TOKEN may fire — it cannot fire `push`; and a `workflow_call` hand-off would break PyPI trusted
 # publishing, which rejects reusable workflows). The `push` trigger covers manually pushed release tags.
 #
-# Three build jobs run in parallel (wheels, per-arch images, docs), then the three publication jobs run in
-# parallel once ALL builds have succeeded — PyPI and GitHub Pages keep their environment approval gates.
+# Four build jobs run in parallel (wheels, per-arch images, per-platform standalone binaries, docs), then the
+# four publication jobs run in parallel once ALL builds have succeeded — PyPI and GitHub Pages keep their
+# environment approval gates.
 on:
   push:
     tags:
@@ -167,6 +168,94 @@ jobs:
           path: image-${{ matrix.arch }}.tar
           if-no-files-found: error
 
+  # Build each platform's standalone binary (scie) on its native runner so it can be smoke-tested in place.
+  # Only the scie + its checksum are handed on; the intermediate PEX beside them is never published.
+  build-standalone:
+    name: Build standalone binary (${{ matrix.slug }})
+    needs: setup
+    strategy:
+      matrix:
+        include:
+          - slug: linux-amd64
+            runner: ubuntu-latest
+            platform: linux-x86_64
+          - slug: linux-arm64
+            runner: ubuntu-24.04-arm
+            platform: linux-aarch64
+          - slug: macos-amd64
+            runner: macos-15-intel
+            platform: macos-x86_64
+          - slug: macos-arm64
+            runner: macos-15
+            platform: macos-aarch64
+    runs-on: ${{ matrix.runner }}
+    env:
+      SCIE: dist/standalone/${{ matrix.slug }}/beetkeeper-${{ matrix.platform }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.setup.outputs.version }}
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.11.23'
+          enable-cache: true
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v11
+        with:
+          gha-cache-key: standalone-${{ matrix.slug }}-v0
+          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
+          cache-lmdb-store: 'true'
+
+      - name: Build standalone binary
+        run: |
+          pants package //:beetkeeper-${{ matrix.slug }}-standalone
+          ls -l "$(dirname "${SCIE}")"
+
+      # First launch fetches the scie's CPython (network). `--version` must be the exact tag-derived semver.
+      - name: Smoke test the standalone binary
+        env:
+          VERSION: ${{ needs.setup.outputs.version }}
+        run: |
+          chmod +x "${SCIE}"
+          actual_version="$("${SCIE}" --version)"
+          if [[ "${actual_version}" != "${VERSION}" ]]; then
+            echo "::error::${SCIE} --version printed '${actual_version}', expected '${VERSION}'."
+            exit 1
+          fi
+          usage="$("${SCIE}" --help)"
+          usage="${usage%%$'\n'*}"
+          if [[ "${usage}" != "Usage: beetkeeper"* ]]; then
+            echo "::error::${SCIE} --help does not start with 'Usage: beetkeeper' (got '${usage}')."
+            exit 1
+          fi
+
+      # The checksum line names the bare file, so verify from inside its directory (GNU sha256sum on Linux,
+      # shasum on macOS; both accept the `<hex> *<name>` format science writes).
+      - name: Verify the checksum file
+        run: |
+          cd "$(dirname "${SCIE}")" || exit 1
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum -c "$(basename "${SCIE}").sha256"
+          else
+            shasum -a 256 -c "$(basename "${SCIE}").sha256"
+          fi
+
+      - name: Upload standalone binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-${{ matrix.slug }}
+          path: |
+            dist/standalone/${{ matrix.slug }}/beetkeeper-${{ matrix.platform }}
+            dist/standalone/${{ matrix.slug }}/beetkeeper-${{ matrix.platform }}.sha256
+          if-no-files-found: error
+
   build-docs:
     name: Build docs site
     needs: setup
@@ -199,7 +288,7 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    needs: [build-wheels, build-image, build-docs]
+    needs: [build-wheels, build-image, build-docs, build-standalone]
     runs-on: ubuntu-latest
     # The `pypi` environment the PyPI trusted publishers are registered against (gates publishing here only).
     environment: pypi
@@ -238,7 +327,7 @@ jobs:
   # imagetools` can.
   publish-image:
     name: Publish image to GHCR
-    needs: [setup, build-wheels, build-image, build-docs]
+    needs: [setup, build-wheels, build-image, build-docs, build-standalone]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -272,9 +361,42 @@ jobs:
             "${REF}:${VERSION}-amd64" \
             "${REF}:${VERSION}-arm64"
 
+  # Attach the four standalone binaries (+ checksums) to the GitHub release that Release's `approve-and-tag`
+  # created. `--clobber` keeps re-runs idempotent.
+  publish-binaries:
+    name: Publish binaries to the GitHub release
+    needs: [setup, build-wheels, build-image, build-docs, build-standalone]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # `gh release upload` attaches assets to the release
+    steps:
+      - name: Download standalone binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: standalone-*
+          path: standalone
+          merge-multiple: true
+
+      - name: Upload binaries to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.setup.outputs.version }}
+        run: |
+          if ! gh release view "v${VERSION}" --repo "${GITHUB_REPOSITORY}" --json tagName >/dev/null; then
+            echo "::error::No GitHub release exists for tag v${VERSION}. Release tags must be created via the \
+          Release workflow, whose approve-and-tag job creates the release before dispatching Publish."
+            exit 1
+          fi
+          assets=()
+          for platform in linux-x86_64 linux-aarch64 macos-x86_64 macos-aarch64; do
+            assets+=("standalone/beetkeeper-${platform}" "standalone/beetkeeper-${platform}.sha256")
+          done
+          ls -l "${assets[@]}"
+          gh release upload "v${VERSION}" "${assets[@]}" --repo "${GITHUB_REPOSITORY}" --clobber
+
   docs-deploy:
     name: Deploy versioned docs to GitHub Pages
-    needs: [setup, build-wheels, build-image, build-docs]
+    needs: [setup, build-wheels, build-image, build-docs, build-standalone]
     runs-on: ubuntu-latest
     # Scope granted to THIS job only (the workflow default is `contents: read`): the publish IS the mike
     # push to `gh-pages`, which GitHub Pages serves directly (Pages source = "Deploy from a branch").

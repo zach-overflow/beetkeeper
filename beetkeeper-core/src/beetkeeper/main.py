@@ -122,5 +122,13 @@ def db_downgrade(cli_state: CliState, revision: str, as_sql: bool) -> None:
     downgrade(cli_state.alembic_config, revision, sql=as_sql)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """
+    Console-script entry point. Pins the program name so help and usage output read `beetkeeper` everywhere,
+    instead of the platform-specific PEX / scie file name click would derive from `sys.argv[0]`.
+    """
     cli(prog_name="beetkeeper")
+
+
+if __name__ == "__main__":
+    main()

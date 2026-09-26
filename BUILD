@@ -7,40 +7,22 @@ file(name="license-file", source="LICENSE.txt")
 file(name="dockerfile", source="Dockerfile")
 shell_source(name="docker-entrypoint", source="docker-entrypoint.sh")
 
-# Thin, single-linux-arch PEXes for the Docker image — one per arch, each pinned to that arch's
-# `complete_platforms` so it carries only that arch's wheels. Unlike a
-# no-`complete_platforms` PEX, these resolve the *linux* wheels regardless of the build host, so they build on
-# a macOS dev machine as well as native CI runners (no docker_environment / QEMU needed). The image's
-# `ARG TARGETARCH` selects the matching file at COPY time; both are dependencies of the image so both land in
-# the build context. Output names use TARGETARCH's spelling (amd64/arm64), not the platform tag (aarch64).
-pex_binary(
-    name="beetkeeper-linux-amd64",
-    script="beetkeeper",
-    output_path="beetkeeper-linux-amd64.pex",
-    include_requirements=True,
-    include_sources=True,
-    include_tools=True,
-    inherit_path="fallback",
-    complete_platforms=["//3rdparty/platforms:linux-amd64"],
-    # enable native pex for faster bootstrapping/startup: https://github.com/pex-tool/pex.rc
-    extra_build_args=["--rc"],
-    tags=["pex"],
+# One thin single-platform PEX plus one scie ("standalone" binary) per complete platform, each pinned via
+# `complete_platforms` so it carries only that platform's wheels and resolves them locally on any build host
+# (macOS dev machine or native CI runner, no docker_environment / QEMU). Targets and outputs:
+#   //:beetkeeper-<os>-<arch>-pex        -> dist/beetkeeper-<os>-<arch>-pex.pex
+#   //:beetkeeper-<os>-<arch>-standalone -> dist/standalone/<os>-<arch>/beetkeeper-<scie platform> (+ .sha256)
+# Only the linux `-pex` targets go into the image; its `ARG TARGETARCH` picks the matching file at COPY time.
+app_server_pexes(
+    complete_platforms=[
+        "//3rdparty/platforms:linux-arm64",
+        "//3rdparty/platforms:linux-amd64",
+        "//3rdparty/platforms:macos-arm64",
+        "//3rdparty/platforms:macos-amd64",
+    ],
     dependencies=["//beetkeeper-core:app-requirements", "//beetkeeper-core:beetkeeper-whl", "//plugin:plugin-whl"],
 )
-pex_binary(
-    name="beetkeeper-linux-arm64",
-    script="beetkeeper",
-    output_path="beetkeeper-linux-arm64.pex",
-    include_requirements=True,
-    include_sources=True,
-    include_tools=True,
-    inherit_path="fallback",
-    complete_platforms=["//3rdparty/platforms:linux-aarch64"],
-    # enable native pex for faster bootstrapping/startup: https://github.com/pex-tool/pex.rc
-    extra_build_args=["--rc"],
-    tags=["pex"],
-    dependencies=["//beetkeeper-core:app-requirements", "//beetkeeper-core:beetkeeper-whl", "//plugin:plugin-whl"],
-)
+
 
 # Native single-arch image: `pants package` builds it for the host arch and loads it into the local daemon.
 # CI builds this on a matrix of native runners (one arch each, no QEMU) and pushes per-arch tags that a merge
@@ -56,5 +38,10 @@ docker_image(
     repository="zach-overflow/beetkeeper",
     # RELEASE_TAG is the v-stripped version exported by the release workflow; local builds fall back to `dev`.
     image_tags=["latest", env("RELEASE_TAG", "dev")],
-    dependencies=[":license-file", ":docker-entrypoint", "//:beetkeeper-linux-amd64", "//:beetkeeper-linux-arm64"],
+    dependencies=[
+        ":license-file",
+        ":docker-entrypoint",
+        "//:beetkeeper-linux-amd64-pex",
+        "//:beetkeeper-linux-arm64-pex",
+    ],
 )

@@ -149,6 +149,74 @@ jobs:
         run: |
           pants package //:beetkeeper-server-image
 
+  # Validation-only standalone binary builds on native per-platform runners: built and smoke-tested with the
+  # dev version the untagged commit yields; nothing is uploaded.
+  build-standalone:
+    name: Validate standalone binary build (${{ matrix.slug }})
+    needs: check-commits
+    strategy:
+      matrix:
+        include:
+          - slug: linux-amd64
+            runner: ubuntu-latest
+            platform: linux-x86_64
+          - slug: linux-arm64
+            runner: ubuntu-24.04-arm
+            platform: linux-aarch64
+          - slug: macos-amd64
+            runner: macos-15-intel
+            platform: macos-x86_64
+          - slug: macos-arm64
+            runner: macos-15
+            platform: macos-aarch64
+    runs-on: ${{ matrix.runner }}
+    env:
+      SCIE: dist/standalone/${{ matrix.slug }}/beetkeeper-${{ matrix.platform }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.11.23'
+          enable-cache: true
+      - name: Initialize Pants
+        uses: pantsbuild/actions/init-pants@v11
+        with:
+          gha-cache-key: standalone-${{ matrix.slug }}-v0
+          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
+          cache-lmdb-store: 'true'
+      - name: Build standalone binary
+        run: |
+          pants package //:beetkeeper-${{ matrix.slug }}-standalone
+      # No tag yet, so the version is `X.Y.Z.devN+g<sha>`: only its semver prefix is checked.
+      - name: Smoke test the standalone binary
+        run: |
+          chmod +x "${SCIE}"
+          actual_version="$("${SCIE}" --version)"
+          if [[ ! "${actual_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "::error::${SCIE} --version printed '${actual_version}', expected a semver-prefixed version."
+            exit 1
+          fi
+          usage="$("${SCIE}" --help)"
+          usage="${usage%%$'\n'*}"
+          if [[ "${usage}" != "Usage: beetkeeper"* ]]; then
+            echo "::error::${SCIE} --help does not start with 'Usage: beetkeeper' (got '${usage}')."
+            exit 1
+          fi
+          cd "$(dirname "${SCIE}")" || exit 1
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum -c "$(basename "${SCIE}").sha256"
+          else
+            shasum -a 256 -c "$(basename "${SCIE}").sha256"
+          fi
+
   docs-build:
     name: Validate docs build
     needs: check-commits
@@ -178,7 +246,7 @@ jobs:
   # environment in repo settings.
   approve-and-tag:
     name: Approve, tag, and publish release
-    needs: [check-commits, validate, build-image, docs-build]
+    needs: [check-commits, validate, build-image, build-standalone, docs-build]
     runs-on: ubuntu-latest
     environment: release
     permissions:

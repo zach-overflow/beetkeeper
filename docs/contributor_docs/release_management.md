@@ -4,13 +4,14 @@ How beetkeeper versions and publishes its release artifacts. All commands run fr
 
 ## What gets published
 
-A release publishes three artifacts, all carrying the **same** semver:
+A release publishes four artifacts, all carrying the **same** semver:
 
 | Artifact | Pants target | Destination |
 | :------- | :----------- | :---------- |
 | `beetkeeper` wheel | `beetkeeper-core:beetkeeper-whl` | PyPI (`beetkeeper`) |
 | `beetkeeper-plugin` wheel | `plugin:plugin-whl` | PyPI (`beetkeeper-plugin`) |
 | `beetkeeper-server` image | `//:beetkeeper-server-image` | GHCR `ghcr.io/zach-overflow/beetkeeper` (`:latest` + `:<version>`) |
+| standalone binaries (one per platform) | `//:beetkeeper-<slug>-standalone` | GitHub release assets (`beetkeeper-<scie platform>` + `.sha256`) |
 
 The docs site (GitHub Pages) is also rebuilt and redeployed as part of every release: mike publishes
 the release's `MAJOR.MINOR` docs version to the `gh-pages` branch and points the `latest` alias at it.
@@ -75,7 +76,10 @@ Cocogitto's behavior is configured in `cog.toml` at the repo root:
   [cog changelog docs](https://docs.cocogitto.io/guide/changelog.html#custom-templates)) that renders
   GitHub-linked changelog entries. Edit it to change the release-notes formatting (the per-commit
   line format is the `remote` macro at the top of the file);
-  `cog changelog --at vX.Y.Z` generates each GitHub release's body straight from git history.
+  `cog changelog --at vX.Y.Z` generates each GitHub release's body straight from git history. The template
+  also appends a *Download beetkeeper X.Y.Z* table linking the release's binary assets; its `asset_names` /
+  `asset_platforms` lists must stay in step with the platform map in `build_scripts/pants_macros.py` and
+  the `publish-binaries` job.
 
 ## Cutting a release (runbook)
 
@@ -87,8 +91,8 @@ Cocogitto's behavior is configured in `cog.toml` at the repo root:
 3. **Approve the `release` environment prompt** once validation is green. `cog bump --auto` then tags
    the validated commit `vX.Y.Z` and pushes the tag (nothing else is pushed), the GitHub release is
    uploaded with the cog-generated changelog as its body, and the *Publish* workflow takes over to build
-   and publish the wheels, the multi-arch image, and the docs site (PyPI and Pages keep their own
-   environment approvals).
+   and publish the wheels, the multi-arch image, the standalone binaries, and the docs site (PyPI and Pages
+   keep their own environment approvals).
 
 ## What the Release workflow does (`.github/workflows/release.yml`)
 
@@ -101,6 +105,8 @@ Triggered manually via `workflow_dispatch` (must be run from the default branch)
    - `validate` — actionlint, `pants update-build-files --check ::`, `pants lint check test ::`, and a
      wheel build (versioned as a dev build — the tag doesn't exist yet).
    - `build-image` — the Docker image on native amd64 + arm64 runners (built, not pushed).
+   - `build-standalone` — the four standalone binaries on native runners, built and smoke-tested
+     (`--version`, `--help`, `.sha256`), nothing uploaded.
    - `docs-build` — `mkdocs build --strict`.
 3. **`approve-and-tag`** — pauses on the **`release`** environment (the one manual gate). On approval,
    `cog bump --auto` (via `cocogitto/cocogitto-action`) computes the version and pushes the `vX.Y.Z` tag,
@@ -116,14 +122,15 @@ Triggered manually via `workflow_dispatch` (must be run from the default branch)
 ## What the Publish workflow does (`.github/workflows/publish.yml`)
 
 Dispatched by Release (or triggered by a manually pushed `vMAJOR.MINOR.PATCH` tag; it can also be run
-by hand via Actions → Publish → Run workflow for an existing tag). Three build
-jobs run in parallel from the tag's commit, then three publication jobs run in parallel once **all**
+by hand via Actions → Publish → Run workflow for an existing tag). Four build
+jobs run in parallel from the tag's commit, then four publication jobs run in parallel once **all**
 builds succeed:
 
 | Build (parallel) | Publication (parallel, after all builds) | Approval gate |
 | :--------------- | :--------------------------------------- | :------------ |
 | `build-wheels` — both wheels, versioned from the tag checkout | `publish-pypi` — OIDC trusted publishing, one upload per project | `pypi` environment |
 | `build-image` — native per-arch builds, exported as tarball artifacts | `publish-image` — push per-arch tags, stitch the `:<version>` + `:latest` manifest list with `buildx imagetools` | none (GHCR, `GITHUB_TOKEN`) |
+| `build-standalone` — one scie per platform on its native runner, smoke-tested (`--version` = release version, `--help`, checksum) and uploaded as `standalone-<slug>` artifacts | `publish-binaries` — `gh release upload --clobber` of the four binaries + checksums onto the release `approve-and-tag` created (fails if that release doesn't exist) | none (`GITHUB_TOKEN`, `contents: write`) |
 | `build-docs` — `mkdocs build --strict` (validation only) | `docs-deploy` — mike deploys the `MAJOR.MINOR` docs version (+ `latest` alias) to `gh-pages` | `github-pages` environment |
 
 ## Required configuration
@@ -176,3 +183,8 @@ builds succeed:
   note PyPI rejects reusable workflows outright, so Publish must never be converted to `workflow_call`.
 - **PyPI upload rejected as already existing** — the publish steps use `skip-existing`, so a re-run is
   safe; publishing a *new* release requires a *new* version (PyPI forbids overwriting an existing one).
+- **`publish-binaries` fails: no GitHub release exists for the tag** — the tag was pushed by hand, so nothing
+  created the release. Create it (`gh release create vX.Y.Z --title X.Y.Z --notes-file <(cog changelog --at
+  vX.Y.Z)`) and re-run Publish.
+- **`build-standalone` fails the `--version` check** — same cause as dev-versioned wheels: the job must check
+  out the release tag with `fetch-depth: 0`.
