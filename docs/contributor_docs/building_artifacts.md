@@ -10,7 +10,10 @@ How beetkeeper's build artifacts are produced with Pants. All commands run from 
 | standalone binaries | `//:beetkeeper-<slug>-standalone` | scie: the PEX plus a lazily fetched, stripped CPython; lands at `dist/standalone/<slug>/beetkeeper-<scie platform>` (+ `.sha256`; the intermediate PEX beside it is `beetkeeper`) |
 | server image | `//:beetkeeper-server-image` | GHCR (`db upgrade` / `run`) |
 
-`<slug>` is one of `linux-amd64`, `linux-arm64`, `macos-amd64`, `macos-arm64`.
+`<slug>` is one of `linux-amd64`, `linux-arm64`, `macos-amd64`, `macos-arm64`. The `macos-amd64` targets build
+like any other (cross-built from the complete platform), but releases do not ship that binary: Pants ships no
+macOS x86_64 wheel and scie-pants >= 0.13 no launcher, so Pants cannot run on GitHub's Intel macOS runners to
+smoke-test it.
 
 ```bash
 pants package //:beetkeeper-server-image   # builds the host-arch image (+ its PEX)
@@ -30,6 +33,20 @@ python-build-standalone CPython on first run, so the binary also runs on machine
 
 The Docker image bundles only the two linux `-pex` files; the `Dockerfile`'s `ARG TARGETARCH` selects the
 matching one at COPY time. The macOS platforms exist for the standalone binaries.
+
+### GitHub API rate limits when building a `-standalone` target
+
+science (the scie builder pex runs) resolves the python-build-standalone release through `api.github.com`,
+which rate-limits anonymous callers per IP. CI authenticates it by setting
+`SCIENCE_AUTH_API_GITHUB_COM_BEARER` to `GITHUB_TOKEN` and forwarding it via `pants.ci.toml`'s
+`[subprocess-environment].env_vars`. Locally the lookup is cached for 5 days, so the limit rarely bites; if it
+does, do the same for one run without touching config:
+
+```bash
+SCIENCE_AUTH_API_GITHUB_COM_BEARER="$(gh auth token)" \
+  pants --subprocess-environment-env-vars="+['SCIENCE_AUTH_API_GITHUB_COM_BEARER']" \
+  package //:beetkeeper-macos-arm64-standalone
+```
 
 A **complete platform** is a JSON description of a target interpreter: its PEP 508 marker environment plus the
 full list of wheel tags it accepts. They live at `3rdparty/platforms/<slug>.json` and are exposed as `file`

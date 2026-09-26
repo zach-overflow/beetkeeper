@@ -169,7 +169,9 @@ jobs:
           if-no-files-found: error
 
   # Build each platform's standalone binary (scie) on its native runner so it can be smoke-tested in place.
-  # Only the scie + its checksum are handed on; the intermediate PEX beside them is never published.
+  # Only the scie + its checksum are handed on; the intermediate PEX beside them is never published. No Intel
+  # macOS entry: Pants ships no macOS x86_64 wheel and scie-pants >= 0.13 no launcher, so Pants cannot run on
+  # the `macos-15-intel` runner.
   build-standalone:
     name: Build standalone binary (${{ matrix.slug }})
     needs: setup
@@ -182,15 +184,15 @@ jobs:
           - slug: linux-arm64
             runner: ubuntu-24.04-arm
             platform: linux-aarch64
-          - slug: macos-amd64
-            runner: macos-15-intel
-            platform: macos-x86_64
           - slug: macos-arm64
             runner: macos-15
             platform: macos-aarch64
     runs-on: ${{ matrix.runner }}
     env:
       STANDALONE_BIN: dist/standalone/${{ matrix.slug }}/beetkeeper-${{ matrix.platform }}
+      # science (the scie builder pex runs) looks up python-build-standalone releases on api.github.com;
+      # pants.ci.toml forwards this token so the call is authenticated (anonymous calls get rate-limited).
+      SCIENCE_AUTH_API_GITHUB_COM_BEARER: ${{ github.token }}
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v4
@@ -361,7 +363,7 @@ jobs:
             "${REF}:${VERSION}-amd64" \
             "${REF}:${VERSION}-arm64"
 
-  # Attach the four standalone binaries (+ checksums) to the GitHub release that Release's `approve-and-tag`
+  # Attach the three standalone binaries (+ checksums) to the GitHub release that Release's `approve-and-tag`
   # created. `--clobber` keeps re-runs idempotent.
   publish-binaries:
     name: Publish binaries to the GitHub release
@@ -388,7 +390,7 @@ jobs:
             exit 1
           fi
           assets=()
-          for platform in linux-x86_64 linux-aarch64 macos-x86_64 macos-aarch64; do
+          for platform in linux-x86_64 linux-aarch64 macos-aarch64; do
             assets+=("standalone/beetkeeper-${platform}" "standalone/beetkeeper-${platform}.sha256")
           done
           ls -l "${assets[@]}"

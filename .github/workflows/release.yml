@@ -150,7 +150,8 @@ jobs:
           pants package //:beetkeeper-server-image
 
   # Validation-only standalone binary builds on native per-platform runners: built and smoke-tested with the
-  # dev version the untagged commit yields; nothing is uploaded.
+  # dev version the untagged commit yields; nothing is uploaded. No Intel macOS entry: Pants ships no macOS
+  # x86_64 wheel and scie-pants >= 0.13 no launcher, so Pants cannot run on the `macos-15-intel` runner.
   build-standalone:
     name: Validate standalone binary build (${{ matrix.slug }})
     needs: check-commits
@@ -164,15 +165,15 @@ jobs:
           - slug: linux-arm64
             runner: ubuntu-24.04-arm
             platform: linux-aarch64
-          - slug: macos-amd64
-            runner: macos-15-intel
-            platform: macos-x86_64
           - slug: macos-arm64
             runner: macos-15
             platform: macos-aarch64
     runs-on: ${{ matrix.runner }}
     env:
       STANDALONE_BIN: dist/standalone/${{ matrix.slug }}/beetkeeper-${{ matrix.platform }}
+      # science (the scie builder pex runs) looks up python-build-standalone releases on api.github.com;
+      # pants.ci.toml forwards this token so the call is authenticated (anonymous calls get rate-limited).
+      SCIENCE_AUTH_API_GITHUB_COM_BEARER: ${{ github.token }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

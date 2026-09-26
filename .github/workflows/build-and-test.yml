@@ -17,6 +17,10 @@ jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
+    env:
+      # science (the scie builder pex runs) looks up python-build-standalone releases on api.github.com;
+      # pants.ci.toml forwards this token so the call is authenticated (anonymous calls get rate-limited).
+      SCIENCE_AUTH_API_GITHUB_COM_BEARER: ${{ github.token }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
