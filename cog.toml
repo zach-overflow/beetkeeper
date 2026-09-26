@@ -10,6 +10,7 @@ branch_whitelist = ["main"]
 pre = "alpha.*"
 scopes = [
   "api",
+  "deps",
   "dev",
   "search",
   "events",

@@ -3820,7 +3820,7 @@
     "pytest-xdist>=3.8.0",
     "pytest>=9.1.1",
     "ruamel-yaml>=0.19.1",
-    "ruff>=0.16.6",
+    "ruff>=0.16.8",
     "setuptools-scm<11,>=10.3.4",
     "setuptools>=84.0.0",
     "tomlkit"
