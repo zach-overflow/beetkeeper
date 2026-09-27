@@ -8,7 +8,8 @@
      {% if polling %}hx-get="{{ url_for('import_job_status', job_id=job.id) }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
 
     <details data-persist-key="import-output-{{ job.id }}">
-        <summary><strong>{{ job.source_label }}</strong> — status: {{ job.status }} <small>· job {{ job.id[:8] }}</small>{% if settings_summary %} <small>· options: {{ settings_summary }}</small>{% endif %}</summary>
+        <summary title="Show or hide the output log"><strong>{{ job.source_label }}</strong> — status: {{ job.status }}</summary>
+        <p><small>job {{ job.id[:8] }}{% if settings_summary %} · options: {{ settings_summary }}{% endif %}</small></p>
         <pre style="max-height: 20rem; overflow: auto; white-space: pre-wrap;">{{ job.output or '(no output yet.)' }}</pre>
     </details>
 
@@ -47,10 +48,12 @@
         {% else %}
             <p>No candidate matches were found.</p>
         {% endif %}
-        <button hx-post="{{ url_for('import_job_decision', job_id=job.id) }}" hx-vals='{"action": "asis"}'
-                hx-target="#import-job-{{ job.id }}" hx-swap="outerHTML">Import as-is</button>
-        <button hx-post="{{ url_for('import_job_decision', job_id=job.id) }}" hx-vals='{"action": "skip"}'
-                hx-target="#import-job-{{ job.id }}" hx-swap="outerHTML">Skip</button>
+        <div role="group">
+            <button hx-post="{{ url_for('import_job_decision', job_id=job.id) }}" hx-vals='{"action": "asis"}'
+                    hx-target="#import-job-{{ job.id }}" hx-swap="outerHTML">Import as-is</button>
+            <button hx-post="{{ url_for('import_job_decision', job_id=job.id) }}" hx-vals='{"action": "skip"}'
+                    hx-target="#import-job-{{ job.id }}" hx-swap="outerHTML">Skip</button>
+        </div>
 
     {% elif job.status == 'awaiting_decision' %}
         <p aria-busy="true"><em>Applying your decision …</em></p>

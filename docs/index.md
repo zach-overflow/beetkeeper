@@ -24,7 +24,7 @@ Follow the instructions in the [quickstart section](./quickstart/index.md).
 
 **Run multiple imports** — and monitor them simultaneously, whether started manually or via the REST API.
 
-![Running imports](assets/images/base_import_screenshot_0-4-0rc1.png){ width="70%" }
+![Running imports](assets/images/base_import_screenshot.png){ width="70%" }
 
 **Automated event tracking** — album/song import completion, file modifications, and more. The full beets
 event history is retained whether triggered via the UI or the API.
@@ -33,7 +33,7 @@ event history is retained whether triggered via the UI or the API.
 
 **Search your beets library** — similar in spirit to `beets[web]`, exposing the full beets query language.
 
-![Search](assets/images/base_search_example_0-4-0rc1.png){ width="70%" }
+![Search](assets/images/base_search_example.png){ width="70%" }
 
 ## License
 

@@ -2876,6 +2876,10 @@ body {
   --crt-accent: #c96bff;        /* the docs' --crt-purple                     */
   --crt-accent-bright: #dca4ff; /* the docs' --crt-purple-bright              */
   --crt-accent-glow: rgba(190, 90, 255, 0.6); /* the docs' --crt-purple-glow  */
+  /* Red: the help controls and the destructive clean-slate submit. */
+  --crt-danger: #ff4d4d;
+  --crt-danger-bright: #ff8080;
+  --crt-danger-glow: rgba(255, 60, 60, 0.6);
 }
 
 /* Remap Pico's variables to the CRT palette. The selector list covers every theme
@@ -3171,3 +3175,39 @@ table {
   font-size: 0.6rem;
 }
 
+
+/* The top-right utility stack (Help, version links, Log out): compact buttons sized to the small
+   version text they sit beside, rather than full-size page controls. */
+.version-info-box :is(button, [type=submit]) {
+  width: auto;
+  margin: 0.2rem 0;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.6rem;
+}
+
+/* Each page form renders as its own bordered region, like the import job cards, so its fields,
+   options and submit controls read as one unit (common region). */
+form:not(#nav-links form) {
+  border: var(--pico-border-width) solid var(--crt-border);
+  border-radius: var(--pico-border-radius);
+  padding: var(--pico-spacing);
+  margin-bottom: var(--pico-spacing);
+}
+form:not(#nav-links form) > :last-child {
+  margin-bottom: 0;
+}
+
+/* The help dialog's Close: a compact dismiss control. */
+#help-close-button {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.75rem;
+}
+/* Red at rest: the help controls, so they read apart from the green page actions, and the clean-slate
+   submit, the app's one destructive action. Hover / focus falls through to the shared purple
+   interaction treatment. */
+:is(#help-button, #help-close-button, #clean-slate-submit-button):not(:hover, :focus) {
+  border-color: var(--crt-danger);
+  color: var(--crt-danger-bright);
+  text-shadow: 0 0 1px currentColor, 0 0 7px var(--crt-danger-glow);
+  box-shadow: 0 0 4px var(--crt-danger-glow);
+}

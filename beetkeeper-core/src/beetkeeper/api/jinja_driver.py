@@ -1,7 +1,8 @@
 import json
 import logging
+import re
 from functools import cache
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Final
 
 import jinja2
 from starlette.requests import Request
@@ -12,6 +13,32 @@ from beetkeeper.api.constants import STATIC_DIRPATH
 from beetkeeper.api.security import SESSION_COOKIE_NAME
 
 _LOGGER = logging.getLogger(__name__)
+
+_DOCS_SITE_URL: Final[str] = "https://beetkeeper.dadbodaudio.com"
+_NEW_ISSUE_URL: Final[str] = "https://github.com/zach-overflow/beetkeeper/issues/new/choose"
+_RELEASE_VERSION_PATTERN: Final[re.Pattern[str]] = re.compile(r"(?P<major_minor>\d+\.\d+)\.\d+")
+
+
+def _docs_base_url(app_version: str) -> str:
+    """
+    The root of the published docs matching `app_version`. The docs site is versioned per app
+    MAJOR.MINOR, so an exact release maps to its own docs; anything else (a dev build, whose MAJOR.MINOR
+    may not be published yet) maps to the `latest` alias.
+    """
+    release_match = _RELEASE_VERSION_PATTERN.fullmatch(app_version)
+    docs_version = release_match["major_minor"] if release_match else "latest"
+    return f"{_DOCS_SITE_URL}/{docs_version}/"
+
+
+def _help_links(app_version: str) -> list[dict[str, str]]:
+    """The rows of the help dialog in `base_template.html`, in display order."""
+    docs_base_url = _docs_base_url(app_version)
+    return [
+        {"topic": "Documentation", "url": docs_base_url},
+        {"topic": "Getting started", "url": f"{docs_base_url}quickstart/"},
+        {"topic": "Configuration", "url": f"{docs_base_url}configuration/"},
+        {"topic": "Submit a feature request / Report a bug", "url": _NEW_ISSUE_URL},
+    ]
 
 
 @jinja2.pass_context
@@ -65,8 +92,8 @@ class _TemplatesSingleton:
         Build (once) and return the app's `Jinja2Templates`, rooted at `static/html_templates`.
 
         Registers the template globals: `url_for` (root-relative, see `_relative_url_for`),
-        `current_app_version` (`__version__` without any `+local` suffix), `session_cookie_name`, and
-        `latest_available_app_version` (looked up on PyPI once).
+        `current_app_version` (`__version__` without any `+local` suffix), `session_cookie_name`,
+        `latest_available_app_version` (looked up on PyPI once), and `help_links` (see `_help_links`).
         """
         if not cls._instance:
             tpls = Jinja2Templates(directory=STATIC_DIRPATH / "html_templates")
@@ -77,6 +104,7 @@ class _TemplatesSingleton:
             tpls.env.globals["current_app_version"] = current_version
             tpls.env.globals["session_cookie_name"] = SESSION_COOKIE_NAME
             tpls.env.globals["latest_available_app_version"] = _get_latest_available_version_semver()
+            tpls.env.globals["help_links"] = _help_links(current_version)
             cls._instance = tpls
         return cls._instance
 

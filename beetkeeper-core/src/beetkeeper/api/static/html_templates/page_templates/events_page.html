@@ -1,7 +1,9 @@
 {% extends "base_template.html" %}
 {% block content %}
-<h1>Beets Events</h1>
-<p>Recently ingested beets events, as reported by the beetkeeper event-listener plugin.</p>
+<hgroup>
+    <h1>Beets Events</h1>
+    <p>Reported by the beetkeeper beets plugin.</p>
+</hgroup>
 
 {# Load the recent-events fragment on page load, then refresh it periodically so new events appear. #}
 <div id="recent-events"

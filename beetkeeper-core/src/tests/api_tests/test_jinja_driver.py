@@ -1,4 +1,4 @@
-"""Unit tests for the PyPI latest-version lookup in `beetkeeper.api.jinja_driver`."""
+"""Unit tests for the PyPI latest-version lookup and the help links in `beetkeeper.api.jinja_driver`."""
 
 import logging
 from collections.abc import Iterator
@@ -9,7 +9,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from beetkeeper.api import jinja_driver
-from beetkeeper.api.jinja_driver import _get_latest_available_version_semver
+from beetkeeper.api.jinja_driver import _docs_base_url, _get_latest_available_version_semver, _help_links
 
 _PYPI_URL: Final[str] = "https://pypi.org/pypi/beetkeeper/json"
 _CURRENT_VERSION: Final[str] = jinja_driver.__version__
@@ -77,3 +77,26 @@ def test_get_latest_available_version_semver_valid(mocker: MockerFixture) -> Non
     assert _get_latest_available_version_semver() == "99.9.9"
     assert _get_latest_available_version_semver() == "99.9.9"
     get_mock.assert_called_once_with(_PYPI_URL)
+
+
+@pytest.mark.parametrize(
+    ("app_version", "expected_url"),
+    [
+        pytest.param("0.11.1", "https://beetkeeper.dadbodaudio.com/0.11/", id="release-maps-to-its-major-minor"),
+        pytest.param("12.3.45", "https://beetkeeper.dadbodaudio.com/12.3/", id="multi-digit-release"),
+        pytest.param("0.11.2.dev0", "https://beetkeeper.dadbodaudio.com/latest/", id="dev-build-maps-to-latest"),
+        pytest.param("0.0.0.dev0", "https://beetkeeper.dadbodaudio.com/latest/", id="fallback-version-maps-to-latest"),
+        pytest.param("1.0.0rc1", "https://beetkeeper.dadbodaudio.com/latest/", id="pre-release-maps-to-latest"),
+    ],
+)
+def test_docs_base_url_follows_the_app_version(app_version: str, expected_url: str) -> None:
+    assert _docs_base_url(app_version) == expected_url
+
+
+def test_help_links_point_at_the_versioned_docs_and_the_issue_forms() -> None:
+    assert [help_link["url"] for help_link in _help_links("0.11.1")] == [
+        "https://beetkeeper.dadbodaudio.com/0.11/",
+        "https://beetkeeper.dadbodaudio.com/0.11/quickstart/",
+        "https://beetkeeper.dadbodaudio.com/0.11/configuration/",
+        "https://github.com/zach-overflow/beetkeeper/issues/new/choose",
+    ]

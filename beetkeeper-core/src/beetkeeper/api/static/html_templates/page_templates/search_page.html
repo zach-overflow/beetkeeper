@@ -1,33 +1,39 @@
 {% extends "base_template.html" %}
 {% block content %}
-<h1>Search the library</h1>
+<h1>Search Your library</h1>
 
 <form hx-get="{{ url_for('search_results_fragment') }}" hx-target="#search-results" hx-swap="innerHTML">
     <label for="query">Query</label>
     <input type="search" id="query" name="query" size="48"
-           placeholder="beets query, e.g. artist:Beatles year:1960..1969 (empty = everything)">
-    <label for="filepath">Path</label>
-    <input type="text" id="filepath" name="filepath" size="30"
-           placeholder="Optional path within the library, e.g. /music/Beatles">
-    <label><input type="checkbox" name="albums" value="true"> albums</label>
-    <label for="sort_by">Sort</label>
-    <input type="text" id="sort_by" name="sort_by" size="10" placeholder="e.g. year+">
+           title="A beets query. Leave empty to match everything."
+           placeholder="e.g. artist:Beatles year:1960..1969">
+    <label><input type="checkbox" name="albums" value="true"> Albums</label>
+    <details>
+        <summary role="button">More filters</summary>
+        <label for="filepath">Path</label>
+        <input type="text" id="filepath" name="filepath" size="30"
+               title="Optional path within the library."
+               placeholder="e.g. /music/Beatles">
+        <label for="sort_by">Sort</label>
+        <input type="text" id="sort_by" name="sort_by" size="10" placeholder="e.g. year+">
+    </details>
     {# Same inputs, two modes: "List" submits to the list (results) endpoint; "Stats" sends the same
        form inputs to the stats endpoint instead. #}
-    <button type="submit">List</button>
-    <button type="button" hx-get="{{ url_for('search_stats_fragment') }}" hx-include="closest form"
-            hx-target="#search-results" hx-swap="innerHTML">Stats</button>
+    <div role="group">
+        <button type="submit" title="List matching tracks or albums">List</button>
+        <button type="button" hx-get="{{ url_for('search_stats_fragment') }}" hx-include="closest form"
+                hx-target="#search-results" hx-swap="innerHTML" title="Summarize the matches">Stats</button>
+    </div>
 </form>
 
-<div id="search-results">
-    <p>Enter a query above, then choose <strong>List</strong> (matching tracks/albums) or
-       <strong>Stats</strong> (a summary of the matches).</p>
-</div>
-
 <details>
-    <summary>Available query fields</summary>
-    <div hx-get="{{ url_for('search_fields_fragment') }}" hx-trigger="load" hx-swap="innerHTML">
-        <p>Loading fields…</p>
+    <summary role="button">Available query fields</summary>
+    <div hx-get="{{ url_for('search_fields_fragment') }}" hx-trigger="toggle once from:closest details" hx-swap="innerHTML">
+        <p aria-busy="true">Loading fields…</p>
     </div>
 </details>
+
+<div id="search-results">
+    <p>Enter a query, then choose <strong>List</strong> or <strong>Stats</strong>.</p>
+</div>
 {% endblock %}

@@ -9,11 +9,11 @@ Once the server is running (see the [Quick Start Demo](demo.md)), open it in you
 Start imports manually and monitor them — whether triggered from the UI or the API — in real time. When
 beets needs a decision (for example, which candidate release to apply), the UI presents the choices.
 
-![Choosing an import candidate](../assets/images/choose_import_example_0-0-3rc1.png){ width="80%" }
+![Choosing an import candidate](../assets/images/choose_import_example.png){ width="80%" }
 
 Multiple imports can run and be monitored simultaneously.
 
-![Running imports](../assets/images/base_import_screenshot_0-4-0rc1.png){ width="80%" }
+![Running imports](../assets/images/base_import_screenshot.png){ width="80%" }
 
 ### Clean-slate imports
 
@@ -32,8 +32,11 @@ clean-slate form on the import page with the entry and folder filled in. An albu
 clean slate; a standalone track to its own. Use **Preview** to see exactly what would be deleted, what the
 source holds, and any warnings before you start. beetkeeper refuses a source that is missing, empty, outside
 the configured `downloads_path`, inside the beets directory, or holding more than one album, and asks for an
-explicit opt-in when the source holds fewer audio files than the library currently has on disk (the removal
-would delete files the source cannot replace). Files outside the beets directory are never deleted.
+explicit opt-in (**Allow fewer files**) when the source holds fewer audio files than the library currently
+has on disk (the removal would delete files the source cannot replace). Files outside the beets directory
+are never deleted.
+
+![Previewing a clean-slate import](../assets/images/clean_slate_import_example.png){ width="80%" }
 
 beetkeeper only knows an entry's source folder when its plugin reported the import. Unrecorded rows on the
 search page offer a **Find via downloader** button instead, which asks your download client for the folder
@@ -57,4 +60,4 @@ Query your beets library using the full
 queries you use on the beets command line. Each result also shows whether its files are still on disk, its
 library location, and the folder it was imported from (with a clean-slate import link).
 
-![Search](../assets/images/base_search_example_0-4-0rc1.png){ width="80%" }
+![Search](../assets/images/base_search_example.png){ width="80%" }
