@@ -74,11 +74,13 @@ plus actionlint and an MkDocs build check. Install git hooks with `prek install`
   that lands on `main` (enforced by `.github/workflows/pr-title.yml` running `cog verify`). Run the `Release` workflow from `main` (checks commits, validates +
   builds everything, publishes nothing) → approve the `release` environment gate, where `cog bump --auto`
   computes the next semver and pushes a `vX.Y.Z` tag onto the validated commit (tag-only bump — no commit
-  or `CHANGELOG.md` is ever pushed to `main`, so branch protection can't conflict), and the GitHub
-  release is uploaded with the cog-generated changelog → `Release` dispatches `publish.yml`
+  or `CHANGELOG.md` is ever pushed to `main`, so branch protection can't conflict), and a *draft* GitHub
+  release is created with the cog-generated changelog → `Release` dispatches `publish.yml`
   (`workflow_dispatch`; a GITHUB_TOKEN-created tag can't fire `push` triggers, and `workflow_call` would
   break PyPI trusted publishing), which builds wheels/image/binaries/docs in parallel from the tag, then publishes
-  them in parallel (PyPI + Pages keep their environment gates).
+  them in parallel (PyPI + Pages keep their environment gates). `publish-binaries` attaches the standalone
+  binaries to the draft and then publishes it: releases are immutable once published, so no job may alter a
+  published release.
 
 ## CRITICAL: Beets DB ("Library") interactions
 

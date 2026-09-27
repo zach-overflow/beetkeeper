@@ -363,14 +363,15 @@ jobs:
             "${REF}:${VERSION}-amd64" \
             "${REF}:${VERSION}-arm64"
 
-  # Attach the three standalone binaries (+ checksums) to the GitHub release that Release's `approve-and-tag`
-  # created. `--clobber` keeps re-runs idempotent.
+  # Attach the three standalone binaries (+ checksums) to the DRAFT release that Release's `approve-and-tag`
+  # created, then publish it. Releases are immutable once published (assets + tag locked), so every asset
+  # must land while it is still a draft; against an already-published release this job only verifies them.
   publish-binaries:
-    name: Publish binaries to the GitHub release
+    name: Publish binaries and the GitHub release
     needs: [setup, build-wheels, build-image, build-docs, build-standalone]
     runs-on: ubuntu-latest
     permissions:
-      contents: write # `gh release upload` attaches assets to the release
+      contents: write # `gh release upload` attaches assets to the draft; `gh release edit` publishes it
     steps:
       - name: Download standalone binaries
         uses: actions/download-artifact@v4
@@ -379,22 +380,41 @@ jobs:
           path: standalone
           merge-multiple: true
 
-      - name: Upload binaries to the GitHub release
+      - name: Attach binaries to the draft release and publish it
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.setup.outputs.version }}
         run: |
-          if ! gh release view "v${VERSION}" --repo "${GITHUB_REPOSITORY}" --json tagName >/dev/null; then
-            echo "::error::No GitHub release exists for tag v${VERSION}. Release tags must be created via the \
-          Release workflow, whose approve-and-tag job creates the release before dispatching Publish."
-            exit 1
-          fi
+          tag="v${VERSION}"
           assets=()
+          expected=()
           for platform in linux-x86_64 linux-aarch64 macos-aarch64; do
             assets+=("standalone/beetkeeper-${platform}" "standalone/beetkeeper-${platform}.sha256")
+            expected+=("beetkeeper-${platform}" "beetkeeper-${platform}.sha256")
           done
           ls -l "${assets[@]}"
-          gh release upload "v${VERSION}" "${assets[@]}" --repo "${GITHUB_REPOSITORY}" --clobber
+          if ! release="$(gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" --json isDraft,assets)"; then
+            echo "::error::No GitHub release exists for tag ${tag}. Release tags must be created via the \
+          Release workflow, whose approve-and-tag job drafts the release before dispatching Publish."
+            exit 1
+          fi
+          if [[ "$(jq -r '.isDraft' <<< "${release}")" == "false" ]]; then
+            existing="$(jq -r '.assets[].name' <<< "${release}")"
+            missing=()
+            for name in "${expected[@]}"; do
+              grep -qx "${name}" <<< "${existing}" || missing+=("${name}")
+            done
+            if (( ${#missing[@]} > 0 )); then
+              echo "::error::Release ${tag} is already published and immutable but lacks: ${missing[*]}. Assets \
+          cannot be added after publication; cut a new release."
+              exit 1
+            fi
+            echo "::notice::Release ${tag} is already published with all binaries; nothing to do."
+            exit 0
+          fi
+          gh release upload "${tag}" "${assets[@]}" --repo "${GITHUB_REPOSITORY}" --clobber
+          gh release edit "${tag}" --repo "${GITHUB_REPOSITORY}" --draft=false
+          echo "::notice::Published release ${tag} with ${#expected[@]} binary assets."
 
   docs-deploy:
     name: Deploy versioned docs to GitHub Pages
