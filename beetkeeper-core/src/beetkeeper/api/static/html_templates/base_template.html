@@ -16,15 +16,20 @@
 		<div class="logo-main">
 			<a href="https://beetkeeper.dadbodaudio.com/" target="_blank"><img src="{{ url_for('static', path='/img/logo-CRT-purple.svg') }}" alt="beetkeeper logo"></a>
 		</div>
+		{% block nav_page_links %}
 		<a href="/events" role="button">Beets Events</a>
 		<a href="/import" role="button">Import</a>
 		<a href="/search" role="button">Search</a>
-		{% if request.cookies.get(session_cookie_name) %}
-		<form method="post" action="/logout">
-			<button type="submit">Log out</button>
-		</form>
-		{% endif %}
+		{% endblock %}
 		<div class="version-info-box">
+			<button type="button" id="help-button" aria-haspopup="dialog" aria-controls="help-dialog">Help</button>
+			<br>
+			{% if request.cookies.get(session_cookie_name) %}
+			<form method="post" action="/logout">
+				<button type="submit">Log out</button>
+			</form>
+			<br>
+			{% endif %}
 			<a href="">version: {{ current_app_version }}</a>
 			{% if latest_available_app_version != current_app_version %}
 			<br>
@@ -33,8 +38,28 @@
 			</svg>
 			<a href="https://github.com/zach-overflow/beetkeeper/releases/tag/v{{ latest_available_app_version }}">new version available: {{ latest_available_app_version }}</a>
 			{% endif %}
+			
 		</div>
 	</div>
+	<dialog id="help-dialog" aria-labelledby="help-dialog-title">
+		<article>
+			<header>
+				<h2 id="help-dialog-title">Help</h2>
+			</header>
+			<table>
+				<tbody>
+					{% for help_link in help_links %}
+					<tr>
+						<td><a href="{{ help_link.url }}" target="_blank" rel="noopener">{{ help_link.topic }}</a></td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			<footer>
+				<button type="button" id="help-close-button">Close</button>
+			</footer>
+		</article>
+	</dialog>
 	{% block content %}{% endblock %}
 
 	{# Persist the open/closed state of `<details data-persist-key="...">` accordions across HTMX swaps.
@@ -61,6 +86,21 @@
 			// HTMX swaps replace fragment DOM; re-apply the remembered state to any restored accordions.
 			document.body.addEventListener("htmx:afterSwap", restoreDetailsState);
 			restoreDetailsState();
+		})();
+		(function () {
+			var helpDialog = document.getElementById("help-dialog");
+			document.getElementById("help-button").addEventListener("click", function () {
+				helpDialog.showModal();
+			});
+			document.getElementById("help-close-button").addEventListener("click", function () {
+				helpDialog.close();
+			});
+			// The <dialog> itself is the full-screen backdrop; its <article> child is the visible box.
+			helpDialog.addEventListener("click", function (event) {
+				if (event.target === helpDialog) {
+					helpDialog.close();
+				}
+			});
 		})();
 	</script>
 </body>

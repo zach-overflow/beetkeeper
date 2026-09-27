@@ -70,7 +70,7 @@ configured `username`/`password` pair (there are no per-route permissions — a 
 everything).
 
 - **Browsers** are redirected to a `/login` page; a successful login stores the session in an
-  `HttpOnly` cookie, and a **Log out** button appears in the navigation bar.
+  `HttpOnly` cookie, and a **Log out** button appears in the top-right corner.
 - **API clients** exchange the credentials for a bearer token via `POST /api/auth/login`, then send it as
   an `Authorization: Bearer <token>` header (revoke it with `POST /api/auth/logout`).
 - The login endpoints, API docs, `/api/health`, and static assets stay reachable without a session.

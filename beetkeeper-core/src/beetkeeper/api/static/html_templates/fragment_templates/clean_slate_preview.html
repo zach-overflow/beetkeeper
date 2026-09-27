@@ -16,10 +16,10 @@
 <ul>{% for warning in preview.warnings %}<li><em>{{ warning }}</em></li>{% endfor %}</ul>
 {% endif %}
 {% if preview.needs_confirmation %}
-<p><mark>Tick the option to proceed even though the source holds fewer files than the library has on disk.</mark></p>
+<p><mark>Tick <strong>Allow fewer files</strong> to proceed even though the source holds fewer files than the library has on disk.</mark></p>
 {% endif %}
-<details open>
-    <summary>What the removal deletes</summary>
+<details open data-persist-key="clean-slate-removal">
+    <summary role="button">What the removal deletes ({{ preview.files_to_delete | length }} file(s))</summary>
     {% if preview.files_to_delete %}
     <p>{{ preview.files_to_delete | length }} library file(s):</p>
     <ul>{% for path in preview.files_to_delete %}<li><code>{{ path }}</code></li>{% endfor %}</ul>

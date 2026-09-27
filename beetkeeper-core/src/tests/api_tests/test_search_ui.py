@@ -92,13 +92,31 @@ async def test_search_page_renders(client: AsyncClient) -> None:
     response = await client.get("/search")
     assert response.status_code == 200
     body = response.text
-    assert "Search the library" in body
+    assert "Search Your library" in body
     assert 'name="filepath"' in body
     assert ">List</button>" in body and ">Stats</button>" in body
     # Endpoints are wired via url_for, so a wrong endpoint name would 500 rather than just omit the string.
     assert "/fragment/search/results" in body
     assert "/fragment/search/stats" in body
     assert "/fragment/search/fields" in body
+
+
+@pytest.mark.parametrize("field_name", ["query", "albums", "filepath", "sort_by"])
+@pytest.mark.anyio
+async def test_search_form_holds_every_filter(client: AsyncClient, field_name: str) -> None:
+    """Filters tucked into the collapsed "More filters" section must stay inside the form to be submitted."""
+    body = (await client.get("/search")).text
+    form_markup = body[body.index("<form") : body.index("</form>")]
+    assert f'name="{field_name}"' in form_markup
+
+
+@pytest.mark.anyio
+async def test_search_page_loads_the_field_reference_on_first_open(client: AsyncClient) -> None:
+    body = (await client.get("/search")).text
+    fields_elements = [line for line in body.splitlines() if "/fragment/search/fields" in line]
+    assert fields_elements
+    assert all('hx-trigger="toggle once from:closest details"' in line for line in fields_elements)
+    assert body.index("/fragment/search/fields") < body.index('id="search-results"')
 
 
 @pytest.mark.anyio
@@ -306,7 +324,7 @@ class TestAlbumResultsFragmentPaths:
     async def test_lookup_without_the_hook_explains_how_to_enable_it(self, client: AsyncClient) -> None:
         body = (await client.post("/fragment/search/source-path", data={"beets_album_id": 1})).text
         assert "No downloader API is configured." in body
-        assert "beetkeeper.downloader_hook" in body
+        assert "<small>Set the <code>beetkeeper.downloader_hook</code> section" in body
         assert "Not found via downloader" not in body
 
     @pytest.mark.anyio

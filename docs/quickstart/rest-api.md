@@ -18,7 +18,7 @@ At a high level, the API lets you:
   to, for entries imported before beetkeeper was tracking them.
 - **Read the event history** — query the record of album/track imports, file changes, and removals, so an
   external system can react to what beetkeeper (and beets) has done.
-- **Search the library** — run [beets queries](https://beets.readthedocs.io/en/stable/reference/query.html)
+- **Search your library** — run [beets queries](https://beets.readthedocs.io/en/stable/reference/query.html)
   against your collection and get structured results back.
 - **Check health** — a lightweight endpoint for readiness/liveness probes.
 

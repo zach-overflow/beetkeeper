@@ -42,11 +42,11 @@
 {% elif results %}
 <p>Showing {{ start_index }}–{{ end_index }} of {{ total }} {{ "albums" if albums else "tracks" }}.</p>
 {% if missing_source_count %}
-<p id="missing-source-notice">
-    <em>{{ missing_source_count }} of the {{ "albums" if albums else "tracks" }} on this page {{ "has" if missing_source_count == 1 else "have" }} no recorded source path.</em>
-    Source paths are known only for imports reported by the beetkeeper beets plugin; these were likely
-    imported without it (or before it was configured).
-</p>
+<details id="missing-source-notice">
+    <summary role="button"><em>{{ missing_source_count }} of the {{ "albums" if albums else "tracks" }} on this page {{ "has" if missing_source_count == 1 else "have" }} no recorded source path.</em></summary>
+    <p>Source paths are known only for imports reported by the beetkeeper beets plugin; these were likely
+       imported without it (or before it was configured).</p>
+</details>
 {% endif %}
 <table>
     <thead>

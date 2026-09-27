@@ -302,7 +302,47 @@ class TestCleanSlateForm:
         assert '<input type="hidden" name="beets_album_id" value="1">' in html
         assert f'name="source_path" size="60" readonly value="{source_folder}"' in html
         assert 'name="allow_fewer_files"' in html
+        assert "fewer audio files than the library currently has on disk" in html
+        assert "deleted before the import runs" in html
+        assert html.index("deleted before the import runs") < html.index('id="clean-slate-submit-button"')
         assert "/fragment/import/clean-slate-preview" in html and "/fragment/import/clean-slate" in html
+
+    @pytest.mark.parametrize(
+        ("params", "expected_order"),
+        [
+            pytest.param(
+                {},
+                ("<h2>New import</h2>", '<summary role="button">Clean-slate import</summary>', 'id="active-imports"'),
+                id="plain-visit-leads-with-the-new-import-form",
+            ),
+            pytest.param(
+                {"path": "/x"},
+                ("<h2>New import</h2>", '<summary role="button">Clean-slate import</summary>', 'id="active-imports"'),
+                id="prefilled-path-leads-with-the-new-import-form",
+            ),
+            pytest.param(
+                {"clean_slate_album_id": 1, "clean_slate_source": "/x"},
+                ('<h2 id="clean-slate">', '<summary role="button">New import</summary>', 'id="active-imports"'),
+                id="linked-entry-leads-with-the-clean-slate-form",
+            ),
+            pytest.param(
+                {"clean_slate_album_id": 1},
+                ('<h2 id="clean-slate">', '<summary role="button">New import</summary>', 'id="active-imports"'),
+                id="linked-entry-without-a-source-leads-with-clean-slate",
+            ),
+        ],
+    )
+    @pytest.mark.anyio
+    async def test_import_page_section_order_follows_the_visit(
+        self, client: AsyncClient, params: dict[str, str | int], expected_order: tuple[str, ...]
+    ) -> None:
+        html = (await client.get("/import", params=params)).text
+
+        positions = [html.index(marker) for marker in expected_order]
+        assert positions == sorted(positions)
+        assert html.count('id="clean-slate"') == 1
+        assert html.count('id="active-imports"') == 1
+        assert html.count('name="path"') == 1
 
     @pytest.mark.anyio
     async def test_import_page_without_a_source_points_back_to_the_lookup(self, client: AsyncClient) -> None:
@@ -331,7 +371,8 @@ class TestCleanSlateForm:
         assert f"<code>{tmp_path / 'music' / 'Artist' / 'Album' / '01 One.wav'}</code>" in html
         assert "Carried over onto the new import: <code>torrent_hash=abcdefg12345678</code>." in html
         assert "will <mark>not</mark> carry over: <code>mood</code>." in html
-        assert "Cannot run" not in html and "Tick the option" not in html
+        assert "Cannot run" not in html and "Tick <strong>Allow fewer files</strong>" not in html
+        assert '<details open data-persist-key="clean-slate-removal">' in html
 
     @pytest.mark.anyio
     async def test_preview_fragment_shows_blocking_errors_and_lookup_failures(

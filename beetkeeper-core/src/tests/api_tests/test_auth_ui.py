@@ -32,6 +32,53 @@ async def test_login_page_is_reachable_without_a_session(client: AsyncClient) ->
     assert '<form method="post" action="/login">' in response.text
 
 
+_PAGE_LINKS = ('href="/events"', 'href="/import"', 'href="/search"')
+
+
+@pytest.mark.parametrize("page_link", _PAGE_LINKS)
+@pytest.mark.anyio
+async def test_login_page_omits_the_page_links(client: AsyncClient, page_link: str) -> None:
+    assert page_link not in (await client.get("/login")).text
+
+
+@pytest.mark.parametrize("page_link", _PAGE_LINKS)
+@pytest.mark.anyio
+async def test_failed_login_rerender_omits_the_page_links(client: AsyncClient, page_link: str) -> None:
+    response = await client.post("/login", data={"username": _USERNAME, "password": "wrong-password"})
+    assert page_link not in response.text
+
+
+@pytest.mark.parametrize("page_link", _PAGE_LINKS)
+@pytest.mark.anyio
+async def test_authenticated_pages_keep_the_page_links(client: AsyncClient, page_link: str) -> None:
+    await _form_login(client)
+    assert page_link in (await client.get("/events")).text
+
+
+@pytest.mark.anyio
+async def test_login_page_offers_help_but_no_logout(client: AsyncClient) -> None:
+    body = (await client.get("/login")).text
+    assert 'id="help-button"' in body
+    assert 'action="/logout"' not in body
+
+
+@pytest.mark.anyio
+async def test_logout_sits_between_help_and_the_version_links(client: AsyncClient) -> None:
+    await _form_login(client)
+    body = (await client.get("/events")).text
+    assert body.index('id="help-button"') < body.index('action="/logout"') < body.index("version:")
+
+
+@pytest.mark.anyio
+async def test_help_dialog_lists_every_help_link(client: AsyncClient) -> None:
+    body = (await client.get("/login")).text
+    dialog_markup = body[body.index('<dialog id="help-dialog"') : body.index("</dialog>")]
+    for link_target in ("/quickstart/", "/configuration/", "/issues/new/choose"):
+        assert link_target in dialog_markup
+    assert dialog_markup.count("<tr>") == 4
+    assert ">Close</button>" in dialog_markup
+
+
 @pytest.mark.anyio
 async def test_unauthenticated_page_request_redirects_to_login_with_next(client: AsyncClient) -> None:
     response = await client.get("/events")
