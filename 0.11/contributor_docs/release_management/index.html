@@ -1265,10 +1265,11 @@ release otherwise. In practice:</p>
    pending commits are conventional and warrant a bump, validates the repo, and builds every artifact
    without publishing anything.</li>
 <li><strong>Approve the <code>release</code> environment prompt</strong> once validation is green. <code>cog bump --auto</code> then tags
-   the validated commit <code>vX.Y.Z</code> and pushes the tag (nothing else is pushed), the GitHub release is
-   uploaded with the cog-generated changelog as its body, and the <em>Publish</em> workflow takes over to build
+   the validated commit <code>vX.Y.Z</code> and pushes the tag (nothing else is pushed), a <em>draft</em> GitHub release is
+   created with the cog-generated changelog as its body, and the <em>Publish</em> workflow takes over to build
    and publish the wheels, the multi-arch image, the standalone binaries, and the docs site (PyPI and Pages
-   keep their own environment approvals).</li>
+   keep their own environment approvals). Publish attaches the binaries to the draft and only then
+   publishes it: releases are immutable once published, so nothing may alter a release after the fact.</li>
 </ol>
 <h2 id="what-the-release-workflow-does-githubworkflowsreleaseyml">What the Release workflow does (<code>.github/workflows/release.yml</code>)<a class="headerlink" href="#what-the-release-workflow-does-githubworkflowsreleaseyml" title="Permanent link">&para;</a></h2>
 <p>Triggered manually via <code>workflow_dispatch</code> (must be run from the default branch):</p>
@@ -1289,7 +1290,8 @@ release otherwise. In practice:</p>
    <code>cog bump --auto</code> (via <code>cocogitto/cocogitto-action</code>) computes the version and pushes the <code>vX.Y.Z</code> tag,
    which lands directly on the validated commit (the bump is tag-only — see the <code>cog.toml</code> notes above —
    so nothing is pushed to <code>main</code>); the job then generates the release changelog
-   (<code>cog changelog --at vX.Y.Z</code>) and uploads the GitHub release with it as the body.</li>
+   (<code>cog changelog --at vX.Y.Z</code>) and creates the GitHub release as a <strong>draft</strong> with it as the body.
+   Publish's <code>publish-binaries</code> attaches the binaries and publishes it.</li>
 <li><strong><code>publish</code></strong> — dispatches the Publish workflow (<code>gh workflow run publish.yml</code>) on the new tag's
    ref. Dispatch is the only viable hand-off: a tag created with the built-in <code>GITHUB_TOKEN</code> can never
    fire another workflow's <code>push</code> trigger (GitHub's recursive-workflow guard, from which
@@ -1322,7 +1324,7 @@ builds succeed:</p>
 </tr>
 <tr>
 <td style="text-align: left;"><code>build-standalone</code> — one scie per platform on its native runner, smoke-tested (<code>--version</code> = release version, <code>--help</code>, checksum) and uploaded as <code>standalone-&lt;slug&gt;</code> artifacts</td>
-<td style="text-align: left;"><code>publish-binaries</code> — <code>gh release upload --clobber</code> of the three binaries + checksums onto the release <code>approve-and-tag</code> created (fails if that release doesn't exist)</td>
+<td style="text-align: left;"><code>publish-binaries</code> — <code>gh release upload</code> of the three binaries + checksums onto the <em>draft</em> release <code>approve-and-tag</code> created, then <code>gh release edit --draft=false</code> publishes it (fails if no release exists; against an already-published, immutable release it only verifies the assets are present)</td>
 <td style="text-align: left;">none (<code>GITHUB_TOKEN</code>, <code>contents: write</code>)</td>
 </tr>
 <tr>
@@ -1336,6 +1338,10 @@ builds succeed:</p>
 <ul>
 <li><strong><code>release</code> environment</strong> — must exist with a <strong>required reviewer</strong> (repo Settings → Environments);
   this is the single "proceed with the release?" prompt.</li>
+<li><strong>Immutable releases</strong> — enabled in repo Settings → General → Releases. A published release's assets
+  and tag are locked, so <code>approve-and-tag</code> creates the release as a draft and only <code>publish-binaries</code>
+  publishes it, after the binaries are attached. A release published without its binaries cannot be
+  repaired: cut a new version.</li>
 <li><strong>Tag ruleset</strong> — no ruleset may have <strong>Restrict creations</strong> enabled for <code>v*</code> tags: <code>approve-and-tag</code>
   pushes the release tag with the built-in <code>GITHUB_TOKEN</code>, which is rejected with "Cannot create ref due
   to creations being restricted" and <em>cannot</em> be added to a ruleset bypass list (only roles, teams, deploy
@@ -1383,8 +1389,11 @@ builds succeed:</p>
 <li><strong>PyPI upload rejected as already existing</strong> — the publish steps use <code>skip-existing</code>, so a re-run is
   safe; publishing a <em>new</em> release requires a <em>new</em> version (PyPI forbids overwriting an existing one).</li>
 <li><strong><code>publish-binaries</code> fails: no GitHub release exists for the tag</strong> — the tag was pushed by hand, so nothing
-  created the release. Create it (<code>gh release create vX.Y.Z --title X.Y.Z --notes-file &lt;(cog changelog --at
-  vX.Y.Z)</code>) and re-run Publish.</li>
+  created the release. Create it as a <em>draft</em> (<code>gh release create vX.Y.Z --draft --title X.Y.Z --notes-file
+  &lt;(cog changelog --at vX.Y.Z)</code>) and re-run Publish, which attaches the binaries and publishes it.</li>
+<li><strong><code>publish-binaries</code> fails: release already published and immutable but lacks assets</strong> — the release was
+  published before the binaries were attached (by hand, or with <code>gh release create</code> without <code>--draft</code>).
+  Immutable releases cannot gain assets; cut a new patch release.</li>
 <li><strong><code>build-standalone</code> fails the <code>--version</code> check</strong> — same cause as dev-versioned wheels: the job must check
   out the release tag with <code>fetch-depth: 0</code>.</li>
 <li><strong><code>build-standalone</code> (or the Build workflow's <code>pants package</code>) fails with <code>403 rate limit exceeded</code> for
