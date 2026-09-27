@@ -9,9 +9,11 @@ run-name: Release from ${{ github.ref_name }} by ${{ github.actor }}
 #   2. Approve the `release` environment prompt. `cog bump --auto` then computes the next semver from the
 #      conventional commits and tags the validated commit `vX.Y.Z` (tag-only: `disable_bump_commit` in
 #      cog.toml means nothing is ever pushed to the branch, so `main` protection rules never conflict).
-#      The tag is pushed via the `post_bump_hooks` in cog.toml, the GitHub release is uploaded with the
+#      The tag is pushed via the `post_bump_hooks` in cog.toml, a DRAFT GitHub release is created with the
 #      cog-generated changelog as its body, and the Publish workflow is dispatched (see the `publish` job
 #      below for why it is dispatched rather than `push`-triggered or called as a reusable workflow).
+#      Publish attaches the standalone binaries to the draft and only then publishes it: releases are
+#      immutable once published (assets + tag locked), so nothing may alter a release after the fact.
 on:
   workflow_dispatch:
 
@@ -244,10 +246,11 @@ jobs:
 
   # The single manual gate: approving the `release` environment lets `cog bump --auto` compute the version
   # and push the `vX.Y.Z` tag, which lands directly on the validated commit (`disable_bump_commit` — no
-  # commit is created, so nothing is pushed to `main`). Configure required reviewers on the `release`
-  # environment in repo settings.
+  # commit is created, so nothing is pushed to `main`). The GitHub release is created as a draft: releases
+  # are immutable once published, so Publish's `publish-binaries` attaches the binaries first, then publishes
+  # it. Configure required reviewers on the `release` environment in repo settings.
   approve-and-tag:
-    name: Approve, tag, and publish release
+    name: Approve, tag, and draft release
     needs: [check-commits, validate, build-image, build-standalone, docs-build]
     runs-on: ubuntu-latest
     environment: release
@@ -266,7 +269,7 @@ jobs:
         with:
           command: bump
           args: --auto
-      - name: Publish the GitHub release
+      - name: Draft the GitHub release
         id: github-release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -276,9 +279,11 @@ jobs:
           gh release create "${VERSION_TAG}" \
             --title "${VERSION_TAG#v}" \
             --notes-file GITHUB_CHANGELOG.md \
-            --verify-tag
+            --verify-tag \
+            --draft
           echo "version=${VERSION_TAG#v}" >> "$GITHUB_OUTPUT"
-          echo "::notice::Tagged $(git rev-parse HEAD) as ${VERSION_TAG} and published the GitHub release."
+          echo "::notice::Tagged $(git rev-parse HEAD) as ${VERSION_TAG} and drafted the GitHub release; \
+          Publish attaches the binaries and publishes it."
 
   # Dispatch (not `workflow_call`) so Publish runs as its own top-level workflow: PyPI trusted publishing
   # rejects reusable workflows, and its registered publisher is pinned to `publish.yml`. `workflow_dispatch`

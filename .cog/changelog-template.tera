@@ -43,8 +43,8 @@
 {% endfor -%}
 {% if version.tag -%}
 {% set download_base = repository_url ~ "/releases/download/" ~ version.tag ~ "/" -%}
-{% set asset_names = ["beetkeeper-macos-aarch64", "beetkeeper-macos-x86_64", "beetkeeper-linux-x86_64", "beetkeeper-linux-aarch64"] -%}
-{% set asset_platforms = ["Apple Silicon macOS", "Intel macOS", "x64 Linux", "ARM64 Linux"] %}
+{% set asset_names = ["beetkeeper-macos-aarch64", "beetkeeper-linux-x86_64", "beetkeeper-linux-aarch64"] -%}
+{% set asset_platforms = ["Apple Silicon macOS", "x64 Linux", "ARM64 Linux"] %}
 ## Download beetkeeper {{ version.tag | trim_start_matches(pat="v") }}
 
 | File | Platform | Checksum |

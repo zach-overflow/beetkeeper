@@ -89,10 +89,11 @@ Cocogitto's behavior is configured in `cog.toml` at the repo root:
    pending commits are conventional and warrant a bump, validates the repo, and builds every artifact
    without publishing anything.
 3. **Approve the `release` environment prompt** once validation is green. `cog bump --auto` then tags
-   the validated commit `vX.Y.Z` and pushes the tag (nothing else is pushed), the GitHub release is
-   uploaded with the cog-generated changelog as its body, and the *Publish* workflow takes over to build
+   the validated commit `vX.Y.Z` and pushes the tag (nothing else is pushed), a *draft* GitHub release is
+   created with the cog-generated changelog as its body, and the *Publish* workflow takes over to build
    and publish the wheels, the multi-arch image, the standalone binaries, and the docs site (PyPI and Pages
-   keep their own environment approvals).
+   keep their own environment approvals). Publish attaches the binaries to the draft and only then
+   publishes it: releases are immutable once published, so nothing may alter a release after the fact.
 
 ## What the Release workflow does (`.github/workflows/release.yml`)
 
@@ -114,7 +115,8 @@ Triggered manually via `workflow_dispatch` (must be run from the default branch)
    `cog bump --auto` (via `cocogitto/cocogitto-action`) computes the version and pushes the `vX.Y.Z` tag,
    which lands directly on the validated commit (the bump is tag-only — see the `cog.toml` notes above —
    so nothing is pushed to `main`); the job then generates the release changelog
-   (`cog changelog --at vX.Y.Z`) and uploads the GitHub release with it as the body.
+   (`cog changelog --at vX.Y.Z`) and creates the GitHub release as a **draft** with it as the body.
+   Publish's `publish-binaries` attaches the binaries and publishes it.
 4. **`publish`** — dispatches the Publish workflow (`gh workflow run publish.yml`) on the new tag's
    ref. Dispatch is the only viable hand-off: a tag created with the built-in `GITHUB_TOKEN` can never
    fire another workflow's `push` trigger (GitHub's recursive-workflow guard, from which
@@ -132,13 +134,17 @@ builds succeed:
 | :--------------- | :--------------------------------------- | :------------ |
 | `build-wheels` — both wheels, versioned from the tag checkout | `publish-pypi` — OIDC trusted publishing, one upload per project | `pypi` environment |
 | `build-image` — native per-arch builds, exported as tarball artifacts | `publish-image` — push per-arch tags, stitch the `:<version>` + `:latest` manifest list with `buildx imagetools` | none (GHCR, `GITHUB_TOKEN`) |
-| `build-standalone` — one scie per platform on its native runner, smoke-tested (`--version` = release version, `--help`, checksum) and uploaded as `standalone-<slug>` artifacts | `publish-binaries` — `gh release upload --clobber` of the three binaries + checksums onto the release `approve-and-tag` created (fails if that release doesn't exist) | none (`GITHUB_TOKEN`, `contents: write`) |
+| `build-standalone` — one scie per platform on its native runner, smoke-tested (`--version` = release version, `--help`, checksum) and uploaded as `standalone-<slug>` artifacts | `publish-binaries` — `gh release upload` of the three binaries + checksums onto the *draft* release `approve-and-tag` created, then `gh release edit --draft=false` publishes it (fails if no release exists; against an already-published, immutable release it only verifies the assets are present) | none (`GITHUB_TOKEN`, `contents: write`) |
 | `build-docs` — `mkdocs build --strict` (validation only) | `docs-deploy` — mike deploys the `MAJOR.MINOR` docs version (+ `latest` alias) to `gh-pages` | `github-pages` environment |
 
 ## Required configuration
 
 - **`release` environment** — must exist with a **required reviewer** (repo Settings → Environments);
   this is the single "proceed with the release?" prompt.
+- **Immutable releases** — enabled in repo Settings → General → Releases. A published release's assets
+  and tag are locked, so `approve-and-tag` creates the release as a draft and only `publish-binaries`
+  publishes it, after the binaries are attached. A release published without its binaries cannot be
+  repaired: cut a new version.
 - **Tag ruleset** — no ruleset may have **Restrict creations** enabled for `v*` tags: `approve-and-tag`
   pushes the release tag with the built-in `GITHUB_TOKEN`, which is rejected with "Cannot create ref due
   to creations being restricted" and *cannot* be added to a ruleset bypass list (only roles, teams, deploy
@@ -186,8 +192,11 @@ builds succeed:
 - **PyPI upload rejected as already existing** — the publish steps use `skip-existing`, so a re-run is
   safe; publishing a *new* release requires a *new* version (PyPI forbids overwriting an existing one).
 - **`publish-binaries` fails: no GitHub release exists for the tag** — the tag was pushed by hand, so nothing
-  created the release. Create it (`gh release create vX.Y.Z --title X.Y.Z --notes-file <(cog changelog --at
-  vX.Y.Z)`) and re-run Publish.
+  created the release. Create it as a *draft* (`gh release create vX.Y.Z --draft --title X.Y.Z --notes-file
+  <(cog changelog --at vX.Y.Z)`) and re-run Publish, which attaches the binaries and publishes it.
+- **`publish-binaries` fails: release already published and immutable but lacks assets** — the release was
+  published before the binaries were attached (by hand, or with `gh release create` without `--draft`).
+  Immutable releases cannot gain assets; cut a new patch release.
 - **`build-standalone` fails the `--version` check** — same cause as dev-versioned wheels: the job must check
   out the release tag with `fetch-depth: 0`.
 - **`build-standalone` (or the Build workflow's `pants package`) fails with `403 rate limit exceeded` for
