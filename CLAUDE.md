@@ -53,6 +53,23 @@ uv lock --check                       # verify uv.lock is current (gated in prek
 prek hooks (`.pre-commit-config.yaml`) call the same Pants goals (`lint fmt`, `check`, `test hooks:...`)
 plus actionlint and an MkDocs build check. Install git hooks with `prek install`.
 
+## API client (`client/`) — generated, no sources in the repo
+- `client:client-whl` builds the standalone `beetkeeper-api-client` wheel. Its `beetkeeper_api_client` package
+  is generated at build time by Pants' OpenAPI backend (`pants.backend.experimental.openapi.codegen.python`)
+  from `client/src/openapi.json`, via the `client/src:openapi-spec` `openapi_document` target. Inspect the
+  output with `pants export-codegen client/src:openapi-spec` (-> `dist/codegen/`).
+- Pants generates the client while mapping Python modules, so a broken `openapi_document` (or a missing
+  `client/src/openapi.json`) fails **every** Python goal repo-wide, not just `client::`.
+- `[openapi-generator]` is a **JVM** tool: `version` is the Maven `openapi-generator-cli` version and `lockfile`
+  a coursier lockfile (`3rdparty/jvm/openapi-generator.lock`, `pants generate-lockfiles
+  --resolve=openapi-generator`). The PyPI `openapi-generator-cli` package is not involved.
+- The client lives in its own `client-resolve`. Pants fails codegen unless that resolve has a
+  `python_requirement` for every runtime dep the generator declares, so `client/pyproject.toml` `dependencies`
+  must mirror the generated `requirements.txt`.
+- `build_scripts/export_openapi.py` writes both spec files (docs + client); the client copy drops `webhooks`,
+  which crash openapi-generator's `python` generator. Pants only passes `--additional-properties` to the
+  generator, so spec workarounds must happen in the exporter.
+
 ## Docker
 - The `Dockerfile` has an `ffmpeg` fetch stage + the final `app` stage; only `app` is packaged, as the
   single `//:beetkeeper-server-image` `docker_image` target in root `BUILD`. The image is named/pushed via
@@ -67,7 +84,9 @@ plus actionlint and an MkDocs build check. Install git hooks with `prek install`
 - **Versioning**: no committed version. `vcs_version` targets (`beetkeeper-core/src/beetkeeper/BUILD`,
   `plugin/src/beetsplug/beetkeeper_plugin/BUILD`) generate `_scm_version.py` from git via setuptools-scm; each
   package's committed `_version.py` re-exports it, falling back to `0.0.0.dev0` outside Pants (uv builds).
-  An exact `vMAJOR.MINOR.PATCH` tag yields a clean version; anything else is a dev version.
+  An exact `vMAJOR.MINOR.PATCH` tag yields a clean version; anything else is a dev version. The generated API
+  client (`client/src/BUILD`) has no `_version.py`: setuptools reads its `_scm_version.py` directly, and its
+  in-code `__version__` is baked in from the `RELEASE_TAG` env var, which `publish.yml`'s `build-wheels` sets.
 - **Flow** (details: `docs/contributor_docs/release_management.md`): releases are driven by
   [conventional commits](https://www.conventionalcommits.org/) via cocogitto (`cog.toml`; only commits
   since the latest `v` tag count). PRs are squash-merged, so the PR *title* is the conventional commit

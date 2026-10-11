@@ -1,0 +1,4 @@
+# Test-only deps in `client-resolve` so mypy (`pants check`, run per-resolve) can resolve test imports;
+# they never ship in the client wheel.
+pytest>=9.1
+pytest-mock>=3.15.1

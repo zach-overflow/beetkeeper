@@ -95,6 +95,7 @@ The beetkeeper repo publishes the following artifacts for any given release:
 | `beetkeeper-server` | Docker image                | Self-hosted `beets` + `beetkeeper_plugin` wrapped by the `beetkeeper` server | `//:beetkeeper-server-image` |
 | `beetkeeper.whl`       | Python library distribution | The beetkeeper server, published as a wheel file to PyPI | `beetkeeper-core:beetkeeper-whl` |
 | `beetkeeper-plugin` | Python library distribution | `beetsplug` plugin which pushes beets events to the beetkeeper server | `plugin:plugin-whl` |
+| `beetkeeper-api-client` | Python library distribution | Python client for the beetkeeper REST API, generated from its OpenAPI spec | `client:client-whl` |
 
 To package all of the artifacts, run:
 

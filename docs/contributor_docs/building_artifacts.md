@@ -6,6 +6,7 @@ How beetkeeper's build artifacts are produced with Pants. All commands run from 
 | :------- | :----------- | :---- |
 | `beetkeeper` wheel | `beetkeeper-core:beetkeeper-whl` | pure-python, `py3-none-any` |
 | `beetkeeper-plugin` wheel | `plugin:plugin-whl` | pure-python |
+| `beetkeeper-api-client` wheel | `client:client-whl` | pure-python; sources generated from the OpenAPI spec (see [below](#the-api-client-wheel-clientclient-whl)) |
 | application PEXes | `//:beetkeeper-<slug>-pex` | thin, single-platform; the linux ones are bundled into the image |
 | standalone binaries | `//:beetkeeper-<slug>-standalone` | scie: the PEX plus a lazily fetched, stripped CPython; lands at `dist/standalone/<slug>/beetkeeper-<scie platform>` (+ `.sha256`; the intermediate PEX beside it is `beetkeeper`) |
 | server image | `//:beetkeeper-server-image` | GHCR (`db upgrade` / `run`) |
@@ -146,8 +147,41 @@ image can `pip install` an extra beets plugin and have the PEX pick it up.
 
 ### Generating OpenAPI Spec JSON
 
-To regenerate the OpenAPI spec JSON for the user reference site, run the following command:
+To regenerate the OpenAPI spec JSON files, run the following command:
 
 ```bash
 pants run build_scripts:openapi-json-exporter
 ```
+
+It writes two files, and `--check` (run by prek and CI) verifies both:
+
+| File | Used by |
+| :--- | :------ |
+| `docs/public_api_reference/openapi.json` | the user reference site (full spec) |
+| `client/src/openapi.json` | the API client codegen (same spec without `webhooks`) |
+
+`client/src/openapi.json` must exist for any Pants Python goal to run, including the exporter itself: Pants
+generates the client while mapping Python modules. Never delete it; regenerate it in place.
+
+## The API client wheel (`client:client-whl`)
+
+The `beetkeeper_api_client` package has no sources in the repo. Pants' OpenAPI backend
+(`pants.backend.experimental.openapi.codegen.python`) generates it from `client/src/openapi.json` with
+[openapi-generator](https://openapi-generator.tech/docs/generators/python)'s `python` generator, configured on
+the `client/src:openapi-spec` target.
+
+```bash
+pants package client:client-whl                    # dist/beetkeeper_api_client-<version>-py3-none-any.whl
+pants export-codegen client/src:openapi-spec       # write the generated sources to dist/codegen/ for inspection
+pants test client::
+```
+
+- **openapi-generator is a JVM tool.** Pants fetches the jar and a JDK itself (no local Java needed). Its
+  version is `[openapi-generator].version` in `pants.toml`, locked in `3rdparty/jvm/openapi-generator.lock`;
+  after bumping it run `pants generate-lockfiles --resolve=openapi-generator`.
+- **The client has its own resolve, `client-resolve`** (`3rdparty/python/client-lockfile.json`), so its code
+  and tests cannot import `beetkeeper`. Pants requires a requirement in that resolve for every runtime dep the
+  generator declares, so the `dependencies` in `client/pyproject.toml` must mirror the generated
+  `requirements.txt` (changing the generator's `library` option changes that list).
+- **Webhooks are stripped from the client's spec.** They describe requests beetkeeper sends, and the `python`
+  generator fails on them.

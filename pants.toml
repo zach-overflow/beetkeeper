@@ -10,6 +10,9 @@ backend_packages = [
   "pants.backend.experimental.python.lint.ruff.format",
   "pants.backend.experimental.tools.yamllint",
   "pants.backend.experimental.visibility",
+  # https://www.pantsbuild.org/stable/reference/subsystems/openapi-generator
+  "pants.backend.experimental.openapi",
+  "pants.backend.experimental.openapi.codegen.python",
   "pants.backend.python",
   "pants.backend.python.lint.bandit",
   "pants.backend.python.typecheck.mypy",
@@ -67,6 +70,12 @@ extra_env_vars = ["PANTS=true"]
 [cli.alias]
 --all-changed = "--changed-since=HEAD --changed-dependents=transitive"
 
+# https://www.pantsbuild.org/stable/reference/subsystems/openapi-generator
+[openapi-generator]
+# TODO[later]: use openapi-generator version 7.26+ when available (adds the `httpx2` library).
+version = "7.25.0"
+lockfile = "3rdparty/jvm/openapi-generator.lock"
+
 [python-bootstrap]
 search_path = ["<PYENV>", "<ASDF>", "<PATH>"]
 
@@ -84,6 +93,7 @@ separate_lockfile_metadata_file = true
 [python.resolves]
 "beetkeeper-resolve" = "3rdparty/python/beetkeeper-lockfile.json"
 "tools-resolve" = "3rdparty/tools/tools-lockfile.json"
+"client-resolve" = "3rdparty/python/client-lockfile.json"
 
 # [python.resolves_to_interpreter_constraints]
 # "beetkeeper-resolve" = ["CPython>=3.14,<3.15"]
