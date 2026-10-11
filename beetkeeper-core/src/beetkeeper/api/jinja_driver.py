@@ -69,11 +69,11 @@ def _get_latest_available_version_semver() -> str:
     # notifications of later version availability are never false positives.
     latest_available_app_version = __version__
     try:
-        import httpx
+        import httpx2
 
-        pypi_pkg_response_json = httpx.get(pypi_url).raise_for_status().json()
+        pypi_pkg_response_json = httpx2.get(pypi_url).raise_for_status().json()
         latest_available_app_version = pypi_pkg_response_json["info"]["version"]
-    except httpx.HTTPStatusError as e:
+    except httpx2.HTTPStatusError as e:
         _LOGGER.error(f"Failed to pull version info from {pypi_url}. Got http error code {e.response.status_code}.")
     except KeyError:
         pretty_json = json.dumps(pypi_pkg_response_json, indent=2)

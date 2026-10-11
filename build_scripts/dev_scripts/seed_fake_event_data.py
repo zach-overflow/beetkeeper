@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import click
-import httpx
+import httpx2
 
 _HEALTH_PATH = "/api/health"
 _LOGIN_PATH = "/api/auth/login"
@@ -129,23 +129,23 @@ def _fake_event_pushes(now: datetime) -> list[tuple[str, dict[str, Any]]]:
     ]
 
 
-def _wait_for_server(client: httpx.Client, wait_seconds: int) -> None:
+def _wait_for_server(client: httpx2.Client, wait_seconds: int) -> None:
     deadline = time.monotonic() + wait_seconds
     while True:
         try:
-            if client.get(_HEALTH_PATH).status_code == httpx.codes.OK:
+            if client.get(_HEALTH_PATH).status_code == httpx2.codes.OK:
                 return
-        except httpx.TransportError:
+        except httpx2.TransportError:
             pass
         if time.monotonic() >= deadline:
             raise click.ClickException(f"Server at '{client.base_url}' not healthy after {wait_seconds}s.")
         time.sleep(1)
 
 
-def _auth_headers(client: httpx.Client, username: str, password: str) -> dict[str, str]:
+def _auth_headers(client: httpx2.Client, username: str, password: str) -> dict[str, str]:
     """A bearer-token header from the login route, or no header when login protection is disabled."""
     response = client.post(_LOGIN_PATH, json={"username": username, "password": password})
-    if response.status_code == httpx.codes.OK:
+    if response.status_code == httpx2.codes.OK:
         return {"Authorization": f"Bearer {response.json()['token']}"}
     click.echo(f"Login returned {response.status_code}; pushing events without auth.")
     return {}
@@ -157,7 +157,7 @@ def _auth_headers(client: httpx.Client, username: str, password: str) -> dict[st
 @click.option("--password", default="admin", show_default=True, help="Login password (see test_beets_conf.yaml).")
 @click.option("--wait-seconds", default=60, show_default=True, type=int, help="How long to wait for server startup.")
 def cli(server_url: str, username: str, password: str, wait_seconds: int) -> None:
-    with httpx.Client(base_url=server_url.rstrip("/"), timeout=10.0) as client:
+    with httpx2.Client(base_url=server_url.rstrip("/"), timeout=10.0) as client:
         _wait_for_server(client, wait_seconds)
         headers = _auth_headers(client, username, password)
         for subpath, payload in _fake_event_pushes(datetime.now(UTC)):

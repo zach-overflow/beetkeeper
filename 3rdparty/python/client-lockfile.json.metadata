@@ -4,7 +4,7 @@
     "CPython<3.15,>=3.14"
   ],
   "generated_with_requirements": [
-    "httpx>=0.28.1",
+    "httpx2",
     "pydantic>=2.11",
     "pytest-mock>=3.15.1",
     "pytest>=9.1",

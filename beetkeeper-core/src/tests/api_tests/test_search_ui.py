@@ -8,9 +8,9 @@ fragment reads for the import source paths recorded by the plugin's `/api/events
 
 from pathlib import Path
 
-import httpx
+import httpx2
 import pytest
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -401,12 +401,12 @@ class TestDownloaderSourcePathLookup:
     def downloader_hook(self) -> DownloaderHook:
         # Album lookups (no `title` param — albums have no title field) match; track lookups do not,
         # except the standalone track "Solo".
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.params.get("name") == "An Album" and "title" not in request.url.params:
-                return httpx.Response(200, json=[{"save_path": "/dl/An Album [FLAC]"}])
+                return httpx2.Response(200, json=[{"save_path": "/dl/An Album [FLAC]"}])
             if request.url.params.get("title") == "Solo":
-                return httpx.Response(200, json=[{"save_path": "/dl/solo.flac"}])
-            return httpx.Response(200, json=[])
+                return httpx2.Response(200, json=[{"save_path": "/dl/solo.flac"}])
+            return httpx2.Response(200, json=[])
 
         config = DownloaderHookConfSection(
             base_url="http://dl.local",
@@ -414,7 +414,7 @@ class TestDownloaderSourcePathLookup:
             beet_field_to_dl_search_field={"album": "name", "title": "title"},
             filepath_json_key="save_path",
         )
-        return DownloaderHook(config, Path("/downloads"), transport=httpx.MockTransport(handler))
+        return DownloaderHook(config, Path("/downloads"), transport=httpx2.MockTransport(handler))
 
     @pytest.fixture
     def app_dependency_overrides(

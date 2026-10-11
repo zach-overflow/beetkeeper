@@ -4,7 +4,7 @@ import logging
 from collections.abc import Iterator
 from typing import Final
 
-import httpx
+import httpx2
 import pytest
 from pytest_mock import MockerFixture
 
@@ -23,16 +23,16 @@ def _fresh_version_cache() -> Iterator[None]:
     _get_latest_available_version_semver.cache_clear()
 
 
-def _http_status_error() -> httpx.HTTPStatusError:
-    request = httpx.Request("GET", _PYPI_URL)
-    response = httpx.Response(httpx.codes.SERVICE_UNAVAILABLE, request=request)
-    return httpx.HTTPStatusError("service unavailable", request=request, response=response)
+def _http_status_error() -> httpx2.HTTPStatusError:
+    request = httpx2.Request("GET", _PYPI_URL)
+    response = httpx2.Response(httpx2.codes.SERVICE_UNAVAILABLE, request=request)
+    return httpx2.HTTPStatusError("service unavailable", request=request, response=response)
 
 
 @pytest.mark.parametrize(
     ("mock_exc", "expected_msg", "expected_val"),
     [
-        pytest.param(httpx.HTTPStatusError, "Got http error code 503", _CURRENT_VERSION, id="http-error-response"),
+        pytest.param(httpx2.HTTPStatusError, "Got http error code 503", _CURRENT_VERSION, id="http-error-response"),
         pytest.param(
             KeyError,
             "Failed to get version info from PyPI version response JSON",
@@ -53,8 +53,8 @@ def test_get_latest_available_version_semver_error_handling(
 ) -> None:
     """Ensures proper error handling and defaults for the latest version check at template initialization."""
     response_mock = mocker.MagicMock()
-    get_mock = mocker.patch("httpx.get", return_value=response_mock)
-    if mock_exc is httpx.HTTPStatusError:
+    get_mock = mocker.patch("httpx2.get", return_value=response_mock)
+    if mock_exc is httpx2.HTTPStatusError:
         response_mock.raise_for_status.side_effect = _http_status_error()
     elif mock_exc is KeyError:
         response_mock.raise_for_status.return_value.json.return_value = {}
@@ -72,7 +72,7 @@ def test_get_latest_available_version_semver_valid(mocker: MockerFixture) -> Non
     """Ensures latest version lookup works when no issues arise during template setup."""
     response_mock = mocker.MagicMock()
     response_mock.raise_for_status.return_value.json.return_value = {"info": {"version": "99.9.9"}}
-    get_mock = mocker.patch("httpx.get", return_value=response_mock)
+    get_mock = mocker.patch("httpx2.get", return_value=response_mock)
 
     assert _get_latest_available_version_semver() == "99.9.9"
     assert _get_latest_available_version_semver() == "99.9.9"

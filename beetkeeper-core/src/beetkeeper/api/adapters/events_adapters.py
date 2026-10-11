@@ -309,13 +309,13 @@ async def _query_listener_event_join(
         return []
     subject_models: dict[int, APIAlbum | APITrack]
     if join_events_table is AlbumEvent:
-        beets_ids = [child_event.beets_album_id for child_event, _ in rows]
+        beets_ids = [child_event.beets_album_id for child_event, _ in rows if hasattr(child_event, "beets_album_id")]
         album_dicts = await beets_library.get_albums(beets_ids)
         subject_models = {
             beets_id: APIAlbum(**_defined_fields(album_dict)) for beets_id, album_dict in album_dicts.items()
         }
     else:
-        beets_ids = [child_event.beets_item_id for child_event, _ in rows]
+        beets_ids = [child_event.beets_item_id for child_event, _ in rows if hasattr(child_event, "beets_item_id")]
         track_dicts = await beets_library.get_tracks(beets_ids)
         subject_models = {
             beets_id: APITrack(**_defined_fields(track_dict)) for beets_id, track_dict in track_dicts.items()

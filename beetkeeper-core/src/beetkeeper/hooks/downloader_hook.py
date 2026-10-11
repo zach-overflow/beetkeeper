@@ -14,7 +14,7 @@ from collections.abc import Generator, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import httpx
+import httpx2
 from pydantic import BaseModel, ConfigDict, SecretStr
 
 if TYPE_CHECKING:
@@ -33,26 +33,26 @@ class DownloaderSearchResult(BaseModel):
     detail: str = ""
 
 
-class DownloaderHookAuth(httpx.Auth):
+class DownloaderHookAuth(httpx2.Auth):
     """Helper for injecting the auth token into the outgoing request headers."""
 
     def __init__(self, api_token: SecretStr) -> None:
         """Bind the token; it is only revealed when a request is sent."""
         self._token = api_token
 
-    def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response]:
+    def auth_flow(self, request: httpx2.Request) -> Generator[httpx2.Request, httpx2.Response]:
         """Attach the Bearer token to the outgoing request."""
         request.headers["Authorization"] = f"Bearer {self._token.get_secret_value()}"
         yield request
 
 
-class DownloaderHook(httpx.AsyncClient):
+class DownloaderHook(httpx2.AsyncClient):
     """
     Specialized async HTTP client for the downloader's REST API, if configured by the user.
 
     A hook built from a config without `base_url` is *disabled*: `search` answers "not found" without any
     I/O, so callers need not special-case the unconfigured state. Extra keyword arguments reach
-    `httpx.AsyncClient` (tests pass a `transport`).
+    `httpx2.AsyncClient` (tests pass a `transport`).
     """
 
     def __init__(self, config: DownloaderHookConfSection, downloads_path: Path, **client_kwargs: Any) -> None:
@@ -105,12 +105,12 @@ class DownloaderHook(httpx.AsyncClient):
         try:
             response = await self.get(self._config.search_endpoint_path or "", params=dict(params))
             raw_json = response.raise_for_status().json()
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             _LOGGER.error(f"Downloader hook search request failed: {exc}")
             return DownloaderSearchResult(
                 found=False, status_code=exc.response.status_code, detail=f"Downloader API error: {exc}"
             )
-        except httpx.HTTPError as exc:
+        except httpx2.HTTPError as exc:
             _LOGGER.error(f"Downloader hook search request failed: {exc}")
             return DownloaderSearchResult(found=False, detail=f"Downloader API unreachable: {exc}")
         except ValueError as exc:

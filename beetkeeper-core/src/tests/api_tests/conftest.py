@@ -1,7 +1,7 @@
 """Shared api_tests fixtures: a fresh `create_app()` app, an ASGI-transport async client, and overrides.
 
 Per FastAPI's testing guidance, dependencies are swapped via `app.dependency_overrides` and requests run
-fully in-process over `httpx.ASGITransport` (no sockets, no lifespan side effects). Test modules customize
+fully in-process over `httpx2.ASGITransport` (no sockets, no lifespan side effects). Test modules customize
 the app by overriding the `app_dependency_overrides` fixture; the shared `client` fixture does the rest.
 """
 
@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
+from httpx2 import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from beetkeeper.api import create_app

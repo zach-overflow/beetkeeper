@@ -8,7 +8,7 @@ plugin uses), then the `/fragment/event` route is asserted to render them.
 from datetime import UTC, datetime
 
 import pytest
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from beetkeeper.db.session import get_session
 

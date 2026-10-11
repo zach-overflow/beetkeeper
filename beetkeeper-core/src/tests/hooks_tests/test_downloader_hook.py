@@ -1,6 +1,6 @@
 """Tests for `beetkeeper.hooks.DownloaderHook`: the downloader API search, its parsing, and path mapping.
 
-Every request is answered in-process by an `httpx.MockTransport`; nothing touches the network.
+Every request is answered in-process by an `httpx2.MockTransport`; nothing touches the network.
 """
 
 import json
@@ -8,14 +8,14 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 from pydantic import SecretStr
 
 from beetkeeper.hooks import DownloaderHook
 from beetkeeper.settings import DownloaderHookConfSection
 
-Handler = Callable[[httpx.Request], httpx.Response]
+Handler = Callable[[httpx2.Request], httpx2.Response]
 
 
 def _config(**overrides: Any) -> DownloaderHookConfSection:
@@ -31,11 +31,11 @@ def _config(**overrides: Any) -> DownloaderHookConfSection:
 
 
 def _hook(handler: Handler, config: DownloaderHookConfSection | None = None) -> DownloaderHook:
-    return DownloaderHook(config or _config(), Path("/downloads"), transport=httpx.MockTransport(handler))
+    return DownloaderHook(config or _config(), Path("/downloads"), transport=httpx2.MockTransport(handler))
 
 
 def _json(body: Any, status_code: int = 200) -> Handler:
-    return lambda _request: httpx.Response(status_code, json=body)
+    return lambda _request: httpx2.Response(status_code, json=body)
 
 
 def test_query_params_renames_configured_fields_and_skips_empty_ones() -> None:
@@ -51,11 +51,11 @@ def test_query_params_stringifies_values() -> None:
 
 @pytest.mark.anyio
 async def test_search_sends_params_and_bearer_token_to_the_endpoint() -> None:
-    seen: list[httpx.Request] = []
+    seen: list[httpx2.Request] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen.append(request)
-        return httpx.Response(
+        return httpx2.Response(
             200, json=[{"name": "Geogaddi", "content_path": "/data/torrents/complete/BoC - Geogaddi"}]
         )
 
@@ -85,7 +85,7 @@ async def test_search_accepts_a_single_object_response() -> None:
         pytest.param(_json(["not-a-dict"]), "carry no `content_path` field", id="non-object-result"),
         pytest.param(_json([{"content_path": 42}]), "is not a path", id="non-string-path"),
         pytest.param(_json({"error": "nope"}, status_code=500), "Downloader API error", id="http-error"),
-        pytest.param(lambda _r: httpx.Response(200, content=b"<html>"), "non-JSON", id="non-json-body"),
+        pytest.param(lambda _r: httpx2.Response(200, content=b"<html>"), "non-JSON", id="non-json-body"),
     ],
 )
 async def test_search_reports_unusable_responses_without_raising(handler: Handler, detail: str) -> None:
@@ -97,8 +97,8 @@ async def test_search_reports_unusable_responses_without_raising(handler: Handle
 
 @pytest.mark.anyio
 async def test_search_reports_a_connection_failure() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        raise httpx.ConnectError("refused", request=request)
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        raise httpx2.ConnectError("refused", request=request)
 
     result = await _hook(handler).search({"name": "x"})
     assert result.found is False
@@ -108,7 +108,7 @@ async def test_search_reports_a_connection_failure() -> None:
 
 @pytest.mark.anyio
 async def test_search_without_params_makes_no_request() -> None:
-    def handler(_request: httpx.Request) -> httpx.Response:
+    def handler(_request: httpx2.Request) -> httpx2.Response:
         raise AssertionError("no request expected")
 
     result = await _hook(handler).search({})
@@ -117,10 +117,10 @@ async def test_search_without_params_makes_no_request() -> None:
 
 @pytest.mark.anyio
 async def test_disabled_hook_searches_nothing() -> None:
-    def handler(_request: httpx.Request) -> httpx.Response:
+    def handler(_request: httpx2.Request) -> httpx2.Response:
         raise AssertionError("no request expected")
 
-    hook = DownloaderHook(DownloaderHookConfSection(), Path("/downloads"), transport=httpx.MockTransport(handler))
+    hook = DownloaderHook(DownloaderHookConfSection(), Path("/downloads"), transport=httpx2.MockTransport(handler))
     assert hook.enabled is False
     result = await hook.search({"name": "x"})
     assert result.found is False and "No downloader API is configured" in result.detail

@@ -35,8 +35,8 @@ async def _import_source_paths_by_key(
     ).all()
     source_paths_by_key: dict[int, list[str]] = defaultdict(list)
     for key, source_path in rows:
-        if source_path not in source_paths_by_key[key]:
-            source_paths_by_key[key].append(source_path)
+        if source_path not in source_paths_by_key[key]:  # type: ignore[index]
+            source_paths_by_key[key].append(source_path)  # type: ignore[index]
     return dict(source_paths_by_key)
 
 
