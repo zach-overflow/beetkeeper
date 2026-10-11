@@ -20,8 +20,13 @@ backend_packages = [
   "pants.backend.shell.lint.shellcheck",
   "pants.backend.shell.lint.shfmt",
   "pants.backend.tools.taplo",
+  "pyproject_fmt_pants_plugin",
 ]
 pants_version = "2.33.1"
+plugins = [
+  # https://pypi.org/project/pyproject-fmt-pants-plugin/
+  "pyproject-fmt-pants-plugin==0.2.1",
+]
 build_patterns = ["BUILD", "BUILD.*"]
 build_file_prelude_globs = ["build_scripts/pants_macros.py"]
 colors = true
@@ -52,6 +57,10 @@ tools = ["docker-credential-desktop"]
 [docker.registries.ghcr]
 address = "ghcr.io"
 
+# https://pypi.org/project/pyproject-fmt-pants-plugin/
+[pyproject-fmt]
+config_discovery = true
+
 [setuptools]
 install_from_resolve = "tools-resolve"
 
@@ -62,7 +71,12 @@ install_from_resolve = "tools-resolve"
 build_file_name = "BUILD"
 
 [taplo]
-glob_pattern = ["**/*.toml", "!.taplo.toml", "!taplo.toml"]
+glob_pattern = [
+  "**/*.toml",
+  "!**/pyproject.toml",
+  "!.taplo.toml",
+  "!taplo.toml",
+]
 
 [test]
 extra_env_vars = ["PANTS=true"]

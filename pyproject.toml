@@ -11,8 +11,8 @@ dev = [
   "pytest-mock>=3.15.1",
   "pytest-socket>=0.8.1",
   "pytest-xdist>=3.8.0",
-  "ruff>=0.16.8",
   "ruamel-yaml>=0.19.1",
+  "ruff>=0.16.8",
   "tomlkit",
 ]
 
@@ -27,26 +27,20 @@ constraint-dependencies = [
   # Security constraint for preventing earlier `urllib3` versions with vulnerabilities
   "urllib3>=2.8.0",
 ]
-
+sources.beetkeeper = { workspace = true }
+sources.beetkeeper_plugin = { workspace = true }
 # Members must be registered here or uv (which only reads this root file) can't see them and `uv lock` fails.
-[tool.uv.workspace]
-members = ["beetkeeper-core", "plugin"]
-
-[tool.uv.sources]
-beetkeeper = { workspace = true }
-beetkeeper_plugin = { workspace = true }
+workspace.members = [ "beetkeeper-core", "plugin" ]
 
 [tool.ruff]
 target-version = "py314"
-src = ["beetkeeper-core/src", "plugin/src", "client/src"]
 line-length = 120
 indent-width = 4
-
-
-[tool.ruff.lint]
-exclude = ["build_scripts/**/*.py", "beetkeeper-core/src/tests/**/*.py"]
-select = ["E", "F", "UP", "B", "SIM", "I"]
-extend-select = [
+src = [ "beetkeeper-core/src", "client/src", "plugin/src" ]
+format.skip-magic-trailing-comma = true
+format.docstring-code-format = true
+lint.select = [ "B", "E", "F", "I", "SIM", "UP" ]
+lint.extend-select = [
   "ASYNC",
   "C416",
   "D101",
@@ -56,15 +50,15 @@ extend-select = [
   "D417",
   "D419",
   "ERA001",
-  "LOG",
   "FAST",
+  "LOG",
   "PIE790",
+  "PLE1142",
+  "PLE1700",
   "PLW0603",
   "PT",
   "PYI045",
   "PYI055",
-  "PLE1142",
-  "PLE1700",
   "RUF006",
   "RUF008",
   "RUF009",
@@ -86,7 +80,7 @@ extend-select = [
   "W291",
 ]
 # Ignore rules that conflict with the ruff formatter (https://stackoverflow.com/a/77796620).
-ignore = [
+lint.ignore = [
   "COM812",
   "COM819",
   "D206",
@@ -99,63 +93,68 @@ ignore = [
   "PT003",
   "PT019",
   "PT022",
-  "TC003",
   "Q000",
   "Q001",
   "Q002",
   "Q003",
+  "TC003",
   "W191",
 ]
-
-
-[tool.ruff.lint.per-file-ignores]
-"integration_tests/**/*.py" = ["I"]
+lint.exclude = [ "beetkeeper-core/src/tests/**/*.py", "build_scripts/**/*.py" ]
 # TC off: runtime-needed type hints like `fastapi.Depends` must not move under TYPE_CHECKING.
-"beetkeeper-core/src/beetkeeper/api/**/*.py" = ["TC", "D101"]
+lint.per-file-ignores."beetkeeper-core/src/beetkeeper/api/**/*.py" = [ "D101", "TC" ]
 # TC off: these are all runtime pydantic models.
-"beetkeeper-core/src/beetkeeper/db/**/*.py" = ["TC"]
-"plugin/**/*.py" = ["TID25"]
-
-[tool.ruff.lint.flake8-type-checking]
-exempt-modules = ["typing", "typing_extensions"]
-runtime-evaluated-base-classes = [
+lint.per-file-ignores."beetkeeper-core/src/beetkeeper/db/**/*.py" = [ "TC" ]
+lint.per-file-ignores."integration_tests/**/*.py" = [ "I" ]
+lint.per-file-ignores."plugin/**/*.py" = [ "TID25" ]
+lint.flake8-tidy-imports.banned-api.httpx.msg = "Use httpx2 instead."
+lint.flake8-tidy-imports.banned-api.requests.msg = "Use httpx2 instead."
+lint.flake8-type-checking.exempt-modules = [ "typing", "typing_extensions" ]
+lint.flake8-type-checking.runtime-evaluated-base-classes = [
   "pydantic.BaseModel",
   "sqlalchemy.orm.DeclarativeBase",
   "sqlmodel.SQLModel",
 ]
-
-[tool.ruff.lint.isort]
-split-on-trailing-comma = false
-section-order = [
+lint.isort.known-first-party = [
+  "beetkeeper",
+  "beetkeeper_api_client",
+  "beetsplug.beetkeeper_plugin",
+]
+lint.isort.section-order = [
   "future",
   "standard-library",
   "third-party",
   "first-party",
   "local-folder",
 ]
-known-first-party = [
-  "beetkeeper",
-  "beetkeeper_api_client",
-  "beetsplug.beetkeeper_plugin",
+lint.isort.split-on-trailing-comma = false
+lint.pycodestyle.ignore-overlong-task-comments = true
+lint.pydocstyle.convention = "google"
+
+[tool.bandit]
+exclude_dirs = [
+  ".github",
+  ".venv",
+  "beetkeeper-core/src/tests",
+  "build_scripts",
+  "docs",
+  "integration_tests",
+  "plugin/src/tests",
 ]
 
-[tool.ruff.lint.flake8-tidy-imports.banned-api]
-"requests".msg = "Use httpx2 instead."
-"httpx".msg = "Use httpx2 instead."
-
-[tool.ruff.lint.pycodestyle]
-ignore-overlong-task-comments = true
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"
-
-[tool.ruff.format]
-skip-magic-trailing-comma = true
-docstring-code-format = true
-
+[tool.mypy]
+exclude = [ "build_scripts/", "docs/" ]
+namespace_packages = true
+explicit_package_bases = true
+python_version = "3.14"
+plugins = [ "pydantic.mypy" ]
+overrides = [
+  # openapi-generator output (see `client/src/BUILD`): its signatures still type-check callers, but errors
+  # inside the generated modules aren't ours to fix.
+  { module = [ "beetkeeper_api_client", "beetkeeper_api_client.*" ], ignore_errors = true }
+]
 
 [tool.pytest]
-minversion = "9.1"
 addopts = [
   "--force-short-summary",
   "--tb=line",
@@ -164,29 +163,6 @@ addopts = [
   "--disable-socket",
   "--allow-hosts=testclient",
 ]
+filterwarnings = [ "error:pytest.PytestWarning.*" ]
+minversion = "9.1"
 strict_markers = true
-filterwarnings = ["error:pytest.PytestWarning.*"]
-
-[tool.mypy]
-python_version = "3.14"
-plugins = ["pydantic.mypy"]
-exclude = ["build_scripts/", "docs/"]
-explicit_package_bases = true
-namespace_packages = true
-
-# openapi-generator output (see `client/src/BUILD`): its signatures still type-check callers, but errors
-# inside the generated modules aren't ours to fix.
-[[tool.mypy.overrides]]
-module = ["beetkeeper_api_client", "beetkeeper_api_client.*"]
-ignore_errors = true
-
-[tool.bandit]
-exclude_dirs = [
-  ".github",
-  "build_scripts",
-  "docs",
-  "plugin/src/tests",
-  "beetkeeper-core/src/tests",
-  "integration_tests",
-  ".venv",
-]
