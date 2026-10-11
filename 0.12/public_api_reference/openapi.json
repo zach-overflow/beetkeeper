@@ -1,0 +1,3402 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "beetkeeper",
+    "license": {
+      "name": "AGPL-3.0-or-later",
+      "identifier": "AGPL-3.0-or-later"
+    },
+    "version": ""
+  },
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Login",
+        "description": "Exchange the configured `beetkeeper.auth` credentials for a bearer token.",
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponseBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Logout",
+        "description": "Revoke the bearer token this request authenticated with (identified by the `Authorization` header).",
+        "operationId": "logout_api_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponseBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/events": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Events",
+        "description": "Lists the requested page of ingested beets listener events (newest first), each with the beets album/track\nids of its child rows (the ones the beetkeeper event-listener plugin pushed to the POST endpoints).",
+        "operationId": "events_api_events_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The page number, 1-indexed.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "The page number, 1-indexed."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/album/{beets_album_id}": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "By Album Id",
+        "description": "Returns the list of results for events associated with the beets album ID, if any exist.",
+        "operationId": "by_album_id_api_events_album__beets_album_id__get",
+        "parameters": [
+          {
+            "name": "beets_album_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": -1,
+              "title": "beets album ID to search listener events by"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The page number, 1-indexed.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "The page number, 1-indexed."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/track/{beets_track_id}": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "By Track Id",
+        "description": "Returns the list of results for events associated with the beets item ID, if any exist.",
+        "operationId": "by_track_id_api_events_track__beets_track_id__get",
+        "parameters": [
+          {
+            "name": "beets_track_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": -1,
+              "title": "beets track ID to search listener events by"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The page number, 1-indexed.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "The page number, 1-indexed."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/{beetkeeper_event_id}": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "By Event Id",
+        "description": "Returns the list of results for events associated with the beetkeeper event item ID, if any exist.",
+        "operationId": "by_event_id_api_events__beetkeeper_event_id__get",
+        "parameters": [
+          {
+            "name": "beetkeeper_event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": -1,
+              "title": "beetkeeper event ID to search listener events by"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The page number, 1-indexed.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "The page number, 1-indexed."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Health",
+        "description": "Report this process's pid, the current import leader (the `import_lock` holder), and the shared job count.\n\nThe server runs as a single worker process, so the serving pid and the leader normally coincide; the lease\nfields remain observable because job state and the lock are DB-backed (and survive restarts).",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Start Import",
+        "description": "Enqueue an import of the given paths and return the created (PENDING) job.\n\nSet `quiet=true` to import non-interactively (the `beet import -q` equivalent): no decision prompts.\nThe optional per-job settings (`quiet`, `logpath`, `group_albums`, `flat`, `set_fields`) default to the\ncorresponding beets config values when left unspecified.",
+        "operationId": "start_import_api_import_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportSubmitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "List Imports",
+        "description": "List one page of known import jobs, newest first (so page 1 shows the most recent submissions).",
+        "operationId": "list_imports_api_import_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The page number, 1-indexed.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "The page number, 1-indexed."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportJob"
+                  },
+                  "title": "Response List Imports Api Import Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/clean_slate/preview": {
+      "get": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Preview Clean Slate",
+        "description": "Dry-run a clean-slate import without touching anything (see `POST /api/import/clean_slate`).\n\nReports what the removal would delete (library files inside the beets directory, album art), what it\nwould leave alone, the flexible attributes that would be lost and those re-applied to the fresh import\n(`fields_preserved`: the entry's values for the keys of the `downloader_hook.beet_field_to_dl_search_field`\nconfig), what the source folder holds, plus the blocking `errors`, non-blocking `warnings`, and whether the\nfewer-files opt-in is needed. 404 for an unknown beets id.",
+        "operationId": "preview_clean_slate_api_import_clean_slate_preview_get",
+        "parameters": [
+          {
+            "name": "beets_album_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The beets library id of an album. Mutually exclusive with `beets_item_id`.",
+              "title": "Beets Album Id"
+            },
+            "description": "The beets library id of an album. Mutually exclusive with `beets_item_id`."
+          },
+          {
+            "name": "beets_item_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The beets library id of an item (track). Mutually exclusive with `beets_album_id`.",
+              "title": "Beets Item Id"
+            },
+            "description": "The beets library id of an item (track). Mutually exclusive with `beets_album_id`."
+          },
+          {
+            "name": "source_path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The entry's raw (pre-import) source folder, under beetkeeper's `downloads_path`; for a standalone track, the audio file itself or a folder holding just that file.",
+              "title": "Source Path"
+            },
+            "description": "The entry's raw (pre-import) source folder, under beetkeeper's `downloads_path`; for a standalone track, the audio file itself or a folder holding just that file."
+          },
+          {
+            "name": "allow_fewer_files",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Proceed even when the source holds fewer audio files than the entry currently has on disk (the clean slate would then delete files the source cannot replace). Off by default.",
+              "default": false,
+              "title": "Allow Fewer Files"
+            },
+            "description": "Proceed even when the source holds fewer audio files than the entry currently has on disk (the clean slate would then delete files the source cannot replace). Off by default."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanSlatePreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/clean_slate": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Start Clean Slate",
+        "description": "Enqueue a clean-slate import: remove the named library entry, then import its source folder afresh.\n\nThe preview runs first: a blocking error is a 422, a source with fewer audio files than the entry has on\ndisk is a 409 until `allow_fewer_files` is set, and an unknown beets id is a 404. The job is then\ntracked like any other import (poll it, answer its decisions, abort it via the routes below); the worker\nre-runs the preview as its guard right before removing anything.",
+        "operationId": "start_clean_slate_api_import_clean_slate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanSlateSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/find_missing_source_path": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Find Missing Source Path",
+        "description": "Ask the configured downloader client where a library album/track was originally downloaded to.\n\nOnly useful for entries imported outside a beetkeeper context (so no source path was recorded): the\nrecovered pre-import folder is what a clean-slate import of the entry needs. The entry's fields named in\nthe beets config's `beetkeeper.downloader_hook.beet_field_to_dl_search_field` become the search\nrequest's query params (see the `search-missing-source-path` webhook). A match is stored as the entry's\n*inferred* source path (replacing any earlier inference), which the search page then shows labelled as\ninferred \u2014 separate from source paths recorded from the beetkeeper plugin's events. 409 when no\ndownloader API is configured; 404 for an unknown beets id.",
+        "operationId": "find_missing_source_path_api_import_find_missing_source_path_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindMissingSourcePathRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindMissingSourcePathResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/{job_id}": {
+      "get": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Get Import",
+        "description": "Return a single import job (poll this for status / the pending decision).",
+        "operationId": "get_import_api_import__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/{job_id}/decision": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Decide Import",
+        "description": "Answer the decision an import is parked on; 409 if it isn't awaiting one.",
+        "operationId": "decide_import_api_import__job_id__decision_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportDecision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/{job_id}/abort": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Abort Import",
+        "description": "Request cooperative cancellation of an in-flight import.",
+        "operationId": "abort_import_api_import__job_id__abort_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/query/list": {
+      "get": {
+        "tags": [
+          "query"
+        ],
+        "summary": "List ",
+        "description": "Execute `beet list ...`: return one page of matching tracks (or albums) as JSON objects.\n\nThe query params (pagination plus the beets query inputs, some repeatable) are documented on\n`ListQueryParams`.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#list",
+        "operationId": "list__api_query_list_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The page number, 1-indexed.",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "The page number, 1-indexed."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results per page.",
+              "default": 25,
+              "title": "Page Size"
+            },
+            "description": "Maximum results per page."
+          },
+          {
+            "name": "albums",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Like `-a`; return albums instead of individual tracks.",
+              "default": false,
+              "title": "Albums"
+            },
+            "description": "Like `-a`; return albums instead of individual tracks."
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Repeatable bare-keyword query parts (substring match across default fields).",
+              "title": "Keyword"
+            },
+            "description": "Repeatable bare-keyword query parts (substring match across default fields)."
+          },
+          {
+            "name": "field",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Repeatable `field:value` parts (exact `=`, regex `::`, numeric/date ranges all supported).",
+              "title": "Field"
+            },
+            "description": "Repeatable `field:value` parts (exact `=`, regex `::`, numeric/date ranges all supported)."
+          },
+          {
+            "name": "phrase",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A single multi-word phrase part.",
+              "title": "Phrase"
+            },
+            "description": "A single multi-word phrase part."
+          },
+          {
+            "name": "filepath",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "path"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A path within the beets library (becomes a path query).",
+              "title": "Filepath"
+            },
+            "description": "A path within the beets library (becomes a path query)."
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A beets sort token, e.g. `year+` or `artist-`.",
+              "title": "Sort By"
+            },
+            "description": "A beets sort token, e.g. `year+` or `artist-`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List  Api Query List Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/query/stats": {
+      "get": {
+        "tags": [
+          "query"
+        ],
+        "summary": "Stats",
+        "description": "Execute `beet stats`: track count, total time, approximate size, and artist/album counts.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#stats",
+        "operationId": "stats_api_query_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Stats Api Query Stats Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/query/fields": {
+      "get": {
+        "tags": [
+          "query"
+        ],
+        "summary": "Fields",
+        "description": "Execute `beet fields`: the item/album query fields and flexible attributes available.\n\nSee: https://beets.readthedocs.io/en/v2.12.0/reference/cli.html#fields",
+        "operationId": "fields_api_query_fields_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object",
+                  "title": "Response Fields Api Query Fields Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {
+    "search-missing-source-path": {
+      "get": {
+        "summary": "Search Missing Source Path",
+        "description": "Sent by beetkeeper to the configured downloader API (`downloader_hook.base_url` + `search_endpoint_path`)\nwhen a client requests `POST /api/import/find_missing_source_path` for a library entry whose\nsource path was never recorded. The downloader answers with a JSON list of results (or one object);\nbeetkeeper takes the first result's path. When `downloader_hook.api_key` is set, the request carries an\n`Authorization: Bearer <api_key>` header.",
+        "operationId": "search_missing_source_pathsearch_missing_source_path_get",
+        "parameters": [
+          {
+            "description": "One query param per entry in the `downloader_hook.beet_field_to_dl_search_field` config: the param is named by the mapping's value and carries the library entry's beets field value (e.g. `album=Geogaddi&albumartist=Boards+of+Canada`).",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Field",
+              "description": "One query param per entry in the `downloader_hook.beet_field_to_dl_search_field` config: the param is named by the mapping's value and carries the library entry's beets field value (e.g. `album=Geogaddi&albumartist=Boards+of+Canada`)."
+            },
+            "name": "field",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SearchMissingSourcePathResult"
+                  },
+                  "type": "array",
+                  "title": "Response Search Missing Source Pathsearch Missing Source Path Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "APIAlbum": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "added": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added"
+          },
+          "album": {
+            "type": "string",
+            "title": "Album",
+            "default": ""
+          },
+          "albumartist": {
+            "type": "string",
+            "title": "Albumartist",
+            "default": ""
+          },
+          "albumartist_credit": {
+            "type": "string",
+            "title": "Albumartist Credit",
+            "default": ""
+          },
+          "albumartist_sort": {
+            "type": "string",
+            "title": "Albumartist Sort",
+            "default": ""
+          },
+          "albumartists": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists"
+          },
+          "albumartists_credit": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists Credit"
+          },
+          "albumartists_sort": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists Sort"
+          },
+          "albumdisambig": {
+            "type": "string",
+            "title": "Albumdisambig",
+            "default": ""
+          },
+          "albumstatus": {
+            "type": "string",
+            "title": "Albumstatus",
+            "default": ""
+          },
+          "albumtype": {
+            "type": "string",
+            "title": "Albumtype",
+            "default": ""
+          },
+          "albumtypes": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumtypes"
+          },
+          "artpath": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Artpath",
+            "default": ""
+          },
+          "asin": {
+            "type": "string",
+            "title": "Asin",
+            "default": ""
+          },
+          "barcode": {
+            "type": "string",
+            "title": "Barcode",
+            "default": ""
+          },
+          "catalognum": {
+            "type": "string",
+            "title": "Catalognum",
+            "default": ""
+          },
+          "comp": {
+            "type": "boolean",
+            "title": "Comp",
+            "default": false
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "default": ""
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "discogs_albumid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Albumid"
+          },
+          "discogs_artistid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Artistid"
+          },
+          "discogs_labelid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Labelid"
+          },
+          "disctotal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disctotal"
+          },
+          "genres": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genres"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": ""
+          },
+          "mb_albumartistid": {
+            "type": "string",
+            "title": "Mb Albumartistid",
+            "default": ""
+          },
+          "mb_albumartistids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mb Albumartistids"
+          },
+          "mb_albumid": {
+            "type": "string",
+            "title": "Mb Albumid",
+            "default": ""
+          },
+          "mb_releasegroupid": {
+            "type": "string",
+            "title": "Mb Releasegroupid",
+            "default": ""
+          },
+          "month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "original_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Day"
+          },
+          "original_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Month"
+          },
+          "original_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Year"
+          },
+          "r128_album_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R128 Album Gain"
+          },
+          "release_group_title": {
+            "type": "string",
+            "title": "Release Group Title",
+            "default": ""
+          },
+          "releasegroupdisambig": {
+            "type": "string",
+            "title": "Releasegroupdisambig",
+            "default": ""
+          },
+          "rg_album_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Album Gain"
+          },
+          "rg_album_peak": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Album Peak"
+          },
+          "script": {
+            "type": "string",
+            "title": "Script",
+            "default": ""
+          },
+          "style": {
+            "type": "string",
+            "title": "Style",
+            "default": ""
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "APIAlbum",
+        "description": "Model for the relevant parts of a `beets.library.Album` instance. used during beets plugin client push events\nfor an event tied to a given album. For simplicity, we only mark `id` as required, with all other fields as\noptional (which might not be the case for beets internals).\n\nNOTE: This was generated from `build_scripts/code_gen/pydantic_field_info_from_beets_model.py`."
+      },
+      "APITrack": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "acoustid_fingerprint": {
+            "type": "string",
+            "title": "Acoustid Fingerprint",
+            "default": ""
+          },
+          "acoustid_id": {
+            "type": "string",
+            "title": "Acoustid Id",
+            "default": ""
+          },
+          "added": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added"
+          },
+          "album": {
+            "type": "string",
+            "title": "Album",
+            "default": ""
+          },
+          "album_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Album Id"
+          },
+          "albumartist": {
+            "type": "string",
+            "title": "Albumartist",
+            "default": ""
+          },
+          "albumartist_credit": {
+            "type": "string",
+            "title": "Albumartist Credit",
+            "default": ""
+          },
+          "albumartist_sort": {
+            "type": "string",
+            "title": "Albumartist Sort",
+            "default": ""
+          },
+          "albumartists": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists"
+          },
+          "albumartists_credit": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists Credit"
+          },
+          "albumartists_sort": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumartists Sort"
+          },
+          "albumdisambig": {
+            "type": "string",
+            "title": "Albumdisambig",
+            "default": ""
+          },
+          "albumstatus": {
+            "type": "string",
+            "title": "Albumstatus",
+            "default": ""
+          },
+          "albumtype": {
+            "type": "string",
+            "title": "Albumtype",
+            "default": ""
+          },
+          "albumtypes": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Albumtypes"
+          },
+          "arrangers": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrangers"
+          },
+          "arrangers_ids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrangers Ids"
+          },
+          "artist": {
+            "type": "string",
+            "title": "Artist",
+            "default": ""
+          },
+          "artist_credit": {
+            "type": "string",
+            "title": "Artist Credit",
+            "default": ""
+          },
+          "artist_sort": {
+            "type": "string",
+            "title": "Artist Sort",
+            "default": ""
+          },
+          "artists": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artists"
+          },
+          "artists_credit": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artists Credit"
+          },
+          "artists_ids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artists Ids"
+          },
+          "artists_sort": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artists Sort"
+          },
+          "asin": {
+            "type": "string",
+            "title": "Asin",
+            "default": ""
+          },
+          "barcode": {
+            "type": "string",
+            "title": "Barcode",
+            "default": ""
+          },
+          "bitdepth": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bitdepth"
+          },
+          "bitrate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bitrate"
+          },
+          "bitrate_mode": {
+            "type": "string",
+            "title": "Bitrate Mode",
+            "default": ""
+          },
+          "bpm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bpm"
+          },
+          "catalognum": {
+            "type": "string",
+            "title": "Catalognum",
+            "default": ""
+          },
+          "channels": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channels"
+          },
+          "comments": {
+            "type": "string",
+            "title": "Comments",
+            "default": ""
+          },
+          "comp": {
+            "type": "boolean",
+            "title": "Comp",
+            "default": false
+          },
+          "composer_sort": {
+            "type": "string",
+            "title": "Composer Sort",
+            "default": ""
+          },
+          "composers": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composers"
+          },
+          "composers_ids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composers Ids"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "default": ""
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "disc": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disc"
+          },
+          "discogs_albumid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Albumid"
+          },
+          "discogs_artistid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Artistid"
+          },
+          "discogs_labelid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discogs Labelid"
+          },
+          "disctitle": {
+            "type": "string",
+            "title": "Disctitle",
+            "default": ""
+          },
+          "disctotal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disctotal"
+          },
+          "encoder": {
+            "type": "string",
+            "title": "Encoder",
+            "default": ""
+          },
+          "encoder_info": {
+            "type": "string",
+            "title": "Encoder Info",
+            "default": ""
+          },
+          "encoder_settings": {
+            "type": "string",
+            "title": "Encoder Settings",
+            "default": ""
+          },
+          "format": {
+            "type": "string",
+            "title": "Format",
+            "default": ""
+          },
+          "genres": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genres"
+          },
+          "grouping": {
+            "type": "string",
+            "title": "Grouping",
+            "default": ""
+          },
+          "initial_key": {
+            "type": "string",
+            "title": "Initial Key",
+            "default": ""
+          },
+          "isrc": {
+            "type": "string",
+            "title": "Isrc",
+            "default": ""
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": ""
+          },
+          "length": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length"
+          },
+          "lyricists": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lyricists"
+          },
+          "lyricists_ids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lyricists Ids"
+          },
+          "lyrics": {
+            "type": "string",
+            "title": "Lyrics",
+            "default": ""
+          },
+          "mb_albumartistid": {
+            "type": "string",
+            "title": "Mb Albumartistid",
+            "default": ""
+          },
+          "mb_albumartistids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mb Albumartistids"
+          },
+          "mb_albumid": {
+            "type": "string",
+            "title": "Mb Albumid",
+            "default": ""
+          },
+          "mb_artistid": {
+            "type": "string",
+            "title": "Mb Artistid",
+            "default": ""
+          },
+          "mb_artistids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mb Artistids"
+          },
+          "mb_releasegroupid": {
+            "type": "string",
+            "title": "Mb Releasegroupid",
+            "default": ""
+          },
+          "mb_releasetrackid": {
+            "type": "string",
+            "title": "Mb Releasetrackid",
+            "default": ""
+          },
+          "mb_trackid": {
+            "type": "string",
+            "title": "Mb Trackid",
+            "default": ""
+          },
+          "mb_workid": {
+            "type": "string",
+            "title": "Mb Workid",
+            "default": ""
+          },
+          "media": {
+            "type": "string",
+            "title": "Media",
+            "default": ""
+          },
+          "month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "mtime": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mtime"
+          },
+          "original_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Day"
+          },
+          "original_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Month"
+          },
+          "original_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Year"
+          },
+          "path": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Path",
+            "default": ""
+          },
+          "r128_album_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R128 Album Gain"
+          },
+          "r128_track_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R128 Track Gain"
+          },
+          "release_group_title": {
+            "type": "string",
+            "title": "Release Group Title",
+            "default": ""
+          },
+          "releasegroupdisambig": {
+            "type": "string",
+            "title": "Releasegroupdisambig",
+            "default": ""
+          },
+          "remixers": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remixers"
+          },
+          "remixers_ids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remixers Ids"
+          },
+          "rg_album_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Album Gain"
+          },
+          "rg_album_peak": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Album Peak"
+          },
+          "rg_track_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Track Gain"
+          },
+          "rg_track_peak": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rg Track Peak"
+          },
+          "samplerate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Samplerate"
+          },
+          "script": {
+            "type": "string",
+            "title": "Script",
+            "default": ""
+          },
+          "style": {
+            "type": "string",
+            "title": "Style",
+            "default": ""
+          },
+          "subtitle": {
+            "type": "string",
+            "title": "Subtitle",
+            "default": ""
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "track": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track"
+          },
+          "trackdisambig": {
+            "type": "string",
+            "title": "Trackdisambig",
+            "default": ""
+          },
+          "tracktotal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracktotal"
+          },
+          "work": {
+            "type": "string",
+            "title": "Work",
+            "default": ""
+          },
+          "work_disambig": {
+            "type": "string",
+            "title": "Work Disambig",
+            "default": ""
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "APITrack",
+        "description": "Model for the relevant parts of a `beets.library.Item` (track) instance. used during beets plugin client push events\nfor an event tied to a single track ('Item'). For simplicity, we only mark `id` as required, with all other fields as\noptional (which might not be the case for beets internals).\n\nNOTE: This was generated from `build_scripts/code_gen/pydantic_field_info_from_beets_model.py`."
+      },
+      "BeetsEventType": {
+        "type": "string",
+        "enum": [
+          "album_imported",
+          "album_removed",
+          "import_task_files",
+          "item_imported",
+          "item_removed"
+        ],
+        "title": "BeetsEventType",
+        "description": "Subset of beets listener `event_type`s which the API accepts from our plugin client.\nSee also:\n    https://beets.readthedocs.io/en/stable/dev/plugins/events.html"
+      },
+      "CleanSlatePreview": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "enum": [
+              "album",
+              "track"
+            ],
+            "title": "Subject"
+          },
+          "beets_id": {
+            "type": "integer",
+            "title": "Beets Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "`albumartist - album` for an album, `artist - title` for a standalone track."
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count",
+            "description": "Library rows the entry holds (1 for a standalone track)."
+          },
+          "files_present": {
+            "type": "integer",
+            "title": "Files Present",
+            "description": "How many of those rows still have their file on disk."
+          },
+          "missing_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Paths",
+            "description": "Library paths whose file is gone."
+          },
+          "expected_tracks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Tracks",
+            "description": "Track total the album's tags claim (beets' `albumtotal`), when known."
+          },
+          "files_to_delete": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files To Delete",
+            "description": "Library files the removal deletes (inside the beets directory)."
+          },
+          "files_kept_outside_library": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files Kept Outside Library",
+            "description": "Entry files left on disk because they live outside the beets directory."
+          },
+          "art_to_delete": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Art To Delete",
+            "description": "The album art file the removal deletes, if any."
+          },
+          "flexible_attributes_lost": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Flexible Attributes Lost",
+            "description": "Flexible attribute names on the entry that a clean slate does not keep (`fields_preserved` aside)."
+          },
+          "fields_preserved": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Fields Preserved",
+            "description": "The entry's flexible attributes named as keys of the `downloader_hook.beet_field_to_dl_search_field` config, with their values: re-applied to the fresh import via beets' `--set`."
+          },
+          "source_path": {
+            "type": "string",
+            "title": "Source Path"
+          },
+          "source_audio_files": {
+            "type": "integer",
+            "title": "Source Audio Files",
+            "description": "Readable audio files found under the source path.",
+            "default": 0
+          },
+          "source_album_groups": {
+            "type": "integer",
+            "title": "Source Album Groups",
+            "description": "Album folders beets would import from the source.",
+            "default": 0
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "needs_confirmation": {
+            "type": "boolean",
+            "title": "Needs Confirmation",
+            "description": "The source has fewer audio files than the entry has on disk and `allow_fewer_files` was not set.",
+            "default": false
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "description": "Whether the clean slate may run as previewed (no blocking error and no outstanding confirmation).",
+            "readOnly": true
+          },
+          "files_missing": {
+            "type": "integer",
+            "title": "Files Missing",
+            "description": "How many of the entry's rows point at a file that no longer exists.",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "beets_id",
+          "label",
+          "item_count",
+          "files_present",
+          "source_path",
+          "ok",
+          "files_missing"
+        ],
+        "title": "CleanSlatePreview",
+        "description": "The dry run of a clean-slate import: what removing the library entry and importing its source would do.\n\nProduced read-only by `core.clean_slate.preview` for the API/UI preview, and again by the worker as the\nguard before it removes anything. `errors` lists the conditions that block the job outright; `warnings`\nare worth a look but do not block. `needs_confirmation` is set when the source folder holds fewer audio\nfiles than the entry currently has on disk \u2014 proceeding would delete files the source cannot replace,\nso the caller must opt in explicitly (`allow_fewer_files`)."
+      },
+      "CleanSlateSubmitRequest": {
+        "properties": {
+          "beets_album_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beets Album Id",
+            "description": "The beets library id of an album. Mutually exclusive with `beets_item_id`."
+          },
+          "beets_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beets Item Id",
+            "description": "The beets library id of an item (track). Mutually exclusive with `beets_album_id`."
+          },
+          "source_path": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Source Path",
+            "description": "The entry's raw (pre-import) source folder, under beetkeeper's `downloads_path`; for a standalone track, the audio file itself or a folder holding just that file."
+          },
+          "allow_fewer_files": {
+            "type": "boolean",
+            "title": "Allow Fewer Files",
+            "description": "Proceed even when the source holds fewer audio files than the entry currently has on disk (the clean slate would then delete files the source cannot replace). Off by default.",
+            "default": false
+          },
+          "quiet": {
+            "type": "boolean",
+            "title": "Quiet",
+            "description": "Run non-interactively (like `beet import -q`). See `ImportSubmitRequest.quiet`."
+          },
+          "logpath": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logpath",
+            "description": "Corresponds to the `-l` option, or the config's `import.log` option."
+          },
+          "set_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Set Fields",
+            "description": "Corresponds to the `--set field=value` option for beets' `import` CLI command."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_path"
+        ],
+        "title": "CleanSlateSubmitRequest",
+        "description": "Body for starting a clean-slate import: remove the named library entry \u2014 its rows, the files inside the\nbeets directory and the album art, like `beet remove -d` \u2014 then import `source_path` afresh as an ordinary\npath import (decisions, abort, quiet mode all apply). Nothing is carried over from the old entry \u2014 not its\nflexible attributes, not its added-date \u2014 except the flexible attributes named as keys of the\n`downloader_hook.beet_field_to_dl_search_field` config, whose values are re-applied to the fresh import via\n`set_fields` (winning over a `set_fields` entry of the same name). Option defaults come from the\n`beets.config` values.\n\nThe removal happens before the import starts; skipping or aborting the import afterwards leaves the entry\nremoved and the source files where they are. Preview first with `GET /api/import/clean_slate/preview`."
+      },
+      "DecisionRequest": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ImportCandidate"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "allowed_actions": {
+            "items": {
+              "$ref": "#/components/schemas/ImportAction"
+            },
+            "type": "array",
+            "title": "Allowed Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "task_id",
+          "prompt"
+        ],
+        "title": "DecisionRequest",
+        "description": "Published when the importer needs a user choice for a task; the matching `ImportDecision` unblocks it."
+      },
+      "EventSearchResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/EventSearchResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "description": "Any error messages from the event search."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EventSearchResponse",
+        "description": "Response model for the `GET /api/events/(album|track)/{id}` and `GET /api/events/{event_id}` search routes."
+      },
+      "EventSearchResult": {
+        "properties": {
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id",
+            "description": "The beetkeeper event ID associated with this match."
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/BeetsEventType",
+            "description": "The type of beets event ( https://beets.readthedocs.io/en/stable/dev/plugins/events.html )."
+          },
+          "event_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Event Time",
+            "description": "The time of the event taking place."
+          },
+          "beets_id": {
+            "type": "integer",
+            "title": "Beets Id",
+            "description": "The beets ID of the event's subject (either beets Album ID or Item ID)."
+          },
+          "current_beets_subject_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/APIAlbum"
+              },
+              {
+                "$ref": "#/components/schemas/APITrack"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Beets Subject State",
+            "description": "Current state of the event's subject (Album or Item). Null if subject no longer exists."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "event_type",
+          "event_time",
+          "beets_id"
+        ],
+        "title": "EventSearchResult",
+        "description": "A model with an aggregate of details for an event search match."
+      },
+      "EventSubjectSummary": {
+        "properties": {
+          "beets_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beets Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EventSubjectSummary",
+        "description": "One beets album or track referenced by a listener event: its beets id plus the name recorded at\npush time (the album/release name, or the track title). Either part can be missing: rows ingested\nbefore names were recorded have no name, and a singleton's release name has no beets album id."
+      },
+      "EventsListResponse": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ListenerEventDetails"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EventsListResponse",
+        "description": "Response payload for the events listing: recently ingested listener events, newest first."
+      },
+      "FindMissingSourcePathRequest": {
+        "properties": {
+          "beets_album_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beets Album Id",
+            "description": "The beets library id of an album. Mutually exclusive with `beets_item_id`."
+          },
+          "beets_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beets Item Id",
+            "description": "The beets library id of an item (track). Mutually exclusive with `beets_album_id`."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "FindMissingSourcePathRequest",
+        "description": "Body of `POST /api/import/find_missing_source_path`: the entry to ask the downloader about."
+      },
+      "FindMissingSourcePathResponse": {
+        "properties": {
+          "found_match": {
+            "type": "boolean",
+            "title": "Found Match",
+            "description": "True if the missing source path search returned a matching result."
+          },
+          "search_status_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Status Code",
+            "description": "The HTTP status code of the downloader API search, when one was made."
+          },
+          "source_directory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Directory",
+            "description": "The source directory (as mounted on the app container) from the matched search, if any."
+          },
+          "query_params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Query Params",
+            "description": "The query params the search was made with (the renamed beets fields)."
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "description": "Why no match was found, when `found_match` is false.",
+            "default": ""
+          },
+          "recorded_inference": {
+            "type": "boolean",
+            "title": "Recorded Inference",
+            "description": "True when the match was stored as the entry's *inferred* source path (shown as such on the search page; kept apart from source paths recorded from the beetkeeper plugin's events).",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "found_match"
+        ],
+        "title": "FindMissingSourcePathResponse",
+        "description": "Response model for the `/find_missing_source_path` endpoint."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthInfo": {
+        "properties": {
+          "process_pid": {
+            "type": "integer",
+            "title": "Process Pid"
+          },
+          "hostname": {
+            "type": "string",
+            "title": "Hostname"
+          },
+          "import_lock_holder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Import Lock Holder"
+          },
+          "is_import_leader": {
+            "type": "boolean",
+            "title": "Is Import Leader"
+          },
+          "job_count": {
+            "type": "integer",
+            "title": "Job Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "process_pid",
+          "hostname",
+          "import_lock_holder",
+          "is_import_leader",
+          "job_count"
+        ],
+        "title": "HealthInfo",
+        "description": "Per-process health snapshot."
+      },
+      "ImportAction": {
+        "type": "string",
+        "enum": [
+          "apply",
+          "asis",
+          "skip"
+        ],
+        "title": "ImportAction",
+        "description": "beetkeeper-side mirror of beets' import `action` choices (decoupled from beets internals).\n\n`APPLY` imports with the chosen candidate's metadata, `ASIS` imports without changing tags, `SKIP` skips\nthe task."
+      },
+      "ImportCandidate": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Similarity",
+            "description": "1.0 - beets match distance, if available."
+          },
+          "data_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Source"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "media": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media"
+          },
+          "record_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Label"
+          },
+          "catalognum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalognum"
+          },
+          "disambiguation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disambiguation"
+          },
+          "track_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track Count"
+          },
+          "album_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Album Id",
+            "description": "Source-specific release id (e.g. a MusicBrainz MBID)."
+          },
+          "release_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Url",
+            "description": "Web URL for the release, from the source plugin (beets' `AlbumInfo.data_url`)."
+          },
+          "details": {
+            "type": "string",
+            "title": "Details",
+            "description": "One-line summary of the differentiating attributes (empty string when none are known).",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "label",
+          "details"
+        ],
+        "title": "ImportCandidate",
+        "description": "A serializable view of one beets match candidate, surfaced to the UI for selection.\n\nBeyond the headline `label`/`similarity`, the optional release attributes below let the UI tell\notherwise-identical candidates apart (e.g. different pressings/editions of the same album); `details`\njoins the populated ones into a single human-readable line for display."
+      },
+      "ImportDecision": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ImportAction"
+          },
+          "candidate_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Index",
+            "description": "Required when `action` is APPLY."
+          }
+        },
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "ImportDecision",
+        "description": "The user's answer to a `DecisionRequest` (posted back from the UI)."
+      },
+      "ImportJob": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique job id (32 hex characters), the `job_id` of the per-job import routes."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportJobStatus",
+            "description": "The job's lifecycle state."
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Paths",
+            "description": "The filesystem paths beets imports (for a clean slate, the removed entry's raw source folder)."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "When the job was submitted (naive UTC)."
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Why the job FAILED, once it has; None otherwise."
+          },
+          "pending_decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionRequest"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The decision the worker is parked on while AWAITING_DECISION; None otherwise."
+          },
+          "decision_submitted": {
+            "type": "boolean",
+            "title": "Decision Submitted",
+            "description": "True once the UI has answered the pending decision but the worker has not consumed it yet: the job is momentarily still AWAITING_DECISION, so keep polling instead of re-showing the prompt.",
+            "default": false
+          },
+          "output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output",
+            "description": "Human-readable, append-only log of the import's progress."
+          },
+          "quiet": {
+            "type": "boolean",
+            "title": "Quiet",
+            "description": "Non-interactive (`beet import -q`) mode: the worker auto-decides matches instead of prompting.",
+            "default": false
+          },
+          "logpath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logpath",
+            "description": "The `beet import -l` log file path, if any."
+          },
+          "group_albums": {
+            "type": "boolean",
+            "title": "Group Albums",
+            "description": "The `beet import --group-albums` flag.",
+            "default": false
+          },
+          "flat": {
+            "type": "boolean",
+            "title": "Flat",
+            "description": "The `beet import --flat` flag.",
+            "default": false
+          },
+          "set_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Set Fields",
+            "description": "The `beet import --set` field values."
+          },
+          "clean_slate_album_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clean Slate Album Id",
+            "description": "The library album removed before `paths` (its source folder) is imported afresh."
+          },
+          "clean_slate_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clean Slate Item Id",
+            "description": "The standalone track removed before `paths` is imported afresh. At most one clean-slate id is set; both None means a plain path import."
+          },
+          "clean_slate_allow_fewer_files": {
+            "type": "boolean",
+            "title": "Clean Slate Allow Fewer Files",
+            "description": "The submitter's opt-in to a source holding fewer audio files than the entry has on disk (see `CleanSlatePreview.needs_confirmation`); the worker re-runs the preview with it before removing anything.",
+            "default": false
+          },
+          "is_clean_slate": {
+            "type": "boolean",
+            "title": "Is Clean Slate",
+            "description": "Whether this job removes an existing library entry before importing its source afresh.",
+            "readOnly": true
+          },
+          "source_label": {
+            "type": "string",
+            "title": "Source Label",
+            "description": "Display name for the import source: the path basename(s), prefixed for a clean-slate import.",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "paths",
+          "created_at",
+          "is_clean_slate",
+          "source_label"
+        ],
+        "title": "ImportJob",
+        "description": "API-facing view of a single import job (the persisted record is `db.models.ImportJobRecord`)."
+      },
+      "ImportJobStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "running",
+          "awaiting_decision",
+          "completed",
+          "failed",
+          "aborted"
+        ],
+        "title": "ImportJobStatus",
+        "description": "Lifecycle states of an import job."
+      },
+      "ImportSubmitRequest": {
+        "properties": {
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Paths",
+            "description": "One or more paths (files/dirs) to import."
+          },
+          "quiet": {
+            "type": "boolean",
+            "title": "Quiet",
+            "description": "Run non-interactively (like `beet import -q`): never prompt. Strong matches are applied automatically; anything else falls back to beets' `quiet_fallback` config (skip by default)."
+          },
+          "logpath": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logpath",
+            "description": "Corresponds to the `-l` option when running an import command, or config's `import.log` option. See https://beets.readthedocs.io/en/stable/reference/cli.html#import"
+          },
+          "group_albums": {
+            "type": "boolean",
+            "title": "Group Albums",
+            "description": "See https://beets.readthedocs.io/en/stable/reference/config.html#group-albums"
+          },
+          "flat": {
+            "type": "boolean",
+            "title": "Flat",
+            "description": "Corresponds to the `--flat` flag when running an import command. See https://beets.readthedocs.io/en/stable/reference/cli.html#import"
+          },
+          "set_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Set Fields",
+            "description": "Corresponds to the `--set field=value` option for beets' `import` CLI command. Can set multiple key-value pairs."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "paths"
+        ],
+        "title": "ImportSubmitRequest",
+        "description": "Body for starting an import: the filesystem path(s) beets should import. All default values come from the\n`beets.config` values (cached) if left unspecified."
+      },
+      "ListenerEventDetails": {
+        "properties": {
+          "event_type": {
+            "$ref": "#/components/schemas/BeetsEventType"
+          },
+          "pushed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pushed At"
+          },
+          "albums": {
+            "items": {
+              "$ref": "#/components/schemas/EventSubjectSummary"
+            },
+            "type": "array",
+            "title": "Albums"
+          },
+          "tracks": {
+            "items": {
+              "$ref": "#/components/schemas/EventSubjectSummary"
+            },
+            "type": "array",
+            "title": "Tracks"
+          },
+          "source_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Paths"
+          },
+          "destination_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Destination Paths"
+          },
+          "album_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Album Ids",
+            "description": "The beets ids in `albums`, a derived view kept for response compatibility.",
+            "readOnly": true
+          },
+          "track_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Track Ids",
+            "description": "The beets ids in `tracks`, a derived view kept for response compatibility.",
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_type",
+          "pushed_at",
+          "album_ids",
+          "track_ids"
+        ],
+        "title": "ListenerEventDetails",
+        "description": "One ingested beets listener event, with the album/track summaries of its child rows and, for\n`import_task_files` events, the import's source/destination filepaths (with `albums` holding the\nimported tracks' distinct releases, since those events have no album child rows of their own)."
+      },
+      "LoginRequestBody": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "format": "password",
+            "title": "Username",
+            "writeOnly": true
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password",
+            "writeOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequestBody",
+        "description": "Credentials for `POST /api/auth/login`: the single configured `beetkeeper.auth` username/password pair."
+      },
+      "LoginResponseBody": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "token_type": {
+            "type": "string",
+            "const": "bearer",
+            "title": "Token Type",
+            "default": "bearer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "LoginResponseBody",
+        "description": "The raw bearer token the client must send back as `Authorization: Bearer <token>` (`str`, not\n`SecretStr` \u2014 this response is the one place the token is intentionally revealed)."
+      },
+      "LogoutResponseBody": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": "Logged out."
+          }
+        },
+        "type": "object",
+        "title": "LogoutResponseBody",
+        "description": "Confirmation returned by `POST /api/auth/logout` once the session token has been revoked."
+      },
+      "SearchMissingSourcePathResult": {
+        "properties": {
+          "content_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Path",
+            "description": "Example path key (qBittorrent's name for it). beetkeeper reads the key named by the `downloader_hook.filepath_json_key` config and maps the value onto its `downloads_path`."
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "SearchMissingSourcePathResult",
+        "description": "One search result. The key holding the path is whatever `downloader_hook.filepath_json_key` names."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "authentication",
+      "description": "Used only when optional \"beetkeeper.auth.enable_login_protection\" is \"true\".\nRoutes for simple login / logout flows. Beetkeeper does not support multiple user identities.\nOnly handles authentication, with implicit authorization to everything for an authenticated client.\n"
+    },
+    {
+      "name": "imports",
+      "description": "Routes for managing [beets imports](https://beets.readthedocs.io/en/stable/reference/cli.html#import).\nOffer API-based import execution, import history, import choice selection, and more.\nFor automated beets setups, you will typically rely on these endpoints the most.\nThese endpoints also power the frontend import management web UI page.\n"
+    },
+    {
+      "name": "query",
+      "description": "Routes for [querying your beets library](https://beets.readthedocs.io/en/stable/reference/query.html).\nSupports API-based queries, using standard `beets` query syntax. Useful for checking the status of your\nbeets-managed library. These endpoints also power the frontend query UI page.\n"
+    },
+    {
+      "name": "events",
+      "description": "Routes pertaining to [beets events](https://beets.readthedocs.io/en/stable/dev/plugins/events.html).\nDocumented routes read-only. The [beetkeeper-plugin library](https://pypi.org/project/beetkeeper-plugin/)\nautomatically pushes beets events to the beetkeeper server. Events serve to provide a full historical\ntrace of any / all beets imports, file operations, etc. Helpful for tracing origins, or fine-tuning beets\nconfigurations, especially in automated setups.\n"
+    },
+    {
+      "name": "monitoring",
+      "description": "Routes for beetkeeper system observability, and availability checks."
+    }
+  ]
+}

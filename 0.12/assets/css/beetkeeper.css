@@ -1,0 +1,113 @@
+/*
+ * beetkeeper docs — CRT accent scheme on stock Material. Design intent: never a solid bright color block.
+ * Material's primary areas become a dark green CRT screen + scanlines with green Courier text; accent
+ * becomes purple glow text (and any accent block becomes a dark scanline panel, never a solid purple fill).
+ */
+
+:root {
+  --crt-screen: #061206;
+  --crt-screen-dark: #06030c;
+  --crt-green: #0d7a0d;
+  --crt-green-bright: #7dff7d;
+  --crt-green-glow: rgba(0, 255, 0, 0.55);
+  --crt-green-line: #0d7a0d;
+  --crt-table-line-glow: rgb(0, 60, 0);
+  --crt-purple: #c96bff;
+  --crt-purple-bright: #dca4ff;
+  --crt-purple-glow: rgba(190, 90, 255, 0.6);
+
+  --crt-mono: "Courier New", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --md-code-font: var(--crt-mono);
+  --crt-scanlines: repeating-linear-gradient(
+    to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, 0.18) 3px
+  );
+}
+
+/* Material's "primary FG" is a block background here (the dark green screen), "primary BG" is the text on it. */
+[data-md-color-scheme="default"],
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: var(--crt-screen);
+  --md-primary-fg-color--light: var(--crt-screen);
+  --md-primary-fg-color--dark: var(--crt-screen);
+  --md-primary-bg-color: var(--crt-green-bright);
+  --md-primary-bg-color--light: var(--crt-green);
+  /* --md-default-bg-color: var(--crt-screen);  adjust this to change main page BG color */
+  --md-accent-fg-color: var(--crt-purple);
+  --md-typeset-a-color: var(--crt-green);
+}
+
+.md-header,
+.md-tabs {
+  background-color: var(--crt-screen);
+  background-image: var(--crt-scanlines);
+  font-family: var(--crt-mono);
+  color: var(--crt-green-bright);
+  text-shadow: 0 0 5px var(--crt-green-glow);
+}
+.md-search__input,
+.md-search__input::placeholder {
+  text-shadow: none;                 /* keep the search field crisp */
+}
+
+/* Admonition/details boxes styled as primary blocks; `!important` beats Material's per-type colors. */
+.md-typeset :is(.admonition, details) {
+  border-color: var(--crt-green-line) !important;
+  box-shadow: 0 0 7px var(--crt-table-line-glow);
+}
+.md-typeset :is(.admonition-title, summary) {
+  background-color: var(--crt-screen) !important;
+  background-image: var(--crt-scanlines);
+  font-family: var(--crt-mono);
+  color: var(--crt-green-bright);
+  text-shadow: 0 0 5px var(--crt-green-glow);
+}
+.md-typeset :is(.admonition-title, summary)::before {
+  background-color: var(--crt-green) !important;
+}
+
+.md-typeset :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--crt-mono);
+  text-shadow: 0 0 1px currentColor, 0 0 7px var(--crt-green-glow);
+}
+.md-sidebar--secondary .md-nav__title,
+.md-sidebar--secondary .md-nav__link {
+  font-family: var(--crt-mono);
+}
+/* .md-typeset a { */
+  /* color: var(--crt-green-line); */
+  /* text-shadow: 0 0 3px var(--crt-green-glow); */
+  /* text-shadow: 0 0 1px currentColor, 0 0 7px var(--crt-green); */
+/* } */
+.md-typeset table:not([class]) {
+  border: 0.05rem solid var(--crt-purple-glow);
+  box-shadow: 0 0 3px  var(--crt-green-glow);
+}
+.md-typeset table:not([class]) :is(th, td) {
+  border: 0.05rem solid var(--crt-table-line-glow);
+}
+
+/* Code never glows, even inline code inside a glowing heading or link. */
+.md-typeset :is(code, pre, kbd) {
+  font-size: 0.7rem;
+  text-shadow: none;
+}
+
+.md-typeset a:hover,
+.md-nav__link:hover,
+.md-nav__link--active,
+.md-nav__link--active > .md-ellipsis {
+  color: var(--crt-purple);
+  text-shadow: 0 0 1px currentColor, 0 0 7px var(--crt-purple-glow);
+}
+
+::selection {
+  background-color: var(--crt-screen-dark);
+  color: var(--crt-purple-bright);
+}
+.md-search-result__link:hover,
+.md-search-result__link[data-md-state="active"] {
+  background-color: var(--crt-screen-dark) !important;
+  background-image: var(--crt-scanlines);
+  color: var(--crt-purple-bright);
+  text-shadow: 0 0 6px var(--crt-purple-glow);
+}
