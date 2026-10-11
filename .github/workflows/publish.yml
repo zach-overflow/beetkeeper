@@ -56,6 +56,9 @@ jobs:
     name: Build wheels
     needs: setup
     runs-on: ubuntu-latest
+    env:
+      # RELEASE_TAG is the generated API client's in-code `__version__` (`packageVersion` in client/src/BUILD).
+      RELEASE_TAG: ${{ needs.setup.outputs.version }}
     steps:
       # Checking out the tag (with full history + tags) is what versions the wheels: Pants' `vcs_version`
       # targets run setuptools-scm against this checkout, yielding the exact `MAJOR.MINOR.PATCH`.
@@ -82,9 +85,22 @@ jobs:
 
       - name: Build wheels
         run: |
-          pants package beetkeeper-core:beetkeeper-whl plugin:plugin-whl
+          pants package beetkeeper-core:beetkeeper-whl plugin:plugin-whl client:client-whl
           ls dist/beetkeeper-${{ needs.setup.outputs.version }}-*.whl \
-            dist/beetkeeper_plugin-${{ needs.setup.outputs.version }}-*.whl
+            dist/beetkeeper_plugin-${{ needs.setup.outputs.version }}-*.whl \
+            dist/beetkeeper_api_client-${{ needs.setup.outputs.version }}-*.whl
+
+      # The client's wheel version comes from the tag, but its `__version__` from RELEASE_TAG: catch a drift.
+      - name: Check the API client's in-code version
+        env:
+          VERSION: ${{ needs.setup.outputs.version }}
+        run: |
+          actual_version="$(unzip -p dist/beetkeeper_api_client-"${VERSION}"-*.whl beetkeeper_api_client/__init__.py \
+            | sed -n 's/^__version__ = "\(.*\)"$/\1/p')"
+          if [[ "${actual_version}" != "${VERSION}" ]]; then
+            echo "::error::beetkeeper_api_client.__version__ is '${actual_version}', expected '${VERSION}'."
+            exit 1
+          fi
 
       # Each wheel is its own artifact: OIDC trusted publishing mints a project-scoped token, so each PyPI
       # project uploads separately.
@@ -100,6 +116,13 @@ jobs:
         with:
           name: wheel-beetkeeper-plugin
           path: dist/beetkeeper_plugin-*.whl
+          if-no-files-found: error
+
+      - name: Upload beetkeeper-api-client wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-beetkeeper-api-client
+          path: dist/beetkeeper_api_client-*.whl
           if-no-files-found: error
 
       - name: Upload Pants log
@@ -310,6 +333,12 @@ jobs:
           name: wheel-beetkeeper-plugin
           path: dist/beetkeeper-plugin
 
+      - name: Download beetkeeper-api-client wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: wheel-beetkeeper-api-client
+          path: dist/beetkeeper-api-client
+
       # One publish per project: the OIDC token is project-scoped, so a combined upload would be rejected.
       - name: Publish beetkeeper to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -322,6 +351,12 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/beetkeeper-plugin
+          skip-existing: true
+
+      - name: Publish beetkeeper-api-client to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/beetkeeper-api-client
           skip-existing: true
 
   # Push the per-arch tags then stitch them into the multi-arch manifest list (`:<version>` + `:latest`).

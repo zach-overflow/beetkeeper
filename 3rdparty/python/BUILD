@@ -5,3 +5,4 @@ python_requirements(
     resolve="beetkeeper-resolve",
     module_mapping={"ruamel.yaml": ["ruamel", "ruamel.yaml"]},
 )
+python_requirements(name="client-test-requirements", source="client-test-requirements.txt", resolve="client-resolve")

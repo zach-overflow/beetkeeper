@@ -32,7 +32,7 @@ beetkeeper_plugin = { workspace = true }
 
 [tool.ruff]
 target-version = "py314"
-src = ["beetkeeper-core/src", "plugin/src"]
+src = ["beetkeeper-core/src", "plugin/src", "client/src"]
 line-length = 120
 indent-width = 4
 
@@ -127,7 +127,11 @@ section-order = [
   "first-party",
   "local-folder",
 ]
-known-first-party = ["beetkeeper", "beetsplug.beetkeeper_plugin"]
+known-first-party = [
+  "beetkeeper",
+  "beetkeeper_api_client",
+  "beetsplug.beetkeeper_plugin",
+]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "requests".msg = "Use httpx instead."
@@ -162,6 +166,12 @@ plugins = ["pydantic.mypy"]
 exclude = ["build_scripts/", "docs/"]
 explicit_package_bases = true
 namespace_packages = true
+
+# openapi-generator output (see `client/src/BUILD`): its signatures still type-check callers, but errors
+# inside the generated modules aren't ours to fix.
+[[tool.mypy.overrides]]
+module = ["beetkeeper_api_client", "beetkeeper_api_client.*"]
+ignore_errors = true
 
 [tool.bandit]
 exclude_dirs = [

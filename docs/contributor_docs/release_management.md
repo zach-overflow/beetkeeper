@@ -4,12 +4,13 @@ How beetkeeper versions and publishes its release artifacts. All commands run fr
 
 ## What gets published
 
-A release publishes four artifacts, all carrying the **same** semver:
+A release publishes five artifacts, all carrying the **same** semver:
 
 | Artifact | Pants target | Destination |
 | :------- | :----------- | :---------- |
 | `beetkeeper` wheel | `beetkeeper-core:beetkeeper-whl` | PyPI (`beetkeeper`) |
 | `beetkeeper-plugin` wheel | `plugin:plugin-whl` | PyPI (`beetkeeper-plugin`) |
+| `beetkeeper-api-client` wheel | `client:client-whl` | PyPI (`beetkeeper-api-client`) |
 | `beetkeeper-server` image | `//:beetkeeper-server-image` | GHCR `ghcr.io/zach-overflow/beetkeeper` (`:latest` + `:<version>`) |
 | standalone binaries (linux x86_64 / aarch64, macOS aarch64) | `//:beetkeeper-<slug>-standalone` | GitHub release assets (`beetkeeper-<scie platform>` + `.sha256`) |
 
@@ -18,7 +19,7 @@ the release's `MAJOR.MINOR` docs version to the `gh-pages` branch and points the
 
 ## Versioning model — the git tag is the source of truth
 
-Both wheels are versioned from the `vMAJOR.MINOR.PATCH` git tag via Pants'
+All three wheels are versioned from the `vMAJOR.MINOR.PATCH` git tag via Pants'
 [`vcs_version`](https://www.pantsbuild.org/stable/reference/targets/vcs_version) target (setuptools-scm
 under the hood); **no version string is committed anywhere**. The moving parts:
 
@@ -34,6 +35,11 @@ under the hood); **no version string is committed anywhere**. The moving parts:
 - On a checkout of the release tag (what the Publish workflow does), setuptools-scm yields the exact
   `MAJOR.MINOR.PATCH`; on any other commit it yields a dev version (`X.Y.Z.devN+g<hash>`), which is what
   local `pants package` produces.
+- The generated API client differs slightly, since it has no committed sources: its `vcs_version` target
+  lives in `client/src/BUILD`, and `client/pyproject.toml` reads the generated `_scm_version.version` directly
+  (no `_version.py`). Its in-code `beetkeeper_api_client.__version__` is separate: openapi-generator bakes it
+  in from the `RELEASE_TAG` environment variable (`packageVersion` in `client/src/BUILD`), falling back to
+  `0.0.0.dev0`. Publish's `build-wheels` job sets `RELEASE_TAG` and fails if the two versions disagree.
 
 > The git tag carries a leading `v` (GitHub release convention); every published *version id* (wheel
 > versions + the `:<version>` image tag) is the `v`-stripped semver. They can no longer disagree — the
@@ -132,7 +138,7 @@ builds succeed:
 
 | Build (parallel) | Publication (parallel, after all builds) | Approval gate |
 | :--------------- | :--------------------------------------- | :------------ |
-| `build-wheels` — both wheels, versioned from the tag checkout | `publish-pypi` — OIDC trusted publishing, one upload per project | `pypi` environment |
+| `build-wheels` — all three wheels, versioned from the tag checkout | `publish-pypi` — OIDC trusted publishing, one upload per project | `pypi` environment |
 | `build-image` — native per-arch builds, exported as tarball artifacts | `publish-image` — push per-arch tags, stitch the `:<version>` + `:latest` manifest list with `buildx imagetools` | none (GHCR, `GITHUB_TOKEN`) |
 | `build-standalone` — one scie per platform on its native runner, smoke-tested (`--version` = release version, `--help`, checksum) and uploaded as `standalone-<slug>` artifacts | `publish-binaries` — `gh release upload` of the three binaries + checksums onto the *draft* release `approve-and-tag` created, then `gh release edit --draft=false` publishes it (fails if no release exists; against an already-published, immutable release it only verifies the assets are present) | none (`GITHUB_TOKEN`, `contents: write`) |
 | `build-docs` — `mkdocs build --strict` (validation only) | `docs-deploy` — mike deploys the `MAJOR.MINOR` docs version (+ `latest` alias) to `gh-pages` | `github-pages` environment |
@@ -161,9 +167,11 @@ builds succeed:
   messages out of the body, where a stray `BREAKING CHANGE:` line would silently force a major bump.
 - **GHCR** — uses the built-in `GITHUB_TOKEN` (`packages: write`); no extra secret.
 - **PyPI** — OIDC trusted publishing; no stored token. Each PyPI project (`beetkeeper`,
-  `beetkeeper-plugin`) needs a Trusted Publisher registered for owner/repo `zach-overflow/beetkeeper`,
-  workflow **`publish.yml`**, environment **`pypi`**. Publish always runs as its own top-level workflow
-  (dispatched, never `workflow_call`ed) precisely because PyPI rejects reusable workflows.
+  `beetkeeper-plugin`, `beetkeeper-api-client`) needs a Trusted Publisher registered for owner/repo
+  `zach-overflow/beetkeeper`, workflow **`publish.yml`**, environment **`pypi`**. A project that has never
+  been uploaded needs a *pending* publisher (PyPI → Account → Publishing) with those same values before its
+  first release. Publish always runs as its own top-level workflow (dispatched, never `workflow_call`ed)
+  precisely because PyPI rejects reusable workflows.
 - **GitHub Pages** — repo Pages source set to **"Deploy from a branch"** (`gh-pages`, root); mike creates
   the branch on the first release deploy. The `github-pages` environment holds any deploy approval rule
   (it gates the workflow's mike push, which is the publish event).
@@ -186,6 +194,8 @@ builds succeed:
 - **Publish ran but wheels carry a dev version** — the build didn't see the release tag; the
   `build-wheels` job must check out `v<version>` with `fetch-depth: 0` (setuptools-scm needs the tag in
   the checkout).
+- **`build-wheels` fails: `beetkeeper_api_client.__version__` is not the release version** — the job lost
+  its `RELEASE_TAG` env var, which feeds the generated client's `packageVersion` (`client/src/BUILD`).
 - **PyPI publish fails with a trusted-publisher / OIDC error** — the registered Trusted Publisher must
   match exactly: owner/repo `zach-overflow/beetkeeper`, workflow `publish.yml`, environment `pypi`. Also
   note PyPI rejects reusable workflows outright, so Publish must never be converted to `workflow_call`.
