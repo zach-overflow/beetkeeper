@@ -16,7 +16,7 @@ constraints = [
 [manifest.dependency-groups]
 dev = [
     { name = "bandit", specifier = ">=1.9.4" },
-    { name = "fastapi", extras = ["standard"], specifier = ">=0.138.0" },
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.143.0" },
     { name = "ipython", specifier = ">=9.3.0" },
     { name = "mutagen", specifier = ">=1.47.0" },
     { name = "mypy", specifier = ">=2.3.1" },
@@ -184,7 +184,7 @@ requires-dist = [
     { name = "greenlet", specifier = ">=3.1" },
     { name = "httpx2" },
     { name = "jinja2" },
-    { name = "pydantic", specifier = ">=2.13.5" },
+    { name = "pydantic", specifier = ">=2.14.0" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
     { name = "python-multipart", specifier = ">=0.0.20" },
     { name = "pyyaml", specifier = ">=6.0.3" },
