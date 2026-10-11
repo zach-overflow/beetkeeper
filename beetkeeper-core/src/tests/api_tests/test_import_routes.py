@@ -7,9 +7,9 @@ The clean-slate routes run against a throwaway beets library holding real (tiny)
 
 from pathlib import Path
 
-import httpx
+import httpx2
 import pytest
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -280,16 +280,16 @@ class TestFindMissingSourcePath:
     """The lookup route against a populated beets library and a mock-transport downloader API."""
 
     @pytest.fixture
-    def downloader_requests(self) -> list[httpx.Request]:
+    def downloader_requests(self) -> list[httpx2.Request]:
         return []
 
     @pytest.fixture
-    def downloader_hook(self, downloader_requests: list[httpx.Request]) -> DownloaderHook:
-        def handler(request: httpx.Request) -> httpx.Response:
+    def downloader_hook(self, downloader_requests: list[httpx2.Request]) -> DownloaderHook:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             downloader_requests.append(request)
             if request.url.params.get("artist") == "Artist 07":
-                return httpx.Response(200, json=[{"content_path": "/data/complete/Artist 07 - Album"}])
-            return httpx.Response(200, json=[])
+                return httpx2.Response(200, json=[{"content_path": "/data/complete/Artist 07 - Album"}])
+            return httpx2.Response(200, json=[])
 
         config = DownloaderHookConfSection(
             base_url="http://qbit.local:8080",
@@ -298,7 +298,7 @@ class TestFindMissingSourcePath:
             filepath_json_key="content_path",
             replace_downloader_paths_prefix="/data/complete",
         )
-        return DownloaderHook(config, Path("/downloads"), transport=httpx.MockTransport(handler))
+        return DownloaderHook(config, Path("/downloads"), transport=httpx2.MockTransport(handler))
 
     @pytest.fixture
     def app_dependency_overrides(
@@ -317,7 +317,7 @@ class TestFindMissingSourcePath:
 
     @pytest.mark.anyio
     async def test_track_lookup_searches_with_renamed_fields(
-        self, client: AsyncClient, downloader_requests: list[httpx.Request]
+        self, client: AsyncClient, downloader_requests: list[httpx2.Request]
     ) -> None:
         response = await client.post("/api/import/find_missing_source_path", json={"beets_item_id": 8})
         assert response.status_code == 200

@@ -6,7 +6,7 @@ network) and assert the JSON shape.
 """
 
 import pytest
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from beetkeeper.api.dependencies import get_beets_library
 from beetkeeper.core import BeetsLibrary

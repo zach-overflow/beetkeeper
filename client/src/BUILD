@@ -10,8 +10,7 @@ openapi_document(
         "packageName": "beetkeeper_api_client",
         # Only sets the generated `__version__` and default User-Agent; the wheel version is `:scm-version`.
         "packageVersion": env("RELEASE_TAG", "0.0.0.dev0"),
-        # TODO[later]: switch to `httpx2` once openapi-generator 7.26 is released.
-        "library": "httpx",
+        "library": "httpx2",
         "supportHttpxSync": "true",
     },
 )

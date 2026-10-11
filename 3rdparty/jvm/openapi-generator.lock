@@ -6,7 +6,7 @@
 # {
 #   "version": 1,
 #   "generated_with_requirements": [
-#     "org.openapitools:openapi-generator-cli:7.25.0,url=not_provided,jar=not_provided"
+#     "org.openapitools:openapi-generator-cli:7.26.0,url=not_provided,jar=not_provided"
 #   ]
 # }
 # --- END PANTS LOCKFILE METADATA ---
@@ -14,13 +14,13 @@
 [[entries]]
 directDependencies = []
 dependencies = []
-file_name = "org.openapitools_openapi-generator-cli_7.25.0.jar"
+file_name = "org.openapitools_openapi-generator-cli_7.26.0.jar"
 
 [entries.coord]
 group = "org.openapitools"
 artifact = "openapi-generator-cli"
-version = "7.25.0"
+version = "7.26.0"
 packaging = "jar"
 [entries.file_digest]
-fingerprint = "41ce4f6b07f196676439d710759fa1ced7a08066d06ff1bf314681470289efae"
-serialized_bytes_length = 31942042
+fingerprint = "1760050094997b9cc790cc1350be095f15da8c08a996b184d3eadc4ccda5e35e"
+serialized_bytes_length = 33737249

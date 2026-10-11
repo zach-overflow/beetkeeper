@@ -9,10 +9,10 @@ build-backend = "setuptools.build_meta"
 name = "beetkeeper-api-client"
 dynamic = ["version"]
 requires-python = ">=3.12"
-# Must mirror the `requirements.txt` openapi-generator emits for the `httpx` library: Pants fails codegen
+# Must mirror the `requirements.txt` openapi-generator emits for the `httpx2` library: Pants fails codegen
 # unless every one of those has a `python_requirement` in `client-resolve`.
 dependencies = [
-  "httpx>=0.28.1",
+  "httpx2",
   "pydantic>=2.11",
   "python-dateutil>=2.8.2",
   "typing-extensions>=4.7.1",

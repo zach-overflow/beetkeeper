@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from beetkeeper.api.dependencies import get_beets_library, get_import_store, get_user_config
 from beetkeeper.core import BeetsLibrary, ImportJobStatus, ImportStore

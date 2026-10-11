@@ -6,7 +6,7 @@ like a browser would.
 
 import pytest
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from beetkeeper.api.security import SESSION_COOKIE_NAME
 

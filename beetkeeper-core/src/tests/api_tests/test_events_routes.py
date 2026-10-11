@@ -7,7 +7,7 @@ package's `conftest.py`), so these run fully in-process (no real DB server, no s
 from pathlib import Path
 
 import pytest
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlmodel import select
 

@@ -1,6 +1,6 @@
 # Test-only deps in `beetkeeper-resolve` so mypy (`pants check`, run per-resolve) can resolve test imports;
 # they never ship in the wheels. The pytest duplication with `tools-resolve` is expected, not removable.
-httpx
+httpx2
 pytest>=9.1
 pytest-mock>=3.15.1
 pytest-socket>=0.8.0

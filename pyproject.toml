@@ -134,7 +134,8 @@ known-first-party = [
 ]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
-"requests".msg = "Use httpx instead."
+"requests".msg = "Use httpx2 instead."
+"httpx".msg = "Use httpx2 instead."
 
 [tool.ruff.lint.pycodestyle]
 ignore-overlong-task-comments = true

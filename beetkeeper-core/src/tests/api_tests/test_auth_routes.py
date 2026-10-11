@@ -6,7 +6,7 @@ browser cookie-flow tests in `test_auth_ui.py`.
 
 import pytest
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 
 from .conftest import AUTH_TEST_PASSWORD as _PASSWORD
 from .conftest import AUTH_TEST_USERNAME as _USERNAME

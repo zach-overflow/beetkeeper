@@ -19,7 +19,7 @@ dependencies = [
   "fastapi>=0.138.0",
   "python-multipart>=0.0.20",
   "greenlet>=3.1",
-  "httpx>=0.28.1",
+  "httpx2",
   "jinja2",
   "pydantic>=2.13.5",
   "pydantic-settings>=2.14.2",
