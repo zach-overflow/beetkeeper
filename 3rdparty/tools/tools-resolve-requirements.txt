@@ -4,11 +4,11 @@ mypy>=2.3.1
 mypy-extensions>=1.1.0
 # `pydantic`/`fastapi` bounds kept equal to `beetkeeper-core/pyproject.toml` by
 # `integration_tests/meta_tests/test_dep_versions_consistency.py` (Pants can't single-source across resolves).
-pydantic>=2.13.5
+pydantic>=2.14.0
 # https://pyproject-fmt.readthedocs.io/en/latest/
 pyproject-fmt>=2.25.2
 
-fastapi[standard]>=0.138.0
+fastapi[standard]>=0.143.0
 pytest>=9.1.1
 pytest-mock>=3.15.1
 pytest-socket>=0.8.1
