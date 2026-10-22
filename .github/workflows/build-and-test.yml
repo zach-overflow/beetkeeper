@@ -40,9 +40,9 @@ jobs:
 
       - name: Set up uv
         # Pants lint/test goals shell out to `uv run`, so uv must be on PATH. Pinned to match uv.lock.
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
         with:
-          version: '0.11.23'
+          version: '0.13.4'
           enable-cache: true
 
       - name: Initialize Pants
@@ -101,9 +101,9 @@ jobs:
         with:
           python-version: '3.14'
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
         with:
-          version: '0.11.23'
+          version: '0.13.4'
           enable-cache: true
       - name: Initialize Pants
         uses: pantsbuild/actions/init-pants@v11

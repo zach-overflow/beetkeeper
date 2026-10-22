@@ -25,7 +25,11 @@
     "tomlkit"
   ],
   "manylinux": "manylinux2014",
-  "requirement_constraints": [],
+  "requirement_constraints": [
+    "certifi>=2026.10.19",
+    "mako>=1.4.2",
+    "urllib3>=2.8.0"
+  ],
   "only_binary": [],
   "no_binary": [],
   "excludes": [],

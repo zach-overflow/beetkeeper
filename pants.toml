@@ -57,6 +57,29 @@ tools = ["docker-credential-desktop"]
 [docker.registries.ghcr]
 address = "ghcr.io"
 
+# Pants' default hadolint (v2.12.1-beta) has no macOS arm64 build and runs the x86_64 one under Rosetta.
+# v2.13+ ships native arm64 binaries under lowercase `<os>-<arch>` asset names.
+[hadolint]
+version = "v2.15.1"
+known_versions = [
+  "v2.15.1|macos_arm64 |5c09f3213f8e40406abe048233d985eebef336d4a6a20021be47fadb6cf480a2|102616248",
+  "v2.15.1|macos_x86_64|ffe9bb18b23d5ed1eae50237aecdbb523d016e96da0bd4e7aa432040acfc3fde|23407592",
+  "v2.15.1|linux_arm64 |f6198ef8090f404dbb771abfee086eb8c48ac177f30da7fd3510aca35b344b5d|60491096",
+  "v2.15.1|linux_x86_64|c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507|55661096",
+]
+url_platform_mapping = { macos_arm64 = "macos-arm64", macos_x86_64 = "macos-x86_64", linux_arm64 = "linux-arm64", linux_x86_64 = "linux-x86_64" }
+
+# Pants 2.33's default pex (2.97.1) only knows pip <= 26.1.2; 2.104.0+ adds pip 26.2.2 and a certifi 2026.10.19
+# CA bundle (https://discuss.python.org/t/109576). Same universal `pex` file for every platform.
+[pex-cli]
+version = "v2.104.1"
+known_versions = [
+  "v2.104.1|macos_x86_64|09b82471a777606cc1b74af13c3a4c8d09982dfb2d448d5dd0ce5d408ea1035b|5408285",
+  "v2.104.1|macos_arm64|09b82471a777606cc1b74af13c3a4c8d09982dfb2d448d5dd0ce5d408ea1035b|5408285",
+  "v2.104.1|linux_x86_64|09b82471a777606cc1b74af13c3a4c8d09982dfb2d448d5dd0ce5d408ea1035b|5408285",
+  "v2.104.1|linux_arm64|09b82471a777606cc1b74af13c3a4c8d09982dfb2d448d5dd0ce5d408ea1035b|5408285",
+]
+
 # https://pypi.org/project/pyproject-fmt-pants-plugin/
 [pyproject-fmt]
 config_discovery = true
@@ -102,6 +125,8 @@ interpreter_versions_universe = ["3.14", "3.15"]
 default_to_resolve_interpreter_constraints = true
 pip_version = "latest"
 separate_lockfile_metadata_file = true
+# Floors for security patches; the uv counterpart is `[tool.uv] constraint-dependencies` in `pyproject.toml`.
+resolves_to_constraints_file = { "__default__" = "3rdparty/python/security-constraints.txt" }
 
 [python.resolves]
 "beetkeeper-resolve" = "3rdparty/python/beetkeeper-lockfile.json"

@@ -1,4 +1,4 @@
-FROM python:3.14-slim-bookworm AS ffmpeg
+FROM python:3.14.9-slim-bookworm AS ffmpeg
 
 # Static ffmpeg instead of Debian's package, whose hard deps (SDL, mesa-GL, libllvm15, flite) add ~390 MB of
 # GL/video code beets' replaygain never uses. Pinned to an immutable release tag + per-arch SHA256. To bump:
@@ -27,7 +27,9 @@ RUN set -eux; \
     install -m 0755 /tmp/ff/bin/ffmpeg /usr/local/bin/ffmpeg; \
     /usr/local/bin/ffmpeg -version
 
-FROM python:3.14-slim-bookworm AS app
+# >= 3.14.9: ensurepip bundles pip 26.2.2, whose CA bundle drops the revoked emSign root
+# (https://discuss.python.org/t/109576). The entrypoint's EXTRA_PIP_REQS install runs this pip.
+FROM python:3.14.9-slim-bookworm AS app
 
 # ghcr.io supported labels found at link below:
 # https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry
