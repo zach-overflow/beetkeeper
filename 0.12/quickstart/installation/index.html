@@ -1115,8 +1115,15 @@ and library database, passed as the <code>BEETSDIR</code> env var or the <code>-
 <h2 id="pypi">PyPI<a class="headerlink" href="#pypi" title="Permanent link">&para;</a></h2>
 <p>To run without Docker, install <strong>both</strong> the server package and the beets plugin package into the same
 virtualenv as your <code>beets</code> install:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span>beetkeeper<span class="w"> </span>beetkeeper-plugin
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span><span class="s2">"pip&gt;=26.2.2"</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pip<span class="w"> </span>install<span class="w"> </span>beetkeeper<span class="w"> </span>beetkeeper-plugin
 </code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Upgrade pip first</p>
+<p>pip releases before 26.2.2 trust a CA bundle containing the revoked emSign root; see the
+<a href="https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576">PSF advisory</a>.
+Upgrade pip (or use <code>uv &gt;= 0.13.4</code>) before installing packages.</p>
+</div>
 <p>Then run the server, pointing it at your beets directory:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>beetkeeper<span class="w"> </span>--beetsdir<span class="w"> </span>/path/to/beetsdir<span class="w"> </span>run
 </code></pre></div>
