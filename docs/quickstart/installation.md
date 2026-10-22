@@ -58,8 +58,14 @@ To run without Docker, install **both** the server package and the beets plugin 
 virtualenv as your `beets` install:
 
 ```shell
+python -m pip install --upgrade "pip>=26.2.2"
 pip install beetkeeper beetkeeper-plugin
 ```
+
+!!! warning "Upgrade pip first"
+    pip releases before 26.2.2 trust a CA bundle containing the revoked emSign root; see the
+    [PSF advisory](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576).
+    Upgrade pip (or use `uv >= 0.13.4`) before installing packages.
 
 Then run the server, pointing it at your beets directory:
 

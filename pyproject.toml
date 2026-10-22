@@ -17,11 +17,16 @@ dev = [
 ]
 
 [tool.uv]
+# uv < 0.13.4 ships a CA bundle trusting the revoked emSign root; see https://discuss.python.org/t/109576
+required-version = ">=0.13.4"
 # Constrains only how uv resolves the shared lockfile, keeping both workspace members' `beets` in lockstep;
 # the wheels' actual `beets` deps come from each member's `[project]`.
 # When bumping this, the Docker base image must be bumped as well.
 constraint-dependencies = [
   "beets>=2.14.1",
+  # Security constraint: CA bundle without the revoked emSign root, see
+  # https://discuss.python.org/t/109576 (mirrored for Pants in `3rdparty/python/security-constraints.txt`)
+  "certifi>=2026.10.19",
   # Security constraint for preventing ealier `mako` versions with vulnerabilities
   "mako>=1.4.2",
   # Security constraint for preventing earlier `urllib3` versions with vulnerabilities

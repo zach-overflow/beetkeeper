@@ -1,0 +1,6 @@
+# Pip constraints applied to every Pants resolve (`[python] resolves_to_constraints_file` in `pants.toml`).
+# Keep in sync with the security entries of `[tool.uv] constraint-dependencies` in `pyproject.toml`.
+# CA bundle without the revoked emSign root: https://discuss.python.org/t/109576
+certifi>=2026.10.19
+mako>=1.4.2
+urllib3>=2.8.0

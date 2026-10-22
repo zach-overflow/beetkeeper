@@ -36,7 +36,7 @@ need() {
 pex_version_from_pants() {
 	need pants
 	(cd "${repo_root}" && pants help-all) |
-		jq -er '.scope_to_help_info["pex-cli"].advanced[] | select(.config_key == "version") | .default' |
+		jq -er '.scope_to_help_info["pex-cli"].advanced[] | select(.config_key == "version") | .value_history.ranked_values | last | .value' |
 		sed 's/^v//'
 }
 
