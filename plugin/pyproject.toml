@@ -21,7 +21,7 @@ maintainers = [ { name = "zach-overflow" } ]
 authors = [ { name = "Zach Gottesman" } ]
 requires-python = ">=3.14,<3.16"
 dynamic = [ "version" ]
-dependencies = [ "beets>=2.14.1", "pydantic>=2.14.0", "requests>=2.34" ]
+dependencies = [ "beets>=2.14.1", "pydantic>=2.14.1", "requests>=2.34" ]
 urls."Bug Tracker" = "https://github.com/zach-overflow/beetkeeper/issues"
 urls.Changelog = "https://github.com/zach-overflow/beetkeeper/releases"
 urls.Documentation = "https://beetkeeper.dadbodaudio.com/latest/"
