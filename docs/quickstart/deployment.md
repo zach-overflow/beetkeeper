@@ -1,7 +1,7 @@
 # Deployment
 
 This page covers running beetkeeper under Docker for real use. It mirrors the setup in the repo's
-[`deploy/`](https://github.com/zach-overflow/beetkeeper/tree/main/deploy) directory, which includes an
+[`etc/deploy/`](https://github.com/zach-overflow/beetkeeper/tree/main/etc/deploy) directory, which includes an
 example `config.yaml` (with container paths). beetkeeper reads its settings from that file's optional
 top-level `beetkeeper` section; the rest is an ordinary beets config — see [Configuration](../configuration.md).
 
@@ -15,7 +15,7 @@ notes below apply to those installs too; only the container commands differ.
 
 ### 1. Get the image
 
-Pull the published image (or build it locally with `pants package //:beetkeeper-server-image`):
+Pull the published image (or build it locally with `pants package //etc/docker:beetkeeper-server-image`):
 
 ```bash
 docker pull ghcr.io/zach-overflow/beetkeeper:latest

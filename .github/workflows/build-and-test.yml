@@ -50,7 +50,7 @@ jobs:
         with:
           # Bump to invalidate every Pants cache; re-fetch named caches when dependencies change.
           gha-cache-key: v0
-          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
       
       - name: Check BUILD files are up to date
@@ -60,7 +60,7 @@ jobs:
       - name: Static checks and tests
         run: |
           pants lint check test ::
-          pants run build_scripts:openapi-json-exporter -- --check
+          pants run etc/build_scripts:openapi-json-exporter -- --check
 
       # Non-docker artifacts (wheels + all PEXes) build here; the image is validated per-arch in `build-image`
       # below. The image build needs a native runner per arch, so it can't be exercised in this single job.
@@ -109,8 +109,8 @@ jobs:
         uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: image-${{ matrix.arch }}-v0
-          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
       - name: Build image (native ${{ matrix.arch }}, no push)
         run: |
-          pants package //:beetkeeper-server-image
+          pants package //etc/docker:beetkeeper-server-image

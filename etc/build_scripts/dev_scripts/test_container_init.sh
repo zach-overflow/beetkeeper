@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+#
+# Container entrypoint for the manual test server (see etc/build_scripts/run-test-server.sh). Installs the
+# checked-in test config (test_beets_conf.yaml) under /test_dirs, generates fake importable FLAC albums under
+# /test_dirs/downloads (in-container only, so no host mount needs cleanup), starts a fake download-client API
+# (dev_scripts/fake_downloader_api.py) that the config's downloader hook points at — so the search page's
+# "Find via downloader" button resolves those albums' folders and clean-slate imports can be tried — and
+# seeds fake listener events through the server's /api/events push routes (dev_scripts/seed_fake_event_data.py)
+# so the events page has rows to spot-check. If /host_static is mounted, the PEX's extracted
+# `beetkeeper/api/static` directory is swapped for a symlink to it so host edits render live. The whole
+# etc/build_scripts/dev_scripts directory is mounted read-only at /dev_scripts.
+set -exuo pipefail
+
+mkdir -p /test_dirs/{beets,downloads,music}
+
+# beets expects the file to be named `config.yaml` inside $BEETSDIR; /dev_scripts is mounted read-only,
+# so copy rather than symlink.
+cp /dev_scripts/test_beets_conf.yaml /test_dirs/beets/config.yaml
+
+export BEETSDIR=/test_dirs/beets
+
+# The PEX interpreter provides click + mutagen (app deps), so the prep script needs no extra install.
+PEX_INTERPRETER=1 /app/beetkeeper.pex /dev_scripts/prep_fake_audio_files.py \
+	--dirpath /test_dirs/downloads create
+
+# The import UI (autocomplete + submit) is pinned to beetkeeper's `downloads_path` (default /downloads), so
+# expose the fake albums there.
+ln -sfn /test_dirs/downloads /downloads
+
+# Backgrounded: answers the downloader hook's lookups (see test_beets_conf.yaml) for the fake albums above.
+PEX_INTERPRETER=1 /app/beetkeeper.pex /dev_scripts/fake_downloader_api.py --port 8338 --downloads-path /downloads &
+
+if [[ -d /host_static ]]; then
+	static_dirpath="$(PEX_INTERPRETER=1 /app/beetkeeper.pex -c \
+		'from beetkeeper.api.constants import STATIC_DIRPATH; print(STATIC_DIRPATH)')"
+	rm -rf "${static_dirpath}"
+	ln -s /host_static "${static_dirpath}"
+fi
+
+/app/beetkeeper.pex db upgrade
+
+# Backgrounded before the exec: the seeder polls /api/health until the server below is up, then pushes
+# fake events through the public /api/events routes (event rows only ever come from those pushes).
+PEX_INTERPRETER=1 /app/beetkeeper.pex /dev_scripts/seed_fake_event_data.py &
+
+exec /app/beetkeeper.pex run

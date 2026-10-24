@@ -1432,7 +1432,7 @@
           "id"
         ],
         "title": "APIAlbum",
-        "description": "Model for the relevant parts of a `beets.library.Album` instance. used during beets plugin client push events\nfor an event tied to a given album. For simplicity, we only mark `id` as required, with all other fields as\noptional (which might not be the case for beets internals).\n\nNOTE: This was generated from `build_scripts/code_gen/pydantic_field_info_from_beets_model.py`."
+        "description": "Model for the relevant parts of a `beets.library.Album` instance. used during beets plugin client push events\nfor an event tied to a given album. For simplicity, we only mark `id` as required, with all other fields as\noptional (which might not be the case for beets internals).\n\nNOTE: This was generated from `etc/build_scripts/code_gen/pydantic_field_info_from_beets_model.py`."
       },
       "APITrack": {
         "properties": {
@@ -2229,7 +2229,7 @@
           "id"
         ],
         "title": "APITrack",
-        "description": "Model for the relevant parts of a `beets.library.Item` (track) instance. used during beets plugin client push events\nfor an event tied to a single track ('Item'). For simplicity, we only mark `id` as required, with all other fields as\noptional (which might not be the case for beets internals).\n\nNOTE: This was generated from `build_scripts/code_gen/pydantic_field_info_from_beets_model.py`."
+        "description": "Model for the relevant parts of a `beets.library.Item` (track) instance. used during beets plugin client push events\nfor an event tied to a single track ('Item'). For simplicity, we only mark `id` as required, with all other fields as\noptional (which might not be the case for beets internals).\n\nNOTE: This was generated from `etc/build_scripts/code_gen/pydantic_field_info_from_beets_model.py`."
       },
       "BeetsEventType": {
         "type": "string",

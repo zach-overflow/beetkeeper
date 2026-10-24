@@ -57,7 +57,7 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     env:
-      # RELEASE_TAG is the generated API client's in-code `__version__` (`packageVersion` in client/src/BUILD).
+      # RELEASE_TAG is the generated API client's in-code `__version__` (`packageVersion` in provides/client/src/BUILD).
       RELEASE_TAG: ${{ needs.setup.outputs.version }}
     steps:
       # Checking out the tag (with full history + tags) is what versions the wheels: Pants' `vcs_version`
@@ -80,12 +80,12 @@ jobs:
         uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: v0
-          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
 
       - name: Build wheels
         run: |
-          pants package beetkeeper-core:beetkeeper-whl plugin:plugin-whl client:client-whl
+          pants package provides/beetkeeper-core:beetkeeper-whl provides/plugin:plugin-whl provides/client:client-whl
           ls dist/beetkeeper-${{ needs.setup.outputs.version }}-*.whl \
             dist/beetkeeper_plugin-${{ needs.setup.outputs.version }}-*.whl \
             dist/beetkeeper_api_client-${{ needs.setup.outputs.version }}-*.whl
@@ -167,13 +167,13 @@ jobs:
         uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: image-${{ matrix.arch }}-v0
-          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
 
       # Plain `pants package` builds for the host arch and loads the image into the local Docker daemon.
       - name: Build image (native ${{ matrix.arch }})
         run: |
-          pants package //:beetkeeper-server-image
+          pants package //etc/docker:beetkeeper-server-image
 
       - name: Export image tarball
         env:
@@ -235,7 +235,7 @@ jobs:
         uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: standalone-${{ matrix.slug }}-v0
-          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
 
       - name: Build standalone binary
@@ -302,7 +302,7 @@ jobs:
         uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: docs-v0
-          named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/tools/tools-lockfile.json') }}
       # Validation only: the actual publish is `docs-deploy`'s gated mike push to `gh-pages`, which GitHub
       # Pages serves directly (Pages source = "Deploy from a branch"). The `test` guards the site entry
       # point: a missing docs/index.md still builds --strict-clean but 404s `/` and `/latest/` once deployed.
@@ -483,7 +483,7 @@ jobs:
         uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: docs-v0
-          named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/tools/tools-lockfile.json') }}
       # Docs are versioned per app MAJOR.MINOR: a PATCH release updates its MAJOR.MINOR docs in place, and
       # `latest` always aliases the newest release. https://github.com/jimporter/mike
       - name: Deploy version to gh-pages with mike
@@ -498,4 +498,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.setup.outputs.version }}
-        run: ./build_scripts/docs-smoke-test.sh "$(git rev-parse gh-pages)" "${VERSION%.*}"
+        run: ./etc/build_scripts/docs-smoke-test.sh "$(git rev-parse gh-pages)" "${VERSION%.*}"

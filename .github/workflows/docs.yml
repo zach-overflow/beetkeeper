@@ -47,7 +47,7 @@ jobs:
         uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: docs-v0
-          named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/tools/tools-lockfile.json') }}
       # The `test` guards the site entry point: a missing docs/index.md still builds --strict-clean but
       # 404s `/` and `/latest/` once deployed.
       - name: Build docs site (validation)
@@ -67,4 +67,4 @@ jobs:
       - name: Smoke test the published docs
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./build_scripts/docs-smoke-test.sh "$(git rev-parse gh-pages)" "${docs_version}"
+        run: ./etc/build_scripts/docs-smoke-test.sh "$(git rev-parse gh-pages)" "${docs_version}"

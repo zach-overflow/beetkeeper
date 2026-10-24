@@ -4,12 +4,12 @@ How beetkeeper's build artifacts are produced with Pants. All commands run from 
 
 | Artifact | Pants target | Notes |
 | :------- | :----------- | :---- |
-| `beetkeeper` wheel | `beetkeeper-core:beetkeeper-whl` | pure-python, `py3-none-any` |
-| `beetkeeper-plugin` wheel | `plugin:plugin-whl` | pure-python |
-| `beetkeeper-api-client` wheel | `client:client-whl` | pure-python; sources generated from the OpenAPI spec (see [below](#the-api-client-wheel-clientclient-whl)) |
+| `beetkeeper` wheel | `provides/beetkeeper-core:beetkeeper-whl` | pure-python, `py3-none-any` |
+| `beetkeeper-plugin` wheel | `provides/plugin:plugin-whl` | pure-python |
+| `beetkeeper-api-client` wheel | `provides/client:client-whl` | pure-python; sources generated from the OpenAPI spec (see [below](#the-api-client-wheel-providesclientclient-whl)) |
 | application PEXes | `//:beetkeeper-<slug>-pex` | thin, single-platform; the linux ones are bundled into the image |
 | standalone binaries | `//:beetkeeper-<slug>-standalone` | scie: the PEX plus a lazily fetched, stripped CPython; lands at `dist/standalone/<slug>/beetkeeper-<scie platform>` (+ `.sha256`; the intermediate PEX beside it is `beetkeeper`) |
-| server image | `//:beetkeeper-server-image` | GHCR (`db upgrade` / `run`) |
+| server image | `//etc/docker:beetkeeper-server-image` | GHCR (`db upgrade` / `run`) |
 
 `<slug>` is one of `linux-amd64`, `linux-arm64`, `macos-amd64`, `macos-arm64`. The `macos-amd64` targets build
 like any other (cross-built from the complete platform), but releases do not ship that binary: Pants ships no
@@ -17,14 +17,14 @@ macOS x86_64 wheel and scie-pants >= 0.13 no launcher, so Pants cannot run on Gi
 smoke-test it.
 
 ```bash
-pants package //:beetkeeper-server-image   # builds the host-arch image (+ its PEX)
+pants package //etc/docker:beetkeeper-server-image   # builds the host-arch image (+ its PEX)
 pants package //:beetkeeper-macos-arm64-standalone
-pants package beetkeeper-core:beetkeeper-whl
+pants package provides/beetkeeper-core:beetkeeper-whl
 ```
 
 ## The application PEXes and standalone binaries (`//:beetkeeper-<slug>-{pex,standalone}`)
 
-Both flavours are emitted per platform by the `app_server_pexes` macro (`build_scripts/pants_macros.py`, called
+Both flavours are emitted per platform by the `app_server_pexes` macro (`etc/build_scripts/pants_macros.py`, called
 from the root `BUILD`). Each is a `pex_binary` pinned via [`complete_platforms`][cp] to one platform, so it
 carries only that platform's native wheels (e.g. `pydantic_core`). `complete_platforms` lets PEX resolve those
 foreign wheels **locally**, on a macOS dev machine or a native CI runner, without a foreign interpreter or
@@ -50,14 +50,14 @@ SCIENCE_AUTH_API_GITHUB_COM_BEARER="$(gh auth token)" \
 ```
 
 A **complete platform** is a JSON description of a target interpreter: its PEP 508 marker environment plus the
-full list of wheel tags it accepts. They live at `3rdparty/platforms/<slug>.json` and are exposed as `file`
-targets by `3rdparty/platforms/BUILD`.
+full list of wheel tags it accepts. They live at `etc/3rdparty/platforms/<slug>.json` and are exposed as `file`
+targets by `etc/3rdparty/platforms/BUILD`.
 
 [cp]: https://www.pantsbuild.org/stable/docs/python/overview/pex#generating-the-complete_platforms-file
 
 ### Regenerating the complete-platform JSONs
 
-The JSONs are produced only by `build_scripts/generate-complete-platforms.sh`. Do **not** hand-edit or
+The JSONs are produced only by `etc/build_scripts/generate-complete-platforms.sh`. Do **not** hand-edit or
 hand-copy subsets: a truncated tag list silently drops generic tags like `py3-none-any` and breaks pure-python
 wheel resolution.
 
@@ -72,14 +72,14 @@ Regenerate when:
 Dependency or lockfile changes do **not** require regeneration.
 
 ```bash
-./build_scripts/generate-complete-platforms.sh                     # all four slugs
-./build_scripts/generate-complete-platforms.sh macos-arm64 macos-amd64
+./etc/build_scripts/generate-complete-platforms.sh                     # all four slugs
+./etc/build_scripts/generate-complete-platforms.sh macos-arm64 macos-amd64
 ```
 
 Per slug the script runs `pex3 interpreter inspect --markers --tags --indent=2` on the target interpreter,
 drops the machine-specific `path` key, prepends a `__meta_data__` line recording the interpreter, its source and
 the pex version, validates the result (expected `sys_platform` / `platform_machine` / `python_version`,
-non-empty tags that include `py3-none-any`) and only then replaces `3rdparty/platforms/<slug>.json`.
+non-empty tags that include `py3-none-any`) and only then replaces `etc/3rdparty/platforms/<slug>.json`.
 
 | Slug | Interpreter | Needs |
 | :--- | :---------- | :---- |
@@ -109,7 +109,7 @@ Caveats:
 Verify a regeneration by building a target and checking the bundled native wheel:
 
 ```bash
-jq -r '.__meta_data__, (.compatible_tags | length), .compatible_tags[0]' 3rdparty/platforms/*.json
+jq -r '.__meta_data__, (.compatible_tags | length), .compatible_tags[0]' etc/3rdparty/platforms/*.json
 pants package //:beetkeeper-macos-amd64-pex
 unzip -l dist/beetkeeper-macos-amd64-pex.pex | grep -o 'pydantic_core-[^/]*\.whl' | sort -u
 ```
@@ -150,7 +150,7 @@ image can `pip install` an extra beets plugin and have the PEX pick it up.
 To regenerate the OpenAPI spec JSON files, run the following command:
 
 ```bash
-pants run build_scripts:openapi-json-exporter
+pants run etc/build_scripts:openapi-json-exporter
 ```
 
 It writes two files, and `--check` (run by prek and CI) verifies both:
@@ -158,30 +158,30 @@ It writes two files, and `--check` (run by prek and CI) verifies both:
 | File | Used by |
 | :--- | :------ |
 | `docs/public_api_reference/openapi.json` | the user reference site (full spec) |
-| `client/src/openapi.json` | the API client codegen (same spec without `webhooks`) |
+| `provides/client/src/openapi.json` | the API client codegen (same spec without `webhooks`) |
 
-`client/src/openapi.json` must exist for any Pants Python goal to run, including the exporter itself: Pants
+`provides/client/src/openapi.json` must exist for any Pants Python goal to run, including the exporter itself: Pants
 generates the client while mapping Python modules. Never delete it; regenerate it in place.
 
-## The API client wheel (`client:client-whl`)
+## The API client wheel (`provides/client:client-whl`)
 
 The `beetkeeper_api_client` package has no sources in the repo. Pants' OpenAPI backend
-(`pants.backend.experimental.openapi.codegen.python`) generates it from `client/src/openapi.json` with
+(`pants.backend.experimental.openapi.codegen.python`) generates it from `provides/client/src/openapi.json` with
 [openapi-generator](https://openapi-generator.tech/docs/generators/python)'s `python` generator, configured on
-the `client/src:openapi-spec` target.
+the `provides/client/src:openapi-spec` target.
 
 ```bash
-pants package client:client-whl                    # dist/beetkeeper_api_client-<version>-py3-none-any.whl
-pants export-codegen client/src:openapi-spec       # write the generated sources to dist/codegen/ for inspection
-pants test client::
+pants package provides/client:client-whl                    # dist/beetkeeper_api_client-<version>-py3-none-any.whl
+pants export-codegen provides/client/src:openapi-spec       # write the generated sources to dist/codegen/ for inspection
+pants test provides/client::
 ```
 
 - **openapi-generator is a JVM tool.** Pants fetches the jar and a JDK itself (no local Java needed). Its
-  version is `[openapi-generator].version` in `pants.toml`, locked in `3rdparty/jvm/openapi-generator.lock`;
+  version is `[openapi-generator].version` in `pants.toml`, locked in `etc/3rdparty/jvm/openapi-generator.lock`;
   after bumping it run `pants generate-lockfiles --resolve=openapi-generator`.
-- **The client has its own resolve, `client-resolve`** (`3rdparty/python/client-lockfile.json`), so its code
+- **The client has its own resolve, `client-resolve`** (`etc/3rdparty/python/client-lockfile.json`), so its code
   and tests cannot import `beetkeeper`. Pants requires a requirement in that resolve for every runtime dep the
-  generator declares, so the `dependencies` in `client/pyproject.toml` must mirror the generated
+  generator declares, so the `dependencies` in `provides/client/pyproject.toml` must mirror the generated
   `requirements.txt` (changing the generator's `library` option changes that list).
 - **Webhooks are stripped from the client's spec.** They describe requests beetkeeper sends, and the `python`
   generator fails on them.

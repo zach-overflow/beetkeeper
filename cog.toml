@@ -47,7 +47,7 @@ revert = { changelog_title = "Revert", omit_from_changelog = true }
 
 [changelog]
 path = "CHANGELOG.md"
-template = ".cog/changelog-template.tera"
+template = "etc/.cog/changelog-template.tera"
 remote = "github.com"
 owner = "zach-overflow"
 repository = "beetkeeper"

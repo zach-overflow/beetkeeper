@@ -91,7 +91,7 @@ jobs:
         with:
           # Bump to invalidate every Pants cache; re-fetch named caches when dependencies change.
           gha-cache-key: v0
-          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
 
       - name: Check BUILD files are up to date
@@ -106,7 +106,7 @@ jobs:
       # their `vcs_version`-derived versions. The tag doesn't exist yet, so these carry a dev version.
       - name: Build wheels
         run: |
-          pants package beetkeeper-core:beetkeeper-whl plugin:plugin-whl client:client-whl
+          pants package provides/beetkeeper-core:beetkeeper-whl provides/plugin:plugin-whl provides/client:client-whl
 
       - name: Upload Pants log
         if: always()
@@ -145,11 +145,11 @@ jobs:
         uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: image-${{ matrix.arch }}-v0
-          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
       - name: Build image (native ${{ matrix.arch }})
         run: |
-          pants package //:beetkeeper-server-image
+          pants package //etc/docker:beetkeeper-server-image
 
   # Validation-only standalone binary builds on native per-platform runners: built and smoke-tested with the
   # dev version the untagged commit yields; nothing is uploaded. No Intel macOS entry: Pants ships no macOS
@@ -194,7 +194,7 @@ jobs:
         uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: standalone-${{ matrix.slug }}-v0
-          named-caches-hash: ${{ hashFiles('3rdparty/**/*-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/**/*-lockfile.json') }}
           cache-lmdb-store: 'true'
       - name: Build standalone binary
         run: |
@@ -240,7 +240,7 @@ jobs:
         uses: pantsbuild/actions/init-pants@v11
         with:
           gha-cache-key: docs-v0
-          named-caches-hash: ${{ hashFiles('3rdparty/tools/tools-lockfile.json') }}
+          named-caches-hash: ${{ hashFiles('etc/3rdparty/tools/tools-lockfile.json') }}
       - name: Build docs site
         run: pants run docs:mkdocs-pex -- build --strict
 

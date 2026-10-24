@@ -6,7 +6,7 @@ All commands in this doc are run from the repo root directory, unless explicitly
 
 1. Install `docker` (recommend either via [docker desktop](https://www.docker.com/products/docker-desktop/) or [colima](https://colima.run/)).
 2. Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
-3. Install pantsbuild either by running `./build_scripts/get-pants.sh` or through the other methods listed [here](https://www.pantsbuild.org/stable/docs/getting-started/installing-pants).
+3. Install pantsbuild either by running `./etc/build_scripts/get-pants.sh` or through the other methods listed [here](https://www.pantsbuild.org/stable/docs/getting-started/installing-pants).
 4. Install [`prek`](https://prek.j178.dev/installation/)
 	1. run `prek install` from the repo root to set up the pre-commit  hooks.
 
@@ -34,7 +34,7 @@ Prior experience with pants is **_not required_**; however, you may find it help
 ### Testing
 
 Tests run through Pants' built-in pytest: each `python_tests` file runs in its own sandbox, with
-3rd-party dependencies supplied by the Pants resolve lockfiles under `3rdparty/` (regenerate with
+3rd-party dependencies supplied by the Pants resolve lockfiles under `etc/3rdparty/` (regenerate with
 `pants generate-lockfiles` after dependency changes). pytest itself and its plugins install from the
 `[pytest].requirements` list in `pants.toml` — any plugin whose CLI options we pass (e.g. `pytest-socket`)
 must be listed there. `pants test ::` also runs the `hooks:uv-lockfile-check` repo-consistency check.
@@ -49,14 +49,14 @@ To run only the tests found under a specific path, run:
 
 ```shell
 pants test < path-prefix-here >::
-# Example: pants test beetkeeper-core/src/tests/api_tests:: will only run tests found under beetkeeper-core/src/tests/api_tests
+# Example: pants test provides/beetkeeper-core/src/tests/api_tests:: will only run tests found under provides/beetkeeper-core/src/tests/api_tests
 ```
 
 To run pytest with pdb or other breakpoints enabled, run the command with the `--test-debug` flag. Example:
 
 ```shell
-# If you set a breakpoint in a test within `beetkeeper-core/src/tests/my_pytest_file.py`.
-pants --test-debug test beetkeeper-core/src/tests/my_pytest_file.py
+# If you set a breakpoint in a test within `provides/beetkeeper-core/src/tests/my_pytest_file.py`.
+pants --test-debug test provides/beetkeeper-core/src/tests/my_pytest_file.py
 ```
 
 For quick ad-hoc runs against the uv dev venv (no Pants sandboxing), `uv run --all-groups pytest ...`
@@ -67,20 +67,20 @@ also works.
 For manual, interactive testing of the web app, run:
 
 ```shell
-./build_scripts/run-test-server.sh
+./etc/build_scripts/run-test-server.sh
 ```
 
-This packages the server Docker image (`pants package //:beetkeeper-server-image`) and starts a container
+This packages the server Docker image (`pants package //etc/docker:beetkeeper-server-image`) and starts a container
 from it, serving the app at <http://localhost:8337>. Press `Ctrl-C` to stop it. No configuration or host
-data is required: the container entrypoint (`build_scripts/dev_scripts/test_container_init.sh`) generates a
+data is required: the container entrypoint (`etc/build_scripts/dev_scripts/test_container_init.sh`) generates a
 throwaway beets/beetkeeper config under `/test_dirs` inside the container and runs the database migrations,
 so everything is discarded when the container exits. It also creates fake tagged albums under `/downloads`
 to import, seeds fake events for the events page, and starts a fake download-client API
-(`build_scripts/dev_scripts/fake_downloader_api.py`) behind the config's downloader hook: on the search
+(`etc/build_scripts/dev_scripts/fake_downloader_api.py`) behind the config's downloader hook: on the search
 page, **Find via downloader** resolves an imported fake album back to its `/downloads` folder, from where
 a clean-slate import can be tried end to end.
 
-The script also mounts the repo's `beetkeeper-core/src/beetkeeper/api/static` directory into the container and
+The script also mounts the repo's `provides/beetkeeper-core/src/beetkeeper/api/static` directory into the container and
 symlinks it over the copy the PEX extracts at startup. This means edits to static files (CSS, HTML
 templates, images, JS) on the host render on the next browser refresh — no image rebuild or container
 restart needed. Changes to **Python** code, however, are baked into the PEX, so they require re-running the
@@ -92,10 +92,10 @@ The beetkeeper repo publishes the following artifacts for any given release:
 
 |  Artifact Name         |  Type                       |  Description  |  Pants target  |
 | :--------------------- | --------------------------- | :------------ | -------------: |
-| `beetkeeper-server` | Docker image                | Self-hosted `beets` + `beetkeeper_plugin` wrapped by the `beetkeeper` server | `//:beetkeeper-server-image` |
-| `beetkeeper.whl`       | Python library distribution | The beetkeeper server, published as a wheel file to PyPI | `beetkeeper-core:beetkeeper-whl` |
-| `beetkeeper-plugin` | Python library distribution | `beetsplug` plugin which pushes beets events to the beetkeeper server | `plugin:plugin-whl` |
-| `beetkeeper-api-client` | Python library distribution | Python client for the beetkeeper REST API, generated from its OpenAPI spec | `client:client-whl` |
+| `beetkeeper-server` | Docker image                | Self-hosted `beets` + `beetkeeper_plugin` wrapped by the `beetkeeper` server | `//etc/docker:beetkeeper-server-image` |
+| `beetkeeper.whl`       | Python library distribution | The beetkeeper server, published as a wheel file to PyPI | `provides/beetkeeper-core:beetkeeper-whl` |
+| `beetkeeper-plugin` | Python library distribution | `beetsplug` plugin which pushes beets events to the beetkeeper server | `provides/plugin:plugin-whl` |
+| `beetkeeper-api-client` | Python library distribution | Python client for the beetkeeper REST API, generated from its OpenAPI spec | `provides/client:client-whl` |
 
 To package all of the artifacts, run:
 
@@ -107,7 +107,7 @@ Or, to package only a specific artifact, run the command against the intended pa
 For example, to only build the beetkeeper server wheel, you'd run:
 
 ```shell
-pants package beetkeeper-core:beetkeeper-whl
+pants package provides/beetkeeper-core:beetkeeper-whl
 ```
 
 ## CI and GitHub Actions
@@ -131,7 +131,7 @@ Every Pants job restores three GitHub Actions caches through `pantsbuild/actions
 | Cache | Keyed on | Contents |
 | :---- | :------- | :------- |
 | Pants setup (`~/.cache/nce`) | `pants_version` in `pants.toml` | The Pants launcher, its interpreter and venv. |
-| Named caches (`~/.cache/pants/named_caches`) | The `3rdparty/` lockfiles (`named-caches-hash`) | pip/pex downloads and built wheels shared by every resolve. |
+| Named caches (`~/.cache/pants/named_caches`) | The `etc/3rdparty/` lockfiles (`named-caches-hash`) | pip/pex downloads and built wheels shared by every resolve. |
 | LMDB store (`~/.cache/pants/lmdb_store`) | The commit SHA, falling back to the latest `main` commit | Pants' fine-grained process cache: every sandboxed process result (tests, lint, mypy, PEX/wheel builds). |
 
 The LMDB store is what makes a warm run cheap: a branch push restores `main`'s store and only re-runs the

@@ -1,0 +1,19 @@
+python_test_utils(
+    name="base-pytest-utils",
+    dependencies=[
+        "//provides/beetkeeper-core/src/beetkeeper:beetkeeper",
+        "//provides/beetkeeper-core:app-requirements",
+    ],
+)
+__defaults__(
+    {
+        (python_tests, python_test_utils): dict(
+            dependencies=[
+                "//provides/beetkeeper-core/src/tests:base-pytest-utils",
+                "//provides/beetkeeper-core:app-requirements",
+            ]
+        )
+    },
+    extend=True,
+)
+python_tests()
