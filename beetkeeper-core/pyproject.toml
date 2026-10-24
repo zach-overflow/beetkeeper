@@ -3,7 +3,7 @@
 # must match what the code imports.
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = [ "setuptools>=84.0.0" ]
+requires = [ "setuptools>=84.2.1" ]
 
 [project]
 name = "beetkeeper"
@@ -29,9 +29,9 @@ dependencies = [
   "beetkeeper-plugin",
   "beets>=2.14.1",
   "click>=8.4.1",
-  "fastapi>=0.143.0",
+  "fastapi>=0.160.0",
   "greenlet>=3.1",
-  "httpx2",
+  "httpx2>=2.16.0",
   "jinja2",
   "pydantic>=2.14.0",
   "pydantic-settings>=2.14.2",

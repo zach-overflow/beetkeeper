@@ -20,12 +20,12 @@ backend_packages = [
   "pants.backend.shell.lint.shellcheck",
   "pants.backend.shell.lint.shfmt",
   "pants.backend.tools.taplo",
-  "pyproject_fmt_pants_plugin",
+  # "pyproject_fmt_pants_plugin",
 ]
 pants_version = "2.33.1"
 plugins = [
   # https://pypi.org/project/pyproject-fmt-pants-plugin/
-  "pyproject-fmt-pants-plugin==0.2.1",
+  "pyproject-fmt-pants-plugin==0.4.4",
 ]
 build_patterns = ["BUILD", "BUILD.*"]
 build_file_prelude_globs = ["build_scripts/pants_macros.py"]
@@ -83,6 +83,14 @@ known_versions = [
 # https://pypi.org/project/pyproject-fmt-pants-plugin/
 [pyproject-fmt]
 config_discovery = true
+# The repo-wide `pyproject-fmt` settings live here rather than in a `pyproject-fmt.toml` file.
+# https://pyproject-fmt.readthedocs.io/en/latest/configuration.html#command-line-interface
+args = [
+  "--column-width=120",
+  "--indent=2",
+  "--keep-full-version",
+  "--no-generate-python-version-classifiers",
+]
 
 [setuptools]
 install_from_resolve = "tools-resolve"
@@ -96,6 +104,7 @@ build_file_name = "BUILD"
 [taplo]
 glob_pattern = [
   "**/*.toml",
+  # `pyproject-fmt` handles `pyproject.toml` files.
   "!**/pyproject.toml",
   "!.taplo.toml",
   "!taplo.toml",

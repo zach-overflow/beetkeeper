@@ -3,7 +3,7 @@
 [dependency-groups]
 dev = [
   "bandit>=1.9.4",
-  "fastapi[standard]>=0.143.0",
+  "fastapi[standard]>=0.160.0",
   "ipython>=9.3.0",
   "mutagen>=1.47.0",
   "mypy>=2.3.1",

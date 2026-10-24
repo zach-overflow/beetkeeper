@@ -48,13 +48,13 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "77eb101048d95f982c0353e9233404889dcd7a6fc244c107836c0e2fc9cf7d9d",
-              "url": "https://files.pythonhosted.org/packages/3f/27/78a89b55b0904d222183164e079b4ca56208e94eff1d35ad1f1ad5be9b06/alembic-1.20.0-py3-none-any.whl"
+              "hash": "9970712cfb81ea26c8658d378aaa5b8f6ff9146e5bb111d70497c164016cf598",
+              "url": "https://files.pythonhosted.org/packages/11/3c/8740f5b4e1bd57333e4f84265b9b6363da4f7cf70f5622dd1e2fde7a0bd5/alembic-1.20.1-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "db505480647bc60386c5369402f4a57a506b7539c9e9ef5e270d45cbbe4939bf",
-              "url": "https://files.pythonhosted.org/packages/ed/aa/02910bdb8e2f1444f6654d5b296cd827d126f82209050ee7b1000f92ac4b/alembic-1.20.0.tar.gz"
+              "hash": "83490def1f723413db5096591f7609ac52544805be93849170088ed04f5a2e0b",
+              "url": "https://files.pythonhosted.org/packages/93/1c/00909e0fbebad2121d916fdcab044cae988146680e9ee4387ba25fef8747/alembic-1.20.1.tar.gz"
             }
           ],
           "project_name": "alembic",
@@ -66,7 +66,7 @@
             "tzdata; extra == \"tz\""
           ],
           "requires_python": ">=3.10",
-          "version": "1.20.0"
+          "version": "1.20.1"
         },
         {
           "artifacts": [
@@ -131,8 +131,8 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "8990fc656f05ebd6f9e5d580b658a2fde1be4b6e3afe43c5ed66157b25eca826",
-              "url": "https://files.pythonhosted.org/packages/5a/9d/a111afeb4f6e40cf151cf60ed6007fe05d6e547cd93753db08c3191b96fc/beetkeeper_plugin-0.12.0-py3-none-any.whl"
+              "hash": "7ed21d39f2378249d363b51eea3597977d8205cde5eb51f9f6ede9c990777c30",
+              "url": "https://files.pythonhosted.org/packages/ff/56/02c0ae912a1e924ff7addbc97ebc0d36c740eb5c4c97f4f53c10ac689a2e/beetkeeper_plugin-0.12.1-py3-none-any.whl"
             }
           ],
           "project_name": "beetkeeper-plugin",
@@ -142,7 +142,7 @@
             "requests>=2.34"
           ],
           "requires_python": "<3.16,>=3.14",
-          "version": "0.12.0"
+          "version": "0.12.1"
         },
         {
           "artifacts": [
@@ -219,19 +219,19 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b",
-              "url": "https://files.pythonhosted.org/packages/c4/51/29046e48f693c54e5b7412216d447a1d8362c9653148d98c02cdf65fa733/certifi-2026.10.19-py3-none-any.whl"
+              "hash": "e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1",
+              "url": "https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae",
-              "url": "https://files.pythonhosted.org/packages/a6/bd/1436c50cc46699de0230fbaacc1d1de7bfec413176099949e9d5112e88f2/certifi-2026.10.19.tar.gz"
+              "hash": "a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd",
+              "url": "https://files.pythonhosted.org/packages/fd/11/b524cbd9bbdaca58608e4cf4053fd463417549e1959fa8d3aa18319f9555/certifi-2026.10.23.tar.gz"
             }
           ],
           "project_name": "certifi",
           "requires_dists": [],
           "requires_python": ">=3.7",
-          "version": "2026.10.19"
+          "version": "2026.10.23"
         },
         {
           "artifacts": [
@@ -514,13 +514,13 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "49b94c29afec2fca1390e9c39be202c59755d5cda8e4f1148a133761e4313e7e",
-              "url": "https://files.pythonhosted.org/packages/8d/35/b03b5df04a1a8ee400c9df4b1795af84370b2bb6f1cc4be57c0b79688d00/fastapi-0.159.1-py3-none-any.whl"
+              "hash": "3785963de305dd09912426cb81f2d230fce98ab3521cdfe97265c8d14983128c",
+              "url": "https://files.pythonhosted.org/packages/b4/4f/3f2c25c9b43970b5e9a08beb5e04776247edea684ddc0930f4f02f0bb6cb/fastapi-0.162.0-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "b45b1ec57f3aa4d2f80f09bfbcf068b46764a2ee892e56753f35bb3d9d845ce2",
-              "url": "https://files.pythonhosted.org/packages/9a/40/a212bffb9809afb9a94b250f11e0c29fd8b2589ec92e4bedd1cc7adf9938/fastapi-0.159.1.tar.gz"
+              "hash": "6a22c1e2e6e32e0633ee7e170f00009a29b8228b16feb219ee42f32fd8d88a8f",
+              "url": "https://files.pythonhosted.org/packages/e9/eb/2cf8c80abf09b2800aef0a83b41066fbfda8ee5495b7a08b9d1af40f7046/fastapi-0.162.0.tar.gz"
             }
           ],
           "project_name": "fastapi",
@@ -571,7 +571,7 @@
             "uvicorn[standard]>=0.12.0; extra == \"standard-no-fastapi-cloud-cli\""
           ],
           "requires_python": ">=3.10",
-          "version": "0.159.1"
+          "version": "0.162.0"
         },
         {
           "artifacts": [
@@ -2148,9 +2148,10 @@
     "beetkeeper-plugin",
     "beets>=2.14.1",
     "click>=8.4.1",
-    "fastapi>=0.143.0",
+    "fastapi>=0.160.0",
     "greenlet>=3.1",
     "httpx2",
+    "httpx2>=2.16.0",
     "jinja2",
     "pydantic-settings>=2.14.2",
     "pydantic>=2.14.0",
