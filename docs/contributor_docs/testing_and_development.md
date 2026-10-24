@@ -37,7 +37,7 @@ Tests run through Pants' built-in pytest: each `python_tests` file runs in its o
 3rd-party dependencies supplied by the Pants resolve lockfiles under `etc/3rdparty/` (regenerate with
 `pants generate-lockfiles` after dependency changes). pytest itself and its plugins install from the
 `[pytest].requirements` list in `pants.toml` — any plugin whose CLI options we pass (e.g. `pytest-socket`)
-must be listed there. `pants test ::` also runs the `hooks:uv-lockfile-check` repo-consistency check.
+must be listed there. `pants test ::` also runs the `etc/hooks:uv-lockfile-check` repo-consistency check.
 
 To run all tests in the repo:
 
@@ -161,14 +161,14 @@ digests change.
 `actionlint` checks the workflow YAML for syntax errors, invalid
 `${{ }}` expressions, unknown action inputs, and shell problems in `run:` blocks (via `shellcheck`). It
 runs automatically as a [prek](https://prek.j178.dev/) hook on commit and as the first step in CI — both
-through the shared `hooks/actionlint.sh`, which uses a pinned `actionlint` (downloading it if it isn't on
+through the shared `etc/hooks/actionlint.sh`, which uses a pinned `actionlint` (downloading it if it isn't on
 your `PATH`). `yamllint` (part of `pants lint ::`) covers generic YAML issues like line length; `actionlint`
 adds the GitHub-Actions-specific checks.
 
 Run it on demand against every workflow:
 
 ```shell
-hooks/actionlint.sh
+etc/hooks/actionlint.sh
 ```
 
 ### Using `act`

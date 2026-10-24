@@ -43,7 +43,7 @@ Dockerfile and its entrypoint) lives under `etc/`.
   lockfile (`etc/3rdparty/python/beetkeeper-lockfile.json`); pytest itself + its plugins install from
   `tools-resolve` via `[pytest].requirements` in `pants.toml` — any plugin whose CLI options we pass
   (e.g. `pytest-socket`) must be listed there.
-- `pants test ::` also runs the `hooks:uv-lockfile-check` `test_shell_command` (defined via the
+- `pants test ::` also runs the `etc/hooks:uv-lockfile-check` `test_shell_command` (defined via the
   `test_cmd` macro in `etc/build_scripts/pants_macros.py`).
 - **mypy** runs via `pants check ::` and **bandit** via `pants lint ::` (both are Pants backends
   configured in `pants.toml`, reading tool config from the root `pyproject.toml`).
@@ -61,7 +61,7 @@ pants generate-lockfiles              # regenerate the Pants resolve lockfiles u
 uv lock                               # regenerate uv.lock after dep changes
 uv lock --check                       # verify uv.lock is current (gated in prek + CI)
 ```
-prek hooks (`.pre-commit-config.yaml`) call the same Pants goals (`lint fmt`, `check`, `test hooks:...`)
+prek hooks (`.pre-commit-config.yaml`) call the same Pants goals (`lint fmt`, `check`, `test etc/hooks:...`)
 plus actionlint and an MkDocs build check. Install git hooks with `prek install`.
 
 ## API client (`client/`) — generated, no sources in the repo
