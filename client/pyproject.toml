@@ -3,7 +3,7 @@
 # so it only exists inside Pants sandboxes (this is not a uv workspace member).
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = [ "setuptools>=84.0.0" ]
+requires = [ "setuptools>=84.2.1" ]
 
 [project]
 name = "beetkeeper-api-client"
@@ -18,7 +18,7 @@ dynamic = [ "version" ]
 # Must mirror the `requirements.txt` openapi-generator emits for the `httpx2` library: Pants fails codegen
 # unless every one of those has a `python_requirement` in `client-resolve`.
 dependencies = [
-  "httpx2",
+  "httpx2>=2.16.0",
   "pydantic>=2.14.0",
   "python-dateutil>=2.8.2",
   "typing-extensions>=4.7.1",

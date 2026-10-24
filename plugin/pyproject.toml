@@ -2,7 +2,7 @@
 # file directly, so the `[project]` metadata below is hand-maintained and must stay in sync with the app's.
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = [ "setuptools>=84.0.0" ]
+requires = [ "setuptools>=84.2.1" ]
 
 [project]
 name = "beetkeeper-plugin"
