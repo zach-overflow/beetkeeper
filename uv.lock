@@ -182,7 +182,7 @@ wheels = [
 
 [[package]]
 name = "beetkeeper"
-source = { editable = "beetkeeper-core" }
+source = { editable = "provides/beetkeeper-core" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
@@ -209,7 +209,7 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21" },
     { name = "alembic", specifier = ">=1.18.5" },
     { name = "anyio", specifier = ">=4.15.1" },
-    { name = "beetkeeper-plugin", editable = "plugin" },
+    { name = "beetkeeper-plugin", editable = "provides/plugin" },
     { name = "beets", specifier = ">=2.14.1" },
     { name = "click", specifier = ">=8.4.1" },
     { name = "fastapi", specifier = ">=0.160.0" },
@@ -228,7 +228,7 @@ requires-dist = [
 
 [[package]]
 name = "beetkeeper-plugin"
-source = { editable = "plugin" }
+source = { editable = "provides/plugin" }
 dependencies = [
     { name = "beets" },
     { name = "pydantic" },

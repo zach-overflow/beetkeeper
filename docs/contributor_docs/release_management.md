@@ -8,10 +8,10 @@ A release publishes five artifacts, all carrying the **same** semver:
 
 | Artifact | Pants target | Destination |
 | :------- | :----------- | :---------- |
-| `beetkeeper` wheel | `beetkeeper-core:beetkeeper-whl` | PyPI (`beetkeeper`) |
-| `beetkeeper-plugin` wheel | `plugin:plugin-whl` | PyPI (`beetkeeper-plugin`) |
-| `beetkeeper-api-client` wheel | `client:client-whl` | PyPI (`beetkeeper-api-client`) |
-| `beetkeeper-server` image | `//:beetkeeper-server-image` | GHCR `ghcr.io/zach-overflow/beetkeeper` (`:latest` + `:<version>`) |
+| `beetkeeper` wheel | `provides/beetkeeper-core:beetkeeper-whl` | PyPI (`beetkeeper`) |
+| `beetkeeper-plugin` wheel | `provides/plugin:plugin-whl` | PyPI (`beetkeeper-plugin`) |
+| `beetkeeper-api-client` wheel | `provides/client:client-whl` | PyPI (`beetkeeper-api-client`) |
+| `beetkeeper-server` image | `//etc/docker:beetkeeper-server-image` | GHCR `ghcr.io/zach-overflow/beetkeeper` (`:latest` + `:<version>`) |
 | standalone binaries (linux x86_64 / aarch64, macOS aarch64) | `//:beetkeeper-<slug>-standalone` | GitHub release assets (`beetkeeper-<scie platform>` + `.sha256`) |
 
 The docs site (GitHub Pages) is also rebuilt and redeployed as part of every release: mike publishes
@@ -23,8 +23,8 @@ All three wheels are versioned from the `vMAJOR.MINOR.PATCH` git tag via Pants'
 [`vcs_version`](https://www.pantsbuild.org/stable/reference/targets/vcs_version) target (setuptools-scm
 under the hood); **no version string is committed anywhere**. The moving parts:
 
-- Each distribution has a `vcs_version` target (`beetkeeper-core/src/beetkeeper/BUILD`,
-  `plugin/src/beetsplug/beetkeeper_plugin/BUILD`) that runs setuptools-scm against the real repo and generates a
+- Each distribution has a `vcs_version` target (`provides/beetkeeper-core/src/beetkeeper/BUILD`,
+  `provides/plugin/src/beetsplug/beetkeeper_plugin/BUILD`) that runs setuptools-scm against the real repo and generates a
   `_scm_version.py` module into every consuming Pants sandbox (dependency inference picks it up from the
   import in `_version.py`).
 - Each package's committed `_version.py` re-exports the generated module, falling back to `0.0.0.dev0`
@@ -36,9 +36,9 @@ under the hood); **no version string is committed anywhere**. The moving parts:
   `MAJOR.MINOR.PATCH`; on any other commit it yields a dev version (`X.Y.Z.devN+g<hash>`), which is what
   local `pants package` produces.
 - The generated API client differs slightly, since it has no committed sources: its `vcs_version` target
-  lives in `client/src/BUILD`, and `client/pyproject.toml` reads the generated `_scm_version.version` directly
+  lives in `provides/client/src/BUILD`, and `provides/client/pyproject.toml` reads the generated `_scm_version.version` directly
   (no `_version.py`). Its in-code `beetkeeper_api_client.__version__` is separate: openapi-generator bakes it
-  in from the `RELEASE_TAG` environment variable (`packageVersion` in `client/src/BUILD`), falling back to
+  in from the `RELEASE_TAG` environment variable (`packageVersion` in `provides/client/src/BUILD`), falling back to
   `0.0.0.dev0`. Publish's `build-wheels` job sets `RELEASE_TAG` and fails if the two versions disagree.
 
 > The git tag carries a leading `v` (GitHub release convention); every published *version id* (wheel
@@ -77,14 +77,14 @@ Cocogitto's behavior is configured in `cog.toml` at the repo root:
   [GitHub releases page](https://github.com/zach-overflow/beetkeeper/releases) instead.
 - `post_bump_hooks` — `cog bump` itself is what pushes the new tag (the GitHub action wrapping it
   pushes nothing).
-- `[changelog]` — `template = ".cog/changelog-template.tera"` is a checked-in copy of cog's built-in `remote`
+- `[changelog]` — `template = "etc/.cog/changelog-template.tera"` is a checked-in copy of cog's built-in `remote`
   template ([Tera](https://keats.github.io/tera/docs/) syntax; see the
   [cog changelog docs](https://docs.cocogitto.io/guide/changelog.html#custom-templates)) that renders
   GitHub-linked changelog entries. Edit it to change the release-notes formatting (the per-commit
   line format is the `remote` macro at the top of the file);
   `cog changelog --at vX.Y.Z` generates each GitHub release's body straight from git history. The template
   also appends a *Download beetkeeper X.Y.Z* table linking the release's binary assets; its `asset_names` /
-  `asset_platforms` lists must stay in step with the platform map in `build_scripts/pants_macros.py` and
+  `asset_platforms` lists must stay in step with the platform map in `etc/build_scripts/pants_macros.py` and
   the `publish-binaries` job.
 
 ## Cutting a release (runbook)
@@ -195,7 +195,7 @@ builds succeed:
   `build-wheels` job must check out `v<version>` with `fetch-depth: 0` (setuptools-scm needs the tag in
   the checkout).
 - **`build-wheels` fails: `beetkeeper_api_client.__version__` is not the release version** — the job lost
-  its `RELEASE_TAG` env var, which feeds the generated client's `packageVersion` (`client/src/BUILD`).
+  its `RELEASE_TAG` env var, which feeds the generated client's `packageVersion` (`provides/client/src/BUILD`).
 - **PyPI publish fails with a trusted-publisher / OIDC error** — the registered Trusted Publisher must
   match exactly: owner/repo `zach-overflow/beetkeeper`, workflow `publish.yml`, environment `pypi`. Also
   note PyPI rejects reusable workflows outright, so Publish must never be converted to `workflow_call`.

@@ -1,0 +1,19 @@
+file(name="test-container-config", source="test_beets_conf.yaml")
+shell_sources(dependencies=[":test-container-config"])
+python_source(
+    name="prep-fake-audio-files",
+    source="./prep_fake_audio_files.py",
+    # mutagen is only a transitive dep (via beets), so `import mutagen.flac` can't be inferred; depending on
+    # beets makes subset runs (e.g. `pants check etc/build_scripts::`) work, matching the PEX it runs inside.
+    dependencies=[
+        "./fake_tag_data:fake_tag_data",
+        "provides/beetkeeper-core:app-requirements#beets",
+        ":test-container-config",
+    ],
+)
+python_source(name="seed-fake-event-data", source="./seed_fake_event_data.py")
+python_source(
+    name="fake-downloader-api",
+    source="./fake_downloader_api.py",
+    dependencies=["./fake_tag_data:fake_tag_data", ":test-container-config"],
+)

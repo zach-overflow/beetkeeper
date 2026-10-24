@@ -8,7 +8,7 @@
 BUILD text diff=python linguist-language=python
 *lockfile.json linguist-generated
 *lockfile.json.metadata linguist-generated
-build_scripts/get-pants.sh  linguist-vendored
+etc/build_scripts/get-pants.sh  linguist-vendored
 uv.lock linguist-generated
 
 
@@ -17,10 +17,10 @@ uv.lock linguist-generated
 #####   WEB   #####
 ###################
 # Ignore the entirety of our static web assets (css, html, images, etc.) for repo language stats
-# NOTE: technically, only `beetkeeper-core/src/beetkeeper/api/static/js/htmx.min.js` is vendored, but 
+# NOTE: technically, only `provides/beetkeeper-core/src/beetkeeper/api/static/js/htmx.min.js` is vendored, but 
 # the 'linguist-vendored' setting appears to be the only way to exclude files from language stats,
 # while still *including* those files in diffs: https://github.com/github-linguist/linguist/blob/main/docs/overrides.md
-beetkeeper-core/src/beetkeeper/api/static/** linguist-vendored
+provides/beetkeeper-core/src/beetkeeper/api/static/** linguist-vendored
 
 ###################
 #####   DOCS   ####

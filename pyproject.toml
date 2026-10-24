@@ -1,4 +1,4 @@
-# The distribution's build-system/`[project]` config lives in `beetkeeper-core/pyproject.toml` to avoid Pants'
+# The distribution's build-system/`[project]` config lives in `provides/beetkeeper-core/pyproject.toml` to avoid Pants'
 # `python_distribution` metadata injection; see the comment there.
 [dependency-groups]
 dev = [
@@ -25,7 +25,7 @@ required-version = ">=0.13.4"
 constraint-dependencies = [
   "beets>=2.14.1",
   # Security constraint: CA bundle without the revoked emSign root, see
-  # https://discuss.python.org/t/109576 (mirrored for Pants in `3rdparty/python/security-constraints.txt`)
+  # https://discuss.python.org/t/109576 (mirrored for Pants in `etc/3rdparty/python/security-constraints.txt`)
   "certifi>=2026.10.19",
   # Security constraint for preventing ealier `mako` versions with vulnerabilities
   "mako>=1.4.2",
@@ -35,13 +35,13 @@ constraint-dependencies = [
 sources.beetkeeper = { workspace = true }
 sources.beetkeeper_plugin = { workspace = true }
 # Members must be registered here or uv (which only reads this root file) can't see them and `uv lock` fails.
-workspace.members = [ "beetkeeper-core", "plugin" ]
+workspace.members = [ "provides/beetkeeper-core", "provides/plugin" ]
 
 [tool.ruff]
 target-version = "py314"
 line-length = 120
 indent-width = 4
-src = [ "beetkeeper-core/src", "client/src", "plugin/src" ]
+src = [ "provides/beetkeeper-core/src", "provides/client/src", "provides/plugin/src" ]
 format.skip-magic-trailing-comma = true
 format.docstring-code-format = true
 lint.select = [ "B", "E", "F", "I", "SIM", "UP" ]
@@ -105,13 +105,13 @@ lint.ignore = [
   "TC003",
   "W191",
 ]
-lint.exclude = [ "beetkeeper-core/src/tests/**/*.py", "build_scripts/**/*.py" ]
+lint.exclude = [ "etc/build_scripts/**/*.py", "provides/beetkeeper-core/src/tests/**/*.py" ]
 # TC off: runtime-needed type hints like `fastapi.Depends` must not move under TYPE_CHECKING.
-lint.per-file-ignores."beetkeeper-core/src/beetkeeper/api/**/*.py" = [ "D101", "TC" ]
+lint.per-file-ignores."provides/beetkeeper-core/src/beetkeeper/api/**/*.py" = [ "D101", "TC" ]
 # TC off: these are all runtime pydantic models.
-lint.per-file-ignores."beetkeeper-core/src/beetkeeper/db/**/*.py" = [ "TC" ]
-lint.per-file-ignores."integration_tests/**/*.py" = [ "I" ]
-lint.per-file-ignores."plugin/**/*.py" = [ "TID25" ]
+lint.per-file-ignores."provides/beetkeeper-core/src/beetkeeper/db/**/*.py" = [ "TC" ]
+lint.per-file-ignores."provides/integration_tests/**/*.py" = [ "I" ]
+lint.per-file-ignores."provides/plugin/**/*.py" = [ "TID25" ]
 lint.flake8-tidy-imports.banned-api.httpx.msg = "Use httpx2 instead."
 lint.flake8-tidy-imports.banned-api.requests.msg = "Use httpx2 instead."
 lint.flake8-type-checking.exempt-modules = [ "typing", "typing_extensions" ]
@@ -140,21 +140,21 @@ lint.pydocstyle.convention = "google"
 exclude_dirs = [
   ".github",
   ".venv",
-  "beetkeeper-core/src/tests",
-  "build_scripts",
   "docs",
-  "integration_tests",
-  "plugin/src/tests",
+  "etc/build_scripts",
+  "provides/beetkeeper-core/src/tests",
+  "provides/integration_tests",
+  "provides/plugin/src/tests",
 ]
 
 [tool.mypy]
-exclude = [ "build_scripts/", "docs/" ]
+exclude = [ "docs/", "etc/build_scripts/" ]
 namespace_packages = true
 explicit_package_bases = true
 python_version = "3.14"
 plugins = [ "pydantic.mypy" ]
 overrides = [
-  # openapi-generator output (see `client/src/BUILD`): its signatures still type-check callers, but errors
+  # openapi-generator output (see `provides/client/src/BUILD`): its signatures still type-check callers, but errors
   # inside the generated modules aren't ours to fix.
   { module = [ "beetkeeper_api_client", "beetkeeper_api_client.*" ], ignore_errors = true }
 ]

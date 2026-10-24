@@ -5,7 +5,7 @@ repos:
     hooks:
       - id: uv-lockfile-check
         name: uv lockfile check
-        entry: "pants test hooks:uv-lockfile-check"
+        entry: "pants test etc/hooks:uv-lockfile-check"
         language: system
         files: '^(pyproject\.toml|uv\.lock)$'
         pass_filenames: false
@@ -33,7 +33,7 @@ repos:
       - id: actionlint
         name: actionlint
         description: "Lint GitHub Actions workflow files (syntax, expressions, shellcheck on run blocks)."
-        entry: hooks/actionlint.sh
+        entry: etc/hooks/actionlint.sh
         language: script
         files: '^\.github/workflows/.*\.ya?ml$'
         pass_filenames: true
@@ -43,10 +43,10 @@ repos:
       - id: openapi-json-spec-check
         name: openapi-json-spec-check
         description: "Ensure the beetkeeper openapi.json is up to date."
-        entry: "pants run build_scripts:openapi-json-exporter -- --check"
+        entry: "pants run etc/build_scripts:openapi-json-exporter -- --check"
         # Whole package, not just `api/`: core DTOs (e.g. `core.import_jobs.ImportCandidate`) surface in
         # API response models, so their fields land in the exported schema too.
-        files: '^beetkeeper-core/src/beetkeeper/.*$'
+        files: '^provides/beetkeeper-core/src/beetkeeper/.*$'
         language: system
         pass_filenames: false
         priority: 3

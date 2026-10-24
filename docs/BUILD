@@ -5,9 +5,9 @@ pex_binary(
     script="mkdocs",
     resolve="tools-resolve",
     dependencies=[
-        "//3rdparty/tools:tools-requirements#mkdocs",
-        "//3rdparty/tools:tools-requirements#mkdocs-material",
-        "//3rdparty/tools:tools-requirements#mkdocs-swagger-ui-tag",
+        "//etc/3rdparty/tools:tools-requirements#mkdocs",
+        "//etc/3rdparty/tools:tools-requirements#mkdocs-material",
+        "//etc/3rdparty/tools:tools-requirements#mkdocs-swagger-ui-tag",
     ],
 )
 
@@ -20,9 +20,9 @@ pex_binary(
     execution_mode="venv",
     extra_build_args=["--venv=prepend"],
     dependencies=[
-        "//3rdparty/tools:tools-requirements#mike",
-        "//3rdparty/tools:tools-requirements#mkdocs",
-        "//3rdparty/tools:tools-requirements#mkdocs-material",
-        "//3rdparty/tools:tools-requirements#mkdocs-swagger-ui-tag",
+        "//etc/3rdparty/tools:tools-requirements#mike",
+        "//etc/3rdparty/tools:tools-requirements#mkdocs",
+        "//etc/3rdparty/tools:tools-requirements#mkdocs-material",
+        "//etc/3rdparty/tools:tools-requirements#mkdocs-swagger-ui-tag",
     ],
 )

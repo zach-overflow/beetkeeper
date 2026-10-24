@@ -112,7 +112,7 @@ a clean slate the inference follows the entry to its new beets id (or is dropped
 
 !!! tip "Authoritative source"
     The table above is a friendly summary. For the exact field definitions, validation, and defaults, see the
-    [`beetkeeper.settings.user_config`](https://github.com/zach-overflow/beetkeeper/blob/main/beetkeeper-core/src/beetkeeper/settings/user_config.py)
+    [`beetkeeper.settings.user_config`](https://github.com/zach-overflow/beetkeeper/blob/main/provides/beetkeeper-core/src/beetkeeper/settings/user_config.py)
     models in the source.
 
 !!! warning "Separate database"

@@ -1,0 +1,46 @@
+# Build-only pyproject for `provides/plugin:plugin-whl`: with `generate_setup=False`, setuptools reads this
+# file directly, so the `[project]` metadata below is hand-maintained and must stay in sync with the app's.
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [ "setuptools>=84.2.1" ]
+
+[project]
+name = "beetkeeper-plugin"
+description = "A peripheral beets plugin component for event tracking in the beetkeeper application."
+readme = "README.md"
+keywords = [
+  "beets",
+  "beets plugin",
+  "music tagging",
+  "music tags",
+  "music-library",
+  "self-hosted",
+]
+license = "AGPL-3.0-or-later"
+maintainers = [ { name = "zach-overflow" } ]
+authors = [ { name = "Zach Gottesman" } ]
+requires-python = ">=3.14,<3.16"
+dynamic = [ "version" ]
+dependencies = [ "beets>=2.14.1", "pydantic>=2.14.0", "requests>=2.34" ]
+urls."Bug Tracker" = "https://github.com/zach-overflow/beetkeeper/issues"
+urls.Changelog = "https://github.com/zach-overflow/beetkeeper/releases"
+urls.Documentation = "https://beetkeeper.dadbodaudio.com/latest/"
+urls.Repository = "https://github.com/zach-overflow/beetkeeper"
+
+# beets only discovers plugins importable as `beetsplug.<name>`, so the wheel installs the sources under the
+# `beetsplug` namespace: `src/beetsplug/beetkeeper_plugin/` lands at `beetsplug/beetkeeper_plugin/`. `beetsplug`
+# itself is NOT a declared package (no `beetsplug/__init__.py` shipped): beets' own `beetsplug/__init__.py`
+# pkgutil `extend_path` merges this portion into the namespace, and shipping our own `__init__.py` would
+# collide with the file beets installs.
+[tool.setuptools]
+packages = [ "beetsplug.beetkeeper_plugin" ]
+package-dir."" = "src"
+package-data."*" = [ "py.typed" ]
+# The version comes from the git tag: Pants' `vcs_version` target (beetkeeper_plugin/BUILD) generates
+# `_scm_version.py` via setuptools-scm, and `_version.py` re-exports it (falling back to a dev placeholder
+# for builds outside Pants, e.g. the uv dev venv, where the generated module doesn't exist).
+dynamic.version = { attr = "beetsplug.beetkeeper_plugin._version.__version__" }
+
+# No `[tool.mypy]` here: Pants runs one mypy against the repo-root config, so it'd be silently ignored.
+[tool.uv]
+package = true
