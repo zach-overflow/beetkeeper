@@ -27,8 +27,12 @@ constraint-dependencies = [
   # Security constraint: CA bundle without the revoked emSign root, see
   # https://discuss.python.org/t/109576 (mirrored for Pants in `etc/3rdparty/python/security-constraints.txt`)
   "certifi>=2026.10.19",
+  # CVE-2026-128089
+  "dnspython>=2.9.2",
   # Security constraint for preventing ealier `mako` versions with vulnerabilities
   "mako>=1.4.2",
+  # CVE-2026-126360
+  "opentelemetry-api>=1.45.2",
   # Security constraint for preventing earlier `urllib3` versions with vulnerabilities
   "urllib3>=2.8.0",
 ]
