@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/logo/favicon-16.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -33,10 +33,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -950,10 +950,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-api-client-wheel-clientclient-whl" class="md-nav__link">
+  <a href="#the-api-client-wheel-providesclientclient-whl" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The API client wheel (client:client-whl)
+        The API client wheel (provides/client:client-whl)
       
     </span>
   </a>
@@ -1092,10 +1092,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-api-client-wheel-clientclient-whl" class="md-nav__link">
+  <a href="#the-api-client-wheel-providesclientclient-whl" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The API client wheel (client:client-whl)
+        The API client wheel (provides/client:client-whl)
       
     </span>
   </a>
@@ -1140,18 +1140,18 @@
 <tbody>
 <tr>
 <td style="text-align: left;"><code>beetkeeper</code> wheel</td>
-<td style="text-align: left;"><code>beetkeeper-core:beetkeeper-whl</code></td>
+<td style="text-align: left;"><code>provides/beetkeeper-core:beetkeeper-whl</code></td>
 <td style="text-align: left;">pure-python, <code>py3-none-any</code></td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>beetkeeper-plugin</code> wheel</td>
-<td style="text-align: left;"><code>plugin:plugin-whl</code></td>
+<td style="text-align: left;"><code>provides/plugin:plugin-whl</code></td>
 <td style="text-align: left;">pure-python</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>beetkeeper-api-client</code> wheel</td>
-<td style="text-align: left;"><code>client:client-whl</code></td>
-<td style="text-align: left;">pure-python; sources generated from the OpenAPI spec (see <a href="#the-api-client-wheel-clientclient-whl">below</a>)</td>
+<td style="text-align: left;"><code>provides/client:client-whl</code></td>
+<td style="text-align: left;">pure-python; sources generated from the OpenAPI spec (see <a href="#the-api-client-wheel-providesclientclient-whl">below</a>)</td>
 </tr>
 <tr>
 <td style="text-align: left;">application PEXes</td>
@@ -1165,7 +1165,7 @@
 </tr>
 <tr>
 <td style="text-align: left;">server image</td>
-<td style="text-align: left;"><code>//:beetkeeper-server-image</code></td>
+<td style="text-align: left;"><code>//etc/docker:beetkeeper-server-image</code></td>
 <td style="text-align: left;">GHCR (<code>db upgrade</code> / <code>run</code>)</td>
 </tr>
 </tbody>
@@ -1174,12 +1174,12 @@
 like any other (cross-built from the complete platform), but releases do not ship that binary: Pants ships no
 macOS x86_64 wheel and scie-pants &gt;= 0.13 no launcher, so Pants cannot run on GitHub's Intel macOS runners to
 smoke-test it.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pants<span class="w"> </span>package<span class="w"> </span>//:beetkeeper-server-image<span class="w">   </span><span class="c1"># builds the host-arch image (+ its PEX)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pants<span class="w"> </span>package<span class="w"> </span>//etc/docker:beetkeeper-server-image<span class="w">   </span><span class="c1"># builds the host-arch image (+ its PEX)</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pants<span class="w"> </span>package<span class="w"> </span>//:beetkeeper-macos-arm64-standalone
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pants<span class="w"> </span>package<span class="w"> </span>beetkeeper-core:beetkeeper-whl
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pants<span class="w"> </span>package<span class="w"> </span>provides/beetkeeper-core:beetkeeper-whl
 </code></pre></div>
 <h2 id="the-application-pexes-and-standalone-binaries-beetkeeper-slug-pexstandalone">The application PEXes and standalone binaries (<code>//:beetkeeper-&lt;slug&gt;-{pex,standalone}</code>)<a class="headerlink" href="#the-application-pexes-and-standalone-binaries-beetkeeper-slug-pexstandalone" title="Permanent link">&para;</a></h2>
-<p>Both flavours are emitted per platform by the <code>app_server_pexes</code> macro (<code>build_scripts/pants_macros.py</code>, called
+<p>Both flavours are emitted per platform by the <code>app_server_pexes</code> macro (<code>etc/build_scripts/pants_macros.py</code>, called
 from the root <code>BUILD</code>). Each is a <code>pex_binary</code> pinned via <a href="https://www.pantsbuild.org/stable/docs/python/overview/pex#generating-the-complete_platforms-file"><code>complete_platforms</code></a> to one platform, so it
 carries only that platform's native wheels (e.g. <code>pydantic_core</code>). <code>complete_platforms</code> lets PEX resolve those
 foreign wheels <strong>locally</strong>, on a macOS dev machine or a native CI runner, without a foreign interpreter or
@@ -1199,10 +1199,10 @@ does, do the same for one run without touching config:</p>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>package<span class="w"> </span>//:beetkeeper-macos-arm64-standalone
 </code></pre></div>
 <p>A <strong>complete platform</strong> is a JSON description of a target interpreter: its PEP 508 marker environment plus the
-full list of wheel tags it accepts. They live at <code>3rdparty/platforms/&lt;slug&gt;.json</code> and are exposed as <code>file</code>
-targets by <code>3rdparty/platforms/BUILD</code>.</p>
+full list of wheel tags it accepts. They live at <code>etc/3rdparty/platforms/&lt;slug&gt;.json</code> and are exposed as <code>file</code>
+targets by <code>etc/3rdparty/platforms/BUILD</code>.</p>
 <h3 id="regenerating-the-complete-platform-jsons">Regenerating the complete-platform JSONs<a class="headerlink" href="#regenerating-the-complete-platform-jsons" title="Permanent link">&para;</a></h3>
-<p>The JSONs are produced only by <code>build_scripts/generate-complete-platforms.sh</code>. Do <strong>not</strong> hand-edit or
+<p>The JSONs are produced only by <code>etc/build_scripts/generate-complete-platforms.sh</code>. Do <strong>not</strong> hand-edit or
 hand-copy subsets: a truncated tag list silently drops generic tags like <code>py3-none-any</code> and breaks pure-python
 wheel resolution.</p>
 <p>Regenerate when:</p>
@@ -1214,13 +1214,13 @@ wheel resolution.</p>
 <li>a platform slug is added.</li>
 </ul>
 <p>Dependency or lockfile changes do <strong>not</strong> require regeneration.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>./build_scripts/generate-complete-platforms.sh<span class="w">                     </span><span class="c1"># all four slugs</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>./build_scripts/generate-complete-platforms.sh<span class="w"> </span>macos-arm64<span class="w"> </span>macos-amd64
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>./etc/build_scripts/generate-complete-platforms.sh<span class="w">                     </span><span class="c1"># all four slugs</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>./etc/build_scripts/generate-complete-platforms.sh<span class="w"> </span>macos-arm64<span class="w"> </span>macos-amd64
 </code></pre></div>
 <p>Per slug the script runs <code>pex3 interpreter inspect --markers --tags --indent=2</code> on the target interpreter,
 drops the machine-specific <code>path</code> key, prepends a <code>__meta_data__</code> line recording the interpreter, its source and
 the pex version, validates the result (expected <code>sys_platform</code> / <code>platform_machine</code> / <code>python_version</code>,
-non-empty tags that include <code>py3-none-any</code>) and only then replaces <code>3rdparty/platforms/&lt;slug&gt;.json</code>.</p>
+non-empty tags that include <code>py3-none-any</code>) and only then replaces <code>etc/3rdparty/platforms/&lt;slug&gt;.json</code>.</p>
 <table>
 <thead>
 <tr>
@@ -1286,7 +1286,7 @@ non-empty tags that include <code>py3-none-any</code>) and only then replaces <c
   version); a regeneration diff that touches only those is a no-op.</li>
 </ul>
 <p>Verify a regeneration by building a target and checking the bundled native wheel:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.__meta_data__, (.compatible_tags | length), .compatible_tags[0]'</span><span class="w"> </span>3rdparty/platforms/*.json
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.__meta_data__, (.compatible_tags | length), .compatible_tags[0]'</span><span class="w"> </span>etc/3rdparty/platforms/*.json
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>pants<span class="w"> </span>package<span class="w"> </span>//:beetkeeper-macos-amd64-pex
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>unzip<span class="w"> </span>-l<span class="w"> </span>dist/beetkeeper-macos-amd64-pex.pex<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-o<span class="w"> </span><span class="s1">'pydantic_core-[^/]*\.whl'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u
 </code></pre></div>
@@ -1316,7 +1316,7 @@ ambient fills gaps), or <code>prefer</code> (ambient wins). The image PEXes set 
 image can <code>pip install</code> an extra beets plugin and have the PEX pick it up.</p>
 <h3 id="generating-openapi-spec-json">Generating OpenAPI Spec JSON<a class="headerlink" href="#generating-openapi-spec-json" title="Permanent link">&para;</a></h3>
 <p>To regenerate the OpenAPI spec JSON files, run the following command:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pants<span class="w"> </span>run<span class="w"> </span>build_scripts:openapi-json-exporter
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pants<span class="w"> </span>run<span class="w"> </span>etc/build_scripts:openapi-json-exporter
 </code></pre></div>
 <p>It writes two files, and <code>--check</code> (run by prek and CI) verifies both:</p>
 <table>
@@ -1332,29 +1332,29 @@ image can <code>pip install</code> an extra beets plugin and have the PEX pick i
 <td style="text-align: left;">the user reference site (full spec)</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>client/src/openapi.json</code></td>
+<td style="text-align: left;"><code>provides/client/src/openapi.json</code></td>
 <td style="text-align: left;">the API client codegen (same spec without <code>webhooks</code>)</td>
 </tr>
 </tbody>
 </table>
-<p><code>client/src/openapi.json</code> must exist for any Pants Python goal to run, including the exporter itself: Pants
+<p><code>provides/client/src/openapi.json</code> must exist for any Pants Python goal to run, including the exporter itself: Pants
 generates the client while mapping Python modules. Never delete it; regenerate it in place.</p>
-<h2 id="the-api-client-wheel-clientclient-whl">The API client wheel (<code>client:client-whl</code>)<a class="headerlink" href="#the-api-client-wheel-clientclient-whl" title="Permanent link">&para;</a></h2>
+<h2 id="the-api-client-wheel-providesclientclient-whl">The API client wheel (<code>provides/client:client-whl</code>)<a class="headerlink" href="#the-api-client-wheel-providesclientclient-whl" title="Permanent link">&para;</a></h2>
 <p>The <code>beetkeeper_api_client</code> package has no sources in the repo. Pants' OpenAPI backend
-(<code>pants.backend.experimental.openapi.codegen.python</code>) generates it from <code>client/src/openapi.json</code> with
+(<code>pants.backend.experimental.openapi.codegen.python</code>) generates it from <code>provides/client/src/openapi.json</code> with
 <a href="https://openapi-generator.tech/docs/generators/python">openapi-generator</a>'s <code>python</code> generator, configured on
-the <code>client/src:openapi-spec</code> target.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pants<span class="w"> </span>package<span class="w"> </span>client:client-whl<span class="w">                    </span><span class="c1"># dist/beetkeeper_api_client-&lt;version&gt;-py3-none-any.whl</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>pants<span class="w"> </span>export-codegen<span class="w"> </span>client/src:openapi-spec<span class="w">       </span><span class="c1"># write the generated sources to dist/codegen/ for inspection</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>pants<span class="w"> </span><span class="nb">test</span><span class="w"> </span>client::
+the <code>provides/client/src:openapi-spec</code> target.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pants<span class="w"> </span>package<span class="w"> </span>provides/client:client-whl<span class="w">                    </span><span class="c1"># dist/beetkeeper_api_client-&lt;version&gt;-py3-none-any.whl</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>pants<span class="w"> </span>export-codegen<span class="w"> </span>provides/client/src:openapi-spec<span class="w">       </span><span class="c1"># write the generated sources to dist/codegen/ for inspection</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>pants<span class="w"> </span><span class="nb">test</span><span class="w"> </span>provides/client::
 </code></pre></div>
 <ul>
 <li><strong>openapi-generator is a JVM tool.</strong> Pants fetches the jar and a JDK itself (no local Java needed). Its
-  version is <code>[openapi-generator].version</code> in <code>pants.toml</code>, locked in <code>3rdparty/jvm/openapi-generator.lock</code>;
+  version is <code>[openapi-generator].version</code> in <code>pants.toml</code>, locked in <code>etc/3rdparty/jvm/openapi-generator.lock</code>;
   after bumping it run <code>pants generate-lockfiles --resolve=openapi-generator</code>.</li>
-<li><strong>The client has its own resolve, <code>client-resolve</code></strong> (<code>3rdparty/python/client-lockfile.json</code>), so its code
+<li><strong>The client has its own resolve, <code>client-resolve</code></strong> (<code>etc/3rdparty/python/client-lockfile.json</code>), so its code
   and tests cannot import <code>beetkeeper</code>. Pants requires a requirement in that resolve for every runtime dep the
-  generator declares, so the <code>dependencies</code> in <code>client/pyproject.toml</code> must mirror the generated
+  generator declares, so the <code>dependencies</code> in <code>provides/client/pyproject.toml</code> must mirror the generated
   <code>requirements.txt</code> (changing the generator's <code>library</code> option changes that list).</li>
 <li><strong>Webhooks are stripped from the client's spec.</strong> They describe requests beetkeeper sends, and the <code>python</code>
   generator fails on them.</li>
@@ -1420,10 +1420,10 @@ the <code>client/src:openapi-spec</code> target.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

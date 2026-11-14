@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/logo/favicon-16.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -33,10 +33,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -1151,7 +1151,7 @@
 
 <h1 id="deployment">Deployment<a class="headerlink" href="#deployment" title="Permanent link">&para;</a></h1>
 <p>This page covers running beetkeeper under Docker for real use. It mirrors the setup in the repo's
-<a href="https://github.com/zach-overflow/beetkeeper/tree/main/deploy"><code>deploy/</code></a> directory, which includes an
+<a href="https://github.com/zach-overflow/beetkeeper/tree/main/etc/deploy"><code>etc/deploy/</code></a> directory, which includes an
 example <code>config.yaml</code> (with container paths). beetkeeper reads its settings from that file's optional
 top-level <code>beetkeeper</code> section; the rest is an ordinary beets config — see <a href="../../configuration/">Configuration</a>.</p>
 <p>For a throwaway try-it-out run, start with the <a href="../demo/">Quick Start Demo</a> instead.</p>
@@ -1160,7 +1160,7 @@ top-level <code>beetkeeper</code> section; the rest is an ordinary beets config 
 notes below apply to those installs too; only the container commands differ.</p>
 <h2 id="first-time-setup">First-time setup<a class="headerlink" href="#first-time-setup" title="Permanent link">&para;</a></h2>
 <h3 id="1-get-the-image">1. Get the image<a class="headerlink" href="#1-get-the-image" title="Permanent link">&para;</a></h3>
-<p>Pull the published image (or build it locally with <code>pants package //:beetkeeper-server-image</code>):</p>
+<p>Pull the published image (or build it locally with <code>pants package //etc/docker:beetkeeper-server-image</code>):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/zach-overflow/beetkeeper:latest
 </code></pre></div>
 <h3 id="2-run-the-server">2. Run the server<a class="headerlink" href="#2-run-the-server" title="Permanent link">&para;</a></h3>
@@ -1304,10 +1304,10 @@ downgrade the schema. Restore the matching <code>.bak</code> file (or upgrade be
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

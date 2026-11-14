@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/logo/favicon-16.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -1172,22 +1172,22 @@
 <tbody>
 <tr>
 <td style="text-align: left;"><code>beetkeeper</code> wheel</td>
-<td style="text-align: left;"><code>beetkeeper-core:beetkeeper-whl</code></td>
+<td style="text-align: left;"><code>provides/beetkeeper-core:beetkeeper-whl</code></td>
 <td style="text-align: left;">PyPI (<code>beetkeeper</code>)</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>beetkeeper-plugin</code> wheel</td>
-<td style="text-align: left;"><code>plugin:plugin-whl</code></td>
+<td style="text-align: left;"><code>provides/plugin:plugin-whl</code></td>
 <td style="text-align: left;">PyPI (<code>beetkeeper-plugin</code>)</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>beetkeeper-api-client</code> wheel</td>
-<td style="text-align: left;"><code>client:client-whl</code></td>
+<td style="text-align: left;"><code>provides/client:client-whl</code></td>
 <td style="text-align: left;">PyPI (<code>beetkeeper-api-client</code>)</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>beetkeeper-server</code> image</td>
-<td style="text-align: left;"><code>//:beetkeeper-server-image</code></td>
+<td style="text-align: left;"><code>//etc/docker:beetkeeper-server-image</code></td>
 <td style="text-align: left;">GHCR <code>ghcr.io/zach-overflow/beetkeeper</code> (<code>:latest</code> + <code>:&lt;version&gt;</code>)</td>
 </tr>
 <tr>
@@ -1204,8 +1204,8 @@ the release's <code>MAJOR.MINOR</code> docs version to the <code>gh-pages</code>
 <a href="https://www.pantsbuild.org/stable/reference/targets/vcs_version"><code>vcs_version</code></a> target (setuptools-scm
 under the hood); <strong>no version string is committed anywhere</strong>. The moving parts:</p>
 <ul>
-<li>Each distribution has a <code>vcs_version</code> target (<code>beetkeeper-core/src/beetkeeper/BUILD</code>,
-  <code>plugin/src/beetsplug/beetkeeper_plugin/BUILD</code>) that runs setuptools-scm against the real repo and generates a
+<li>Each distribution has a <code>vcs_version</code> target (<code>provides/beetkeeper-core/src/beetkeeper/BUILD</code>,
+  <code>provides/plugin/src/beetsplug/beetkeeper_plugin/BUILD</code>) that runs setuptools-scm against the real repo and generates a
   <code>_scm_version.py</code> module into every consuming Pants sandbox (dependency inference picks it up from the
   import in <code>_version.py</code>).</li>
 <li>Each package's committed <code>_version.py</code> re-exports the generated module, falling back to <code>0.0.0.dev0</code>
@@ -1217,9 +1217,9 @@ under the hood); <strong>no version string is committed anywhere</strong>. The m
   <code>MAJOR.MINOR.PATCH</code>; on any other commit it yields a dev version (<code>X.Y.Z.devN+g&lt;hash&gt;</code>), which is what
   local <code>pants package</code> produces.</li>
 <li>The generated API client differs slightly, since it has no committed sources: its <code>vcs_version</code> target
-  lives in <code>client/src/BUILD</code>, and <code>client/pyproject.toml</code> reads the generated <code>_scm_version.version</code> directly
+  lives in <code>provides/client/src/BUILD</code>, and <code>provides/client/pyproject.toml</code> reads the generated <code>_scm_version.version</code> directly
   (no <code>_version.py</code>). Its in-code <code>beetkeeper_api_client.__version__</code> is separate: openapi-generator bakes it
-  in from the <code>RELEASE_TAG</code> environment variable (<code>packageVersion</code> in <code>client/src/BUILD</code>), falling back to
+  in from the <code>RELEASE_TAG</code> environment variable (<code>packageVersion</code> in <code>provides/client/src/BUILD</code>), falling back to
   <code>0.0.0.dev0</code>. Publish's <code>build-wheels</code> job sets <code>RELEASE_TAG</code> and fails if the two versions disagree.</li>
 </ul>
 <blockquote>
@@ -1257,14 +1257,14 @@ release otherwise. In practice:</p>
   <a href="https://github.com/zach-overflow/beetkeeper/releases">GitHub releases page</a> instead.</li>
 <li><code>post_bump_hooks</code> — <code>cog bump</code> itself is what pushes the new tag (the GitHub action wrapping it
   pushes nothing).</li>
-<li><code>[changelog]</code> — <code>template = ".cog/changelog-template.tera"</code> is a checked-in copy of cog's built-in <code>remote</code>
+<li><code>[changelog]</code> — <code>template = "etc/.cog/changelog-template.tera"</code> is a checked-in copy of cog's built-in <code>remote</code>
   template (<a href="https://keats.github.io/tera/docs/">Tera</a> syntax; see the
   <a href="https://docs.cocogitto.io/guide/changelog.html#custom-templates">cog changelog docs</a>) that renders
   GitHub-linked changelog entries. Edit it to change the release-notes formatting (the per-commit
   line format is the <code>remote</code> macro at the top of the file);
   <code>cog changelog --at vX.Y.Z</code> generates each GitHub release's body straight from git history. The template
   also appends a <em>Download beetkeeper X.Y.Z</em> table linking the release's binary assets; its <code>asset_names</code> /
-  <code>asset_platforms</code> lists must stay in step with the platform map in <code>build_scripts/pants_macros.py</code> and
+  <code>asset_platforms</code> lists must stay in step with the platform map in <code>etc/build_scripts/pants_macros.py</code> and
   the <code>publish-binaries</code> job.</li>
 </ul>
 <h2 id="cutting-a-release-runbook">Cutting a release (runbook)<a class="headerlink" href="#cutting-a-release-runbook" title="Permanent link">&para;</a></h2>
@@ -1396,7 +1396,7 @@ builds succeed:</p>
   <code>build-wheels</code> job must check out <code>v&lt;version&gt;</code> with <code>fetch-depth: 0</code> (setuptools-scm needs the tag in
   the checkout).</li>
 <li><strong><code>build-wheels</code> fails: <code>beetkeeper_api_client.__version__</code> is not the release version</strong> — the job lost
-  its <code>RELEASE_TAG</code> env var, which feeds the generated client's <code>packageVersion</code> (<code>client/src/BUILD</code>).</li>
+  its <code>RELEASE_TAG</code> env var, which feeds the generated client's <code>packageVersion</code> (<code>provides/client/src/BUILD</code>).</li>
 <li><strong>PyPI publish fails with a trusted-publisher / OIDC error</strong> — the registered Trusted Publisher must
   match exactly: owner/repo <code>zach-overflow/beetkeeper</code>, workflow <code>publish.yml</code>, environment <code>pypi</code>. Also
   note PyPI rejects reusable workflows outright, so Publish must never be converted to <code>workflow_call</code>.</li>
@@ -1477,10 +1477,10 @@ builds succeed:</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

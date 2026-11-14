@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/logo/favicon-16.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -33,10 +33,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -1233,7 +1233,7 @@
 <ol>
 <li>Install <code>docker</code> (recommend either via <a href="https://www.docker.com/products/docker-desktop/">docker desktop</a> or <a href="https://colima.run/">colima</a>).</li>
 <li>Install <a href="https://docs.astral.sh/uv/getting-started/installation/"><code>uv</code></a></li>
-<li>Install pantsbuild either by running <code>./build_scripts/get-pants.sh</code> or through the other methods listed <a href="https://www.pantsbuild.org/stable/docs/getting-started/installing-pants">here</a>.</li>
+<li>Install pantsbuild either by running <code>./etc/build_scripts/get-pants.sh</code> or through the other methods listed <a href="https://www.pantsbuild.org/stable/docs/getting-started/installing-pants">here</a>.</li>
 <li>Install <a href="https://prek.j178.dev/installation/"><code>prek</code></a><ol>
 <li>run <code>prek install</code> from the repo root to set up the pre-commit  hooks.</li>
 </ol>
@@ -1274,37 +1274,37 @@
 </table>
 <h3 id="testing">Testing<a class="headerlink" href="#testing" title="Permanent link">&para;</a></h3>
 <p>Tests run through Pants' built-in pytest: each <code>python_tests</code> file runs in its own sandbox, with
-3rd-party dependencies supplied by the Pants resolve lockfiles under <code>3rdparty/</code> (regenerate with
+3rd-party dependencies supplied by the Pants resolve lockfiles under <code>etc/3rdparty/</code> (regenerate with
 <code>pants generate-lockfiles</code> after dependency changes). pytest itself and its plugins install from the
 <code>[pytest].requirements</code> list in <code>pants.toml</code> — any plugin whose CLI options we pass (e.g. <code>pytest-socket</code>)
-must be listed there. <code>pants test ::</code> also runs the <code>hooks:uv-lockfile-check</code> repo-consistency check.</p>
+must be listed there. <code>pants test ::</code> also runs the <code>etc/hooks:uv-lockfile-check</code> repo-consistency check.</p>
 <p>To run all tests in the repo:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pants<span class="w"> </span><span class="nb">test</span><span class="w"> </span>::
 </code></pre></div>
 <p>To run only the tests found under a specific path, run:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pants<span class="w"> </span><span class="nb">test</span><span class="w"> </span>&lt;<span class="w"> </span>path-prefix-here<span class="w"> </span>&gt;::
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># Example: pants test beetkeeper-core/src/tests/api_tests:: will only run tests found under beetkeeper-core/src/tests/api_tests</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># Example: pants test provides/beetkeeper-core/src/tests/api_tests:: will only run tests found under provides/beetkeeper-core/src/tests/api_tests</span>
 </code></pre></div>
 <p>To run pytest with pdb or other breakpoints enabled, run the command with the <code>--test-debug</code> flag. Example:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># If you set a breakpoint in a test within `beetkeeper-core/src/tests/my_pytest_file.py`.</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pants<span class="w"> </span>--test-debug<span class="w"> </span><span class="nb">test</span><span class="w"> </span>beetkeeper-core/src/tests/my_pytest_file.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># If you set a breakpoint in a test within `provides/beetkeeper-core/src/tests/my_pytest_file.py`.</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pants<span class="w"> </span>--test-debug<span class="w"> </span><span class="nb">test</span><span class="w"> </span>provides/beetkeeper-core/src/tests/my_pytest_file.py
 </code></pre></div>
 <p>For quick ad-hoc runs against the uv dev venv (no Pants sandboxing), <code>uv run --all-groups pytest ...</code>
 also works.</p>
 <h3 id="running-the-test-server">Running the Test Server<a class="headerlink" href="#running-the-test-server" title="Permanent link">&para;</a></h3>
 <p>For manual, interactive testing of the web app, run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>./build_scripts/run-test-server.sh
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>./etc/build_scripts/run-test-server.sh
 </code></pre></div>
-<p>This packages the server Docker image (<code>pants package //:beetkeeper-server-image</code>) and starts a container
+<p>This packages the server Docker image (<code>pants package //etc/docker:beetkeeper-server-image</code>) and starts a container
 from it, serving the app at <a href="http://localhost:8337">http://localhost:8337</a>. Press <code>Ctrl-C</code> to stop it. No configuration or host
-data is required: the container entrypoint (<code>build_scripts/dev_scripts/test_container_init.sh</code>) generates a
+data is required: the container entrypoint (<code>etc/build_scripts/dev_scripts/test_container_init.sh</code>) generates a
 throwaway beets/beetkeeper config under <code>/test_dirs</code> inside the container and runs the database migrations,
 so everything is discarded when the container exits. It also creates fake tagged albums under <code>/downloads</code>
 to import, seeds fake events for the events page, and starts a fake download-client API
-(<code>build_scripts/dev_scripts/fake_downloader_api.py</code>) behind the config's downloader hook: on the search
+(<code>etc/build_scripts/dev_scripts/fake_downloader_api.py</code>) behind the config's downloader hook: on the search
 page, <strong>Find via downloader</strong> resolves an imported fake album back to its <code>/downloads</code> folder, from where
 a clean-slate import can be tried end to end.</p>
-<p>The script also mounts the repo's <code>beetkeeper-core/src/beetkeeper/api/static</code> directory into the container and
+<p>The script also mounts the repo's <code>provides/beetkeeper-core/src/beetkeeper/api/static</code> directory into the container and
 symlinks it over the copy the PEX extracts at startup. This means edits to static files (CSS, HTML
 templates, images, JS) on the host render on the next browser refresh — no image rebuild or container
 restart needed. Changes to <strong>Python</strong> code, however, are baked into the PEX, so they require re-running the
@@ -1325,25 +1325,25 @@ script to rebuild the image.</p>
 <td style="text-align: left;"><code>beetkeeper-server</code></td>
 <td>Docker image</td>
 <td style="text-align: left;">Self-hosted <code>beets</code> + <code>beetkeeper_plugin</code> wrapped by the <code>beetkeeper</code> server</td>
-<td style="text-align: right;"><code>//:beetkeeper-server-image</code></td>
+<td style="text-align: right;"><code>//etc/docker:beetkeeper-server-image</code></td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>beetkeeper.whl</code></td>
 <td>Python library distribution</td>
 <td style="text-align: left;">The beetkeeper server, published as a wheel file to PyPI</td>
-<td style="text-align: right;"><code>beetkeeper-core:beetkeeper-whl</code></td>
+<td style="text-align: right;"><code>provides/beetkeeper-core:beetkeeper-whl</code></td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>beetkeeper-plugin</code></td>
 <td>Python library distribution</td>
 <td style="text-align: left;"><code>beetsplug</code> plugin which pushes beets events to the beetkeeper server</td>
-<td style="text-align: right;"><code>plugin:plugin-whl</code></td>
+<td style="text-align: right;"><code>provides/plugin:plugin-whl</code></td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>beetkeeper-api-client</code></td>
 <td>Python library distribution</td>
 <td style="text-align: left;">Python client for the beetkeeper REST API, generated from its OpenAPI spec</td>
-<td style="text-align: right;"><code>client:client-whl</code></td>
+<td style="text-align: right;"><code>provides/client:client-whl</code></td>
 </tr>
 </tbody>
 </table>
@@ -1352,7 +1352,7 @@ script to rebuild the image.</p>
 </code></pre></div>
 <p>Or, to package only a specific artifact, run the command against the intended pants target.
 For example, to only build the beetkeeper server wheel, you'd run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pants<span class="w"> </span>package<span class="w"> </span>beetkeeper-core:beetkeeper-whl
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pants<span class="w"> </span>package<span class="w"> </span>provides/beetkeeper-core:beetkeeper-whl
 </code></pre></div>
 <h2 id="ci-and-github-actions">CI and GitHub Actions<a class="headerlink" href="#ci-and-github-actions" title="Permanent link">&para;</a></h2>
 <p>CI runs in GitHub Actions (<code>.github/workflows/</code>). The main workflow validates the repo through pants
@@ -1384,7 +1384,7 @@ verifies the docs build (<code>pants run docs:mkdocs-pex -- build --strict</code
 </tr>
 <tr>
 <td style="text-align: left;">Named caches (<code>~/.cache/pants/named_caches</code>)</td>
-<td style="text-align: left;">The <code>3rdparty/</code> lockfiles (<code>named-caches-hash</code>)</td>
+<td style="text-align: left;">The <code>etc/3rdparty/</code> lockfiles (<code>named-caches-hash</code>)</td>
 <td style="text-align: left;">pip/pex downloads and built wheels shared by every resolve.</td>
 </tr>
 <tr>
@@ -1417,11 +1417,11 @@ digests change.</p>
 <p><code>actionlint</code> checks the workflow YAML for syntax errors, invalid
 <code>${{ }}</code> expressions, unknown action inputs, and shell problems in <code>run:</code> blocks (via <code>shellcheck</code>). It
 runs automatically as a <a href="https://prek.j178.dev/">prek</a> hook on commit and as the first step in CI — both
-through the shared <code>hooks/actionlint.sh</code>, which uses a pinned <code>actionlint</code> (downloading it if it isn't on
+through the shared <code>etc/hooks/actionlint.sh</code>, which uses a pinned <code>actionlint</code> (downloading it if it isn't on
 your <code>PATH</code>). <code>yamllint</code> (part of <code>pants lint ::</code>) covers generic YAML issues like line length; <code>actionlint</code>
 adds the GitHub-Actions-specific checks.</p>
 <p>Run it on demand against every workflow:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>hooks/actionlint.sh
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>etc/hooks/actionlint.sh
 </code></pre></div>
 <h3 id="using-act">Using <code>act</code><a class="headerlink" href="#using-act" title="Permanent link">&para;</a></h3>
 <p><code>act</code> executes the workflows in Docker containers which emulate the GitHub
@@ -1514,10 +1514,10 @@ real branch push remains the source of truth for those.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>
