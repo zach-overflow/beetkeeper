@@ -27,7 +27,9 @@
   "manylinux": "manylinux2014",
   "requirement_constraints": [
     "certifi>=2026.10.19",
+    "dnspython>=2.9.2",
     "mako>=1.4.2",
+    "opentelemetry-api>=1.45.2",
     "urllib3>=2.8.0"
   ],
   "only_binary": [],

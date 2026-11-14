@@ -22,7 +22,7 @@ backend_packages = [
   "pants.backend.tools.taplo",
   # "pyproject_fmt_pants_plugin",
 ]
-pants_version = "2.33.1"
+pants_version = "2.33.2"
 plugins = [
   # https://pypi.org/project/pyproject-fmt-pants-plugin/
   "pyproject-fmt-pants-plugin==0.4.4",
@@ -69,17 +69,6 @@ known_versions = [
 ]
 url_platform_mapping = { macos_arm64 = "macos-arm64", macos_x86_64 = "macos-x86_64", linux_arm64 = "linux-arm64", linux_x86_64 = "linux-x86_64" }
 
-# Pants 2.33's default pex (2.97.1) only knows pip <= 26.1.2; 2.104.0+ adds pip 26.2.2 and a certifi 2026.10.19
-# CA bundle (https://discuss.python.org/t/109576). Same universal `pex` file for every platform.
-[pex-cli]
-version = "v2.104.1"
-known_versions = [
-  "v2.104.1|macos_x86_64|09b82471a777606cc1b74af13c3a4c8d09982dfb2d448d5dd0ce5d408ea1035b|5408285",
-  "v2.104.1|macos_arm64|09b82471a777606cc1b74af13c3a4c8d09982dfb2d448d5dd0ce5d408ea1035b|5408285",
-  "v2.104.1|linux_x86_64|09b82471a777606cc1b74af13c3a4c8d09982dfb2d448d5dd0ce5d408ea1035b|5408285",
-  "v2.104.1|linux_arm64|09b82471a777606cc1b74af13c3a4c8d09982dfb2d448d5dd0ce5d408ea1035b|5408285",
-]
-
 # https://pypi.org/project/pyproject-fmt-pants-plugin/
 [pyproject-fmt]
 config_discovery = true
@@ -120,6 +109,9 @@ extra_env_vars = ["PANTS=true"]
 [openapi-generator]
 version = "7.26.0"
 lockfile = "etc/3rdparty/jvm/openapi-generator.lock"
+
+[jvm]
+resolves = { "jvm-default" = "etc/3rdparty/jvm/default.lock" }
 
 [python-bootstrap]
 search_path = ["<PYENV>", "<ASDF>", "<PATH>"]
